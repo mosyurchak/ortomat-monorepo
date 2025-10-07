@@ -1,0 +1,34 @@
+{
+  "name": "ortomat-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "axios": "^1.5.0",
+    "react-hook-form": "^7.45.0",
+    "react-query": "^3.39.3",
+    "js-cookie": "^3.0.5",
+    "react-hot-toast": "^2.4.1",
+    "lucide-react": "^0.263.1",
+    "tailwindcss": "^3.3.0",
+    "autoprefixer": "^10.4.15",
+    "postcss": "^8.4.28"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
+    "@types/js-cookie": "^3.0.3",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.0.0"
+  }
+}

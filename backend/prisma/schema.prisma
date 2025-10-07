@@ -1,0 +1,166 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  DOCTOR
+  COURIER
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum OrderStatus {
+  CREATED
+  PAYMENT_PENDING
+  PAYMENT_PROCESSING
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  CELL_OPENING
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  role      UserRole
+  firstName String
+  lastName  String
+  middleName String?
+  phone     String
+  isVerified Boolean @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  doctorOrtomats DoctorOrtomat[]
+  courierOrtomats CourierOrtomat[]
+  sales Sale[]
+
+  @@map("users")
+}
+
+model Ortomat {
+  id      String @id @default(uuid())
+  name    String
+  address String
+  totalCells Int @default(37)
+  status String @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cells Cell[]
+  doctors DoctorOrtomat[]
+  couriers CourierOrtomat[]
+  sales Sale[]
+
+  @@map("ortomats")
+}
+
+model Cell {
+  id       String @id @default(uuid())
+  number   Int
+  ortomatId String
+  productId String?
+  isAvailable Boolean @default(true)
+  lastRefillDate DateTime?
+  courierId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  
+  @@unique([ortomatId, number])
+  @@map("cells")
+}
+
+model Product {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  category    String
+  size        String?
+  price       Float
+  imageUrl    String?
+  videoUrl    String?
+  attributes  Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cells Cell[]
+  sales Sale[]
+
+  @@map("products")
+}
+
+model DoctorOrtomat {
+  id        String @id @default(uuid())
+  doctorId  String
+  ortomatId String
+  referralCode String @unique
+  qrCode String?
+  commissionPercent Float @default(10.0)
+  totalSales Int @default(0)
+  totalEarnings Float @default(0.0)
+  createdAt DateTime @default(now())
+
+  doctor  User    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+  sales Sale[]
+
+  @@unique([doctorId, ortomatId])
+  @@map("doctor_ortomats")
+}
+
+model CourierOrtomat {
+  id        String @id @default(uuid())
+  courierId String
+  ortomatId String
+  status String @default("active")
+  createdAt DateTime @default(now())
+
+  courier User    @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, ortomatId])
+  @@map("courier_ortomats")
+}
+
+model Sale {
+  id         String   @id @default(uuid())
+  doctorId   String?
+  productId  String
+  ortomatId  String
+  cellNumber Int
+  amount     Float
+  commission Float?
+  referralCode String?
+  paymentId  String?
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  
+  orderNumber String? @unique
+  customerPhone String?
+  completedAt DateTime?
+  doctorOrtomatId String?
+
+  doctor  User?    @relation(fields: [doctorId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+  ortomat Ortomat @relation(fields: [ortomatId], references: [id])
+  doctorOrtomat DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
+
+  @@map("sales")
+}
