@@ -15,7 +15,7 @@ async function bootstrap() {
     transform: true,
   }));
   
-  //app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api');
   
   await app.listen(3001);
   console.log('Backend server running on http://localhost:3001');

@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from '../ortomats/ortomats.service';
+import { OrtomatsGateway } from '../ortomats/ortomats.gateway';
 
 @Injectable()
 export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
+    private ortomatsGateway: OrtomatsGateway, // ✅ Додали Gateway
   ) {}
 
   async createOrder(data: {
@@ -51,14 +53,14 @@ export class OrdersService {
       }
     }
 
-    // ⭐ Генеруємо унікальний номер замовлення
+    // Генеруємо унікальний номер замовлення
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
     // Create sale record
     const sale = await this.prisma.sale.create({
       data: {
-        orderNumber,              // ⭐ НОВОЕ
-        customerPhone: data.customerPhone, // ⭐ НОВОЕ
+        orderNumber,
+        customerPhone: data.customerPhone,
         productId: data.productId,
         ortomatId: data.ortomatId,
         cellNumber: cell.number,
@@ -86,10 +88,6 @@ export class OrdersService {
 
   async processPayment(orderId: string) {
     // STUB: Simulate LiqPay payment
-    // In real implementation, this would:
-    // 1. Generate LiqPay form data
-    // 2. Return signature and data for LiqPay widget
-    
     const sale = await this.prisma.sale.findUnique({
       where: { id: orderId },
       include: {
@@ -105,13 +103,10 @@ export class OrdersService {
     return {
       success: true,
       orderId: sale.id,
-      orderNumber: sale.orderNumber, // ⭐ ДОДАЛИ
+      orderNumber: sale.orderNumber,
       amount: sale.amount,
       currency: 'UAH',
       description: `Purchase: ${sale.product.name}`,
-      // In real implementation:
-      // data: base64EncodedData,
-      // signature: liqpaySignature,
     };
   }
 
@@ -121,8 +116,6 @@ export class OrdersService {
     paymentId: string;
   }) {
     // STUB: Simulate LiqPay callback
-    // In real implementation, verify signature first
-    
     const sale = await this.prisma.sale.findUnique({
       where: { id: data.orderId },
     });
@@ -138,7 +131,7 @@ export class OrdersService {
         data: {
           status: 'completed',
           paymentId: data.paymentId,
-          completedAt: new Date(), // ⭐ ДОДАЛИ
+          completedAt: new Date(),
         },
       });
 
@@ -149,14 +142,14 @@ export class OrdersService {
         null
       );
 
-      // Open cell (stub - in reality, send command to ortomat)
-      await this.ortomatsService.openCell(sale.ortomatId, sale.cellNumber);
-
+      // ✅ ВАЖЛИВО: Команда на відкриття буде відправлена окремо
+      // коли користувач натисне кнопку "Open Cell"
+      
       return {
         success: true,
         message: 'Payment processed successfully',
         cellNumber: sale.cellNumber,
-        orderNumber: sale.orderNumber, // ⭐ ДОДАЛИ для Frontend
+        orderNumber: sale.orderNumber,
       };
     } else {
       // Payment failed
@@ -179,6 +172,7 @@ export class OrdersService {
       where: { id },
       include: {
         product: true,
+        ortomat: true, // ✅ Додали ortomat для deviceId
         doctor: {
           select: {
             id: true,
@@ -207,27 +201,52 @@ export class OrdersService {
     });
   }
 
+  // ✅ ОНОВЛЕНО: Тепер використовує WebSocket Gateway
   async openCell(orderId: string) {
-  const order = await this.prisma.sale.findUnique({
-    where: { id: orderId },
-  });
+    const order = await this.prisma.sale.findUnique({
+      where: { id: orderId },
+      include: {
+        ortomat: true,
+      },
+    });
 
-  if (!order) {
-    throw new Error('Order not found');
-  }
+    if (!order) {
+      throw new Error('Order not found');
+    }
 
-  if (order.status !== 'completed') {
-    throw new Error('Order is not completed yet');
-  }
+    if (order.status !== 'completed') {
+      throw new Error('Order is not completed yet');
+    }
 
-  // TODO: Тут буде інтеграція з реальним API ортомату
-  // Поки що просто логуємо
-  console.log(`Opening cell ${order.cellNumber} for order ${order.orderNumber}`);
+    // ✅ Використовуємо deviceId з бази даних
+    // Для тестування використовуємо 'locker-01'
+    // В production треба зберігати deviceId в таблиці ortomats
+    const deviceId = 'locker-01'; // TODO: order.ortomat.deviceId в майбутньому
+    
+    // ✅ Перевіряємо чи контролер онлайн
+    if (!this.ortomatsGateway.isDeviceOnline(deviceId)) {
+      throw new Error(`Ortomat ${deviceId} is offline. Please try again later.`);
+    }
 
-  return {
-    success: true,
-    message: `Cell ${order.cellNumber} is opening`,
-    cellNumber: order.cellNumber,
-  };
+    // ✅ Відправляємо команду через WebSocket
+    const success = await this.ortomatsGateway.openCell(
+      deviceId,
+      order.cellNumber,
+      order.id,
+    );
+
+    if (!success) {
+      throw new Error('Failed to send command to ortomat');
+    }
+
+    console.log(`✅ WebSocket command sent to ${deviceId}, cell ${order.cellNumber}`);
+
+    return {
+      success: true,
+      message: `Cell ${order.cellNumber} opening command sent via WebSocket`,
+      cellNumber: order.cellNumber,
+      orderNumber: order.orderNumber,
+      deviceId: deviceId,
+    };
   }
 }
