@@ -12,10 +12,10 @@ export default function DoctorStatisticsPage() {
   // Отримуємо ID користувача з localStorage або контексту
   const userId = typeof window !== 'undefined' ? localStorage.getItem('userId') : null;
 
-  const { data: stats, isLoading } = useQuery(
-    ['doctor-stats', userId],
-    () => usersApi.getStats(userId as string),
-    { enabled: !!userId }
+  const { data: stats, isLoading } = useQuery({
+  queryKey: [],
+  queryFn: () => ,
+   enabled: !!userId }
   );
 
   const statsData = stats?.data;

@@ -1,146 +1,157 @@
-import React from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useQuery } from 'react-query';
-import { ortomatsApi } from '../../lib/api';
-import { ShoppingBag, MapPin, ArrowLeft, User } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import Link from 'next/link';
+import { api } from '../../lib/api';
 
 export default function CatalogPage() {
   const router = useRouter();
   const { id, ref } = router.query;
 
-  const { data: catalog, isLoading } = useQuery(
-    ['catalog', id, ref],
-    () => ortomatsApi.getCatalog(id as string, ref as string),
-    {
-      enabled: !!id,
-    }
-  );
+  // ✅ Новий синтаксис React Query v4+
+  const { data: catalog, isLoading, error } = useQuery({
+    queryKey: ['catalog', id, ref],
+    queryFn: () => api.getOrtomatCatalog(id as string, ref as string),
+    enabled: !!id,
+  });
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading catalog...</p>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Завантаження каталогу...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">
+          Помилка завантаження каталогу
         </div>
       </div>
     );
   }
 
-  const { ortomat, products, doctor, referralCode } = catalog?.data || {};
+  if (!catalog) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Каталог не знайдено</div>
+      </div>
+    );
+  }
+
+  const { ortomat, products } = catalog;
 
   return (
-    <>
-      <Head>
-        <title>{ortomat?.name} - Catalog</title>
-      </Head>
-
-      <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <Link href="/" className="flex items-center text-gray-600 hover:text-gray-900">
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to ortomats
-              </Link>
-              <div className="flex items-center">
-                <ShoppingBag className="h-8 w-8 text-primary-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">Ortomat</span>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Ortomat Info */}
-        <div className="bg-white border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">{ortomat?.name}</h1>
-            <div className="flex items-center text-gray-600">
-              <MapPin className="h-5 w-5 mr-2" />
-              <span>{ortomat?.address}</span>
-            </div>
-            {doctor && (
-              <div className="mt-4 flex items-center text-sm text-gray-600 bg-blue-50 px-4 py-2 rounded-md">
-                <User className="h-4 w-4 mr-2" />
-                <span>
-                  Recommended by Dr. {doctor.firstName} {doctor.lastName}
-                  {doctor.middleName && ` ${doctor.middleName}`}
-                </span>
-              </div>
+        <div className="mb-8">
+          <Link href="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">
+            ← Назад до списку ортоматів
+          </Link>
+          
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              {ortomat.name}
+            </h1>
+            <p className="text-gray-600 flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {ortomat.address}
+            </p>
+            {ref && (
+              <p className="mt-2 text-sm text-green-600">
+                ✓ Реферальний код активовано
+              </p>
             )}
           </div>
         </div>
 
         {/* Products Grid */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Available Products ({products?.length || 0})
+        <div className="mb-6">
+          <h2 className="text-2xl font-semibold mb-4">
+            Доступні товари ({products?.length || 0})
           </h2>
+        </div>
 
-          {products && products.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {products.map((product: any) => (
-                <Link
-                  key={product.id}
-                  href={`/product/${product.id}?ortomat=${id}${ref ? `&ref=${ref}` : ''}`}
-                  className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden"
-                >
-                  <div className="aspect-w-16 aspect-h-9 bg-gray-200">
-                    {product.imageUrl ? (
-                      <img
-                        src={product.imageUrl}
-                        alt={product.name}
-                        className="w-full h-48 object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-48 flex items-center justify-center bg-gray-100">
-                        <ShoppingBag className="h-16 w-16 text-gray-400" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-6">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                      {product.name}
-                    </h3>
-                    {product.description && (
-                      <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {product.description}
-                      </p>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-primary-600">
-                        {product.price} UAH
-                      </span>
-                      <span className="text-sm text-gray-500">
-                        In stock: {product.quantity}
-                      </span>
+        {!products || products.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-md">
+            <p className="text-gray-500 text-lg">
+              В цьому ортоматі немає доступних товарів
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product: any) => (
+              <div
+                key={product.id}
+                className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow overflow-hidden"
+              >
+                {/* Product Image Placeholder */}
+                <div className="h-48 bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+                  <svg className="w-24 h-24 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+
+                <div className="p-6">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    {product.name}
+                  </h3>
+                  
+                  {product.description && (
+                    <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+                      {product.description}
+                    </p>
+                  )}
+
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <span className="text-sm text-gray-500">Категорія:</span>
+                      <p className="font-medium">{product.category}</p>
                     </div>
                     {product.size && (
-                      <div className="mt-2 text-sm text-gray-600">
-                        Size: {product.size}
+                      <div className="text-right">
+                        <span className="text-sm text-gray-500">Розмір:</span>
+                        <p className="font-medium">{product.size}</p>
                       </div>
                     )}
                   </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">No products available in this ortomat</p>
-              <Link
-                href="/"
-                className="mt-4 inline-block text-primary-600 hover:text-primary-700"
-              >
-                Browse other ortomats
-              </Link>
-            </div>
-          )}
-        </main>
+
+                  <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+                    <div className="text-2xl font-bold text-gray-900">
+                      {product.price} грн
+                    </div>
+                    
+                    <Link
+                      href={{
+                        pathname: '/checkout',
+                        query: {
+                          productId: product.id,
+                          ortomatId: ortomat.id,
+                          ref: ref || '',
+                        },
+                      }}
+                      className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      Купити
+                    </Link>
+                  </div>
+
+                  {product.availableQuantity !== undefined && (
+                    <div className="mt-2 text-sm text-gray-500">
+                      В наявності: {product.availableQuantity} шт.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
-    </>
+    </div>
   );
 }

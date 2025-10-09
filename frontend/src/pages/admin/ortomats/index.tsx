@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { ortomatsApi } from '../../../lib/api';
+import { api } from '../../../lib/api';
 import { ArrowLeft, Plus, Edit, Trash2, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,10 +17,10 @@ export default function AdminOrtomatsPage() {
     totalCells: 37,
   });
 
-  const { data: ortomats, isLoading } = useQuery('ortomats', () => ortomatsApi.getAll());
+  const { data: ortomats, isLoading } = useQuery('ortomats', () => api.getOrtomats());
 
   const createMutation = useMutation(
-    (data: any) => ortomatsApi.create(data),
+    (data: any) => api.createOrtomat(data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('ortomats');
@@ -34,7 +34,7 @@ export default function AdminOrtomatsPage() {
   );
 
   const updateMutation = useMutation(
-    ({ id, data }: any) => ortomatsApi.update(id, data),
+    ({ id, data }: any) => api.updateOrtomat(id, data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('ortomats');
@@ -48,7 +48,7 @@ export default function AdminOrtomatsPage() {
   );
 
   const deleteMutation = useMutation(
-    (id: string) => ortomatsApi.delete(id),
+    (id: string) => api.deleteOrtomat(id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('ortomats');

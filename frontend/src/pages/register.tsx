@@ -1,10 +1,10 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../contexts/AuthContext';
 import { useQuery } from 'react-query';
-import { ortomatsApi } from '../lib/api';
+import { api } from '../lib/api';
 import { UserPlus } from 'lucide-react';
 
 export default function Register() {
@@ -22,7 +22,7 @@ export default function Register() {
   const { register } = useAuth();
   const router = useRouter();
 
-  const { data: ortomats } = useQuery('ortomats', ortomatsApi.getAll);
+  const { data: ortomats } = useQuery('ortomats', api.getOrtomats);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;

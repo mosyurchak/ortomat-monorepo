@@ -26,7 +26,7 @@ export default function CourierRefillPage() {
   );
 
   // Завантажуємо список товарів
-  const { data: products } = useQuery('products', () => productsApi.getAll());
+  const { data: products } = useQuery('products', () => api.getProducts());
 
   // Мутація для поповнення
   const refillMutation = useMutation(

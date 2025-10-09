@@ -1,98 +1,238 @@
-﻿import axios from 'axios';
-import Cookies from 'js-cookie';
+﻿// ✅ БЕЗ /api в кінці
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-const API_URL = 'http://localhost:3001';
+class ApiClient {
+  private baseURL: string;
 
-export const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Додаємо токен до кожного запиту
-api.interceptors.request.use((config) => {
-  const token = Cookies.get('token');
-  console.log('🔑 Token from cookie:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN'); // DEBUG
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  constructor() {
+    this.baseURL = API_URL;
   }
-  return config;
-});
 
-// Обробка помилок
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    console.error('❌ API Error:', error.response?.status, error.response?.data); // DEBUG
-    if (error.response?.status === 401) {
-      console.log('🚫 Unauthorized - clearing auth'); // DEBUG
-      Cookies.remove('token');
-      localStorage.removeItem('userId');
-      window.location.href = '/login';
+  private async request(endpoint: string, options: RequestInit = {}) {
+    // ✅ endpoint вже містить /api (наприклад: /api/ortomats)
+    const url = `${this.baseURL}${endpoint}`;
+    
+    console.log('API Request:', url); // Для дебагу
+    
+    const token = typeof window !== 'undefined' 
+      ? localStorage.getItem('token') 
+      : null;
+
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    };
+
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
     }
-    return Promise.reject(error);
+
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({
+          message: response.statusText
+        }));
+        throw new Error(error.message || 'Request failed');
+      }
+
+      return response.json();
+    } catch (error) {
+      console.error('API Request failed:', error);
+      throw error;
+    }
   }
-);
 
-export const authApi = {
-  login: (email: string, password: string) =>
-    api.post('/auth/login', { email, password }),
-  register: (data: any) => api.post('/auth/register', data),
-};
+  // ==================== ORTOMATS ====================
+  
+  async getOrtomats() {
+    return this.request('/api/ortomats');
+  }
 
-export const ortomatsApi = {
-  getAll: () => api.get('/ortomats'),
-  getOne: (id: string) => api.get(`/ortomats/${id}`),
-  getCatalog: (id: string, referralCode?: string) => {
-    const params = referralCode ? `?ref=${referralCode}` : '';
-    return api.get(`/ortomats/${id}/catalog${params}`);
-  },
-  getByReferral: (code: string) => api.get(`/ortomats/by-referral?code=${code}`),
-  create: (data: any) => api.post('/ortomats', data),
-  update: (id: string, data: any) => api.patch(`/ortomats/${id}`, data),
-  delete: (id: string) => api.delete(`/ortomats/${id}`),
-  openCell: (id: string, cellNumber: number) => 
-    api.post(`/ortomats/${id}/open-cell`, { cellNumber }),
-  assignDoctor: (id: string, doctorId: string, commissionPercent?: number) =>
-    api.post(`/ortomats/${id}/doctors`, { doctorId, commissionPercent }),
-  assignCourier: (id: string, courierId: string) =>
-    api.post(`/ortomats/${id}/couriers`, { courierId }),
-};
+  async getOrtomat(id: string) {
+    return this.request(`/api/ortomats/${id}`);
+  }
 
-export const productsApi = {
-  getAll: () => api.get('/products'),
-  getOne: (id: string) => api.get(`/products/${id}`),
-  create: (data: any) => api.post('/products', data),
-  update: (id: string, data: any) => api.patch(`/products/${id}`, data),
-  delete: (id: string) => api.delete(`/products/${id}`),
-};
+  async getOrtomatCatalog(id: string, referralCode?: string) {
+    const query = referralCode ? `?ref=${referralCode}` : '';
+    return this.request(`/api/ortomats/${id}/catalog${query}`);
+  }
 
-export const usersApi = {
-  getAll: () => api.get('/users'),
-  getProfile: () => api.get('/users/profile'),
-  getOne: (id: string) => api.get(`/users/${id}`),
-  update: (id: string, data: any) => api.patch(`/users/${id}`, data),
-  delete: (id: string) => api.delete(`/users/${id}`),
-  getStats: (id: string) => api.get(`/users/${id}/stats`),
-};
+  async getOrtomatInventory(id: string) {
+    return this.request(`/api/ortomats/${id}/inventory`);
+  }
 
-export const salesApi = {
-  getAll: () => api.get('/sales'),
-  purchase: (data: any) => api.post('/sales/purchase', data),
-};
+  async createOrtomat(data: any) {
+    return this.request('/api/ortomats', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
 
-export const qrCodeApi = {
-  generate: (referralCode: string) =>
-    api.get(`/qr-code/generate?referralCode=${referralCode}`),
-};
+  async updateOrtomat(id: string, data: any) {
+    return this.request(`/api/ortomats/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
 
-export const ordersApi = {
-  create: (data: any) => api.post('/orders/create', data),
-  pay: (orderId: string) => api.post(`/orders/${orderId}/pay`),
-  callback: (data: any) => api.post('/orders/callback', data),
-  getOne: (id: string) => api.get(`/orders/${id}`),
-  getAll: () => api.get('/orders'),
-};
+  async deleteOrtomat(id: string) {
+    return this.request(`/api/ortomats/${id}`, {
+      method: 'DELETE',
+    });
+  }
 
-export default api;
+  async getDevicesStatus() {
+    return this.request('/api/ortomats/devices/status');
+  }
+
+  async getDeviceStatus(deviceId: string) {
+    return this.request(`/api/ortomats/devices/${deviceId}/status`);
+  }
+
+  // ==================== PRODUCTS ====================
+  
+  async getProducts() {
+    return this.request('/api/products');
+  }
+
+  async getProduct(id: string) {
+    return this.request(`/api/products/${id}`);
+  }
+
+  async createProduct(data: any) {
+    return this.request('/api/products', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateProduct(id: string, data: any) {
+    return this.request(`/api/products/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteProduct(id: string) {
+    return this.request(`/api/products/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ==================== ORDERS ====================
+  
+  async createOrder(data: {
+    productId: string;
+    ortomatId: string;
+    referralCode?: string;
+    customerPhone?: string;
+  }) {
+    return this.request('/api/orders/create', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async processPayment(orderId: string) {
+    return this.request(`/api/orders/${orderId}/pay`, {
+      method: 'POST',
+    });
+  }
+
+  async handlePaymentCallback(data: any) {
+    return this.request('/api/orders/callback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getOrder(id: string) {
+    return this.request(`/api/orders/${id}`);
+  }
+
+  async openCell(orderId: string) {
+    return this.request(`/api/orders/${orderId}/open-cell`, {
+      method: 'POST',
+    });
+  }
+
+  // ==================== AUTH ====================
+  
+  async login(email: string, password: string) {
+    return this.request('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+  }
+
+  async register(data: any) {
+    return this.request('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getProfile() {
+    return this.request('/api/auth/profile');
+  }
+
+  // ==================== USERS ====================
+  
+  async getUsers() {
+    return this.request('/api/users');
+  }
+
+  async getDoctors() {
+    return this.request('/api/users/doctors');
+  }
+
+  async getCouriers() {
+    return this.request('/api/users/couriers');
+  }
+
+  async updateUser(id: string, data: any) {
+    return this.request(`/api/users/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== SALES ====================
+  
+  async getDoctorStats(doctorId: string) {
+    return this.request(`/api/sales/doctor/${doctorId}`);
+  }
+
+  async getAdminStats() {
+    return this.request(`/api/sales/admin/stats`);
+  }
+
+  async getAllSales() {
+    return this.request('/api/sales');
+  }
+
+  // ==================== QR CODE ====================
+  
+  async getDoctorQRCode(doctorId: string) {
+    return this.request(`/api/qr-code/doctor/${doctorId}`);
+  }
+
+  // ==================== COURIER ====================
+  
+  async refillCell(ortomatId: string, cellNumber: number, data: {
+    productId: string;
+    courierId: string;
+  }) {
+    return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/refill`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+}
+
+export const api = new ApiClient();

@@ -1,88 +1,104 @@
-﻿import React from 'react';
-import Head from 'next/head';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useQuery } from 'react-query';
-import { ortomatsApi } from '../lib/api';
-import { MapPin, ShoppingBag } from 'lucide-react';
+import { api } from '../lib/api';
 
 export default function Home() {
-  const { data: ortomats, isLoading } = useQuery('ortomats', ortomatsApi.getAll);
+  const { data: ortomats, isLoading } = useQuery({
+    queryKey: ['ortomats'],
+    queryFn: api.getOrtomats.bind(api),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Zavantazhennya...</div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <Head>
-        <title>Ortomat - Orthopedic Vending Machine Network</title>
-        <meta name="description" content="Orthopedic products near you" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+            Ortomat
+          </h1>
+          <p className="text-xl text-gray-600">
+            Sistema avtomatyzovanogo prodazhu ortopedychnyh vyrobiv
+          </p>
+        </div>
 
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <div className="flex items-center">
-                <ShoppingBag className="h-8 w-8 text-primary-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">Ortomat</span>
-              </div>
-              <div className="flex space-x-4">
-                <Link href="/admin" className="text-sm text-gray-600 hover:text-gray-900">
-                  Admin
-                </Link>
-                <Link href="/login" className="text-sm text-gray-600 hover:text-gray-900">
-                  Login
-                </Link>
-                <Link href="/register" className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm hover:bg-primary-700">
-                  Register
-                </Link>
-              </div>
+        <div className="mb-8">
+          <h2 className="text-2xl font-semibold mb-6">
+            Oberit nayblyzhchyy ortomat:
+          </h2>
+          
+          {!ortomats || ortomats.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-500 text-lg">
+                Narazi nemaye dostupnyh ortomativ
+              </p>
             </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">
-              Orthopedic Vending Machine Network
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-              Find the nearest Ortomat and get necessary orthopedic products with doctor recommendation
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {isLoading ? (
-              Array.from({ length: 6 }, (_, i) => (
-                <div key={i} className="bg-white rounded-lg shadow-md p-6 animate-pulse">
-                  <div className="h-6 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-full mb-4"></div>
-                  <div className="h-10 bg-gray-200 rounded"></div>
-                </div>
-              ))
-            ) : (
-              ortomats?.data.map((ortomat: any) => (
-                <div key={ortomat.id} className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {ortomat.name}
-                  </h3>
-                  <div className="flex items-start text-gray-600 mb-4">
-                    <MapPin className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-                    <span>{ortomat.address}</span>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {ortomats.map((ortomat: any) => (
+                <Link
+                  key={ortomat.id}
+                  href={`/catalog/${ortomat.id}`}
+                  className="block"
+                >
+                  <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow p-6 cursor-pointer border-2 border-transparent hover:border-blue-500">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="text-xl font-semibold text-gray-900">
+                        {ortomat.name}
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        ortomat.status === 'active' 
+                          ? 'bg-green-100 text-green-800' 
+                          : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {ortomat.status === 'active' ? 'Aktyvnyy' : 'Neaktyvnyy'}
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-2 text-gray-600">
+                      <p className="flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        {ortomat.address}
+                      </p>
+                      
+                      <p className="flex items-center">
+                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        {ortomat.totalCells} komirok
+                      </p>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <span className="text-blue-600 font-medium hover:text-blue-700">
+                        Pereglyanut katalog
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-sm text-gray-500 mb-4">
-                    Available: {ortomat.cells.filter((c: any) => c.productId).length} / {ortomat.cells.length}
-                  </div>
-                  <Link
-                    href={`/catalog/${ortomat.id}`}
-                    className="block w-full bg-primary-600 text-white text-center py-2 px-4 rounded-md hover:bg-primary-700 transition-colors"
-                  >
-                    View Catalog
-                  </Link>
-                </div>
-              ))
-            )}
-          </div>
-        </main>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-12 text-center">
+          <Link
+            href="/login"
+            className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            Vhid dlya personalu
+          </Link>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

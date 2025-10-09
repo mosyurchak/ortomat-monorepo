@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { productsApi } from '../../../lib/api';
+import { api } from '../../../lib/api';
 import { ArrowLeft, Plus, Edit, Trash2, Package } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -20,10 +20,10 @@ export default function AdminProductsPage() {
     imageUrl: '',
   });
 
-  const { data: products, isLoading } = useQuery('products', () => productsApi.getAll());
+  const { data: products, isLoading } = useQuery('products', () => api.getProducts());
 
   const createMutation = useMutation(
-    (data: any) => productsApi.create(data),
+    (data: any) => api.createProduct(data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('products');
@@ -34,7 +34,7 @@ export default function AdminProductsPage() {
   );
 
   const updateMutation = useMutation(
-    ({ id, data }: any) => productsApi.update(id, data),
+    ({ id, data }: any) => api.updateProduct(id, data),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('products');
@@ -45,7 +45,7 @@ export default function AdminProductsPage() {
   );
 
   const deleteMutation = useMutation(
-    (id: string) => productsApi.delete(id),
+    (id: string) => api.deleteProduct(id),
     {
       onSuccess: () => {
         queryClient.invalidateQueries('products');

@@ -1,217 +1,183 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useQuery } from 'react-query';
-import { productsApi, ortomatsApi } from '../lib/api';
-import { ArrowLeft, ShoppingBag, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
+import { api } from '../lib/api';
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { product: productId, ortomat: ortomatId, ref } = router.query;
+  const { productId, ortomatId, ref } = router.query;
+  const [phone, setPhone] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
 
-  const { data: product } = useQuery(
-    ['product', productId],
-    () => productsApi.getOne(productId as string),
-    { enabled: !!productId }
-  );
+  const { data: product, isLoading: loadingProduct } = useQuery({
+    queryKey: ['product', productId],
+    queryFn: () => api.getProduct(productId as string),
+    enabled: !!productId,
+  });
 
-  const { data: ortomat } = useQuery(
-    ['ortomat', ortomatId],
-    () => ortomatsApi.getOne(ortomatId as string),
-    { enabled: !!ortomatId }
-  );
+  const { data: ortomat, isLoading: loadingOrtomat } = useQuery({
+    queryKey: ['ortomat', ortomatId],
+    queryFn: () => api.getOrtomat(ortomatId as string),
+    enabled: !!ortomatId,
+  });
 
-  const productData = product?.data;
-  const ortomatData = ortomat?.data;
+  const createOrderMutation = useMutation({
+    mutationFn: (data: any) => api.createOrder(data),
+    onSuccess: (data) => {
+      router.push(`/payment?orderId=${data.id}`);
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
 
-  // Замініть функцію handlePayment в checkout.tsx на цю:
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
 
-const handlePayment = async () => {
-  if (!acceptedTerms) {
-    toast.error('Please accept the terms and conditions');
-    return;
-  }
-
-  setIsProcessing(true);
-
-  try {
-    // Створюємо замовлення через новий API
-    const response = await fetch('http://localhost:3001/orders/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        productId: productId,
-        ortomatId: ortomatId,
-        referralCode: ref || undefined,
-        customerPhone: undefined, // можна додати поле для телефону
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create order');
+    if (!acceptedTerms) {
+      alert('Будь ласка, прийміть умови покупки');
+      return;
     }
 
-    const order = await response.json();
-    
-    toast.success('Order created! Redirecting to payment...');
-    
-    // Переходимо на payment з orderId
-    setTimeout(() => {
-      router.push(`/payment?orderId=${order.id}`);
-    }, 500);
-    
-  } catch (error) {
-    console.error('Order creation failed:', error);
-    toast.error('Failed to create order');
-    setIsProcessing(false);
-  }
-};
+    if (!phone) {
+      alert('Будь ласка, введіть номер телефону');
+      return;
+    }
 
-  if (!productData || !ortomatData) {
+    createOrderMutation.mutate({
+      productId: productId as string,
+      ortomatId: ortomatId as string,
+      referralCode: ref as string,
+      customerPhone: phone,
+    });
+  };
+
+  if (loadingProduct || loadingOrtomat) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Zavantazhennya...</div>
+      </div>
+    );
+  }
+
+  if (!product || !ortomat) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl text-red-600">Tovar abo ortomat ne znayideno</div>
       </div>
     );
   }
 
   return (
-    <div>
-      <Head>
-        <title>Checkout - Ortomat</title>
-      </Head>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
+          Oformlennya zamovlennya
+        </h1>
 
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <button
-                onClick={() => router.back()}
-                className="flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back
-              </button>
-              <div className="flex items-center">
-                <ShoppingBag className="h-8 w-8 text-primary-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">Checkout</span>
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Tovar</h2>
+          
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+              <svg className="w-12 h-12 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+            </div>
+            
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                {product.name}
+              </h3>
+              {product.description && (
+                <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+              )}
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <span>Kategoriya: {product.category}</span>
+                {product.size && <span>Rozmir: {product.size}</span>}
+              </div>
+              <div className="mt-2 text-2xl font-bold text-gray-900">
+                {product.price} hrn
               </div>
             </div>
           </div>
-        </header>
+        </div>
 
-        <main className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-2xl font-bold text-gray-900 mb-6">Order Summary</h1>
-
-            {/* Product Info */}
-            <div className="border-b pb-6 mb-6">
-              <div className="flex items-start">
-                <div className="w-24 h-24 bg-gray-200 rounded-lg flex-shrink-0">
-                  {productData.imageUrl ? (
-                    <img
-                      src={productData.imageUrl}
-                      alt={productData.name}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ShoppingBag className="h-8 w-8 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="ml-4 flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{productData.name}</h3>
-                  {productData.size && (
-                    <p className="text-sm text-gray-600 mt-1">Size: {productData.size}</p>
-                  )}
-                  <p className="text-2xl font-bold text-primary-600 mt-2">
-                    {productData.price} UAH
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Pickup Location */}
-            <div className="border-b pb-6 mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Pickup Location</h2>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <p className="font-medium text-gray-900">{ortomatData.name}</p>
-                <p className="text-sm text-gray-600 mt-1">{ortomatData.address}</p>
-              </div>
-            </div>
-
-            {/* Terms and Conditions */}
-            <div className="mb-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-3">Terms and Conditions</h2>
-              <div className="bg-gray-50 rounded-lg p-4 max-h-48 overflow-y-auto mb-4">
-                <p className="text-sm text-gray-700">
-                  By purchasing this product, you agree to the following terms:
-                </p>
-                <ul className="list-disc list-inside text-sm text-gray-700 mt-2 space-y-1">
-                  <li>Payment is processed securely through LiqPay</li>
-                  <li>After successful payment, the ortomat cell will open automatically</li>
-                  <li>You have 30 seconds to collect your product after the cell opens</li>
-                  <li>No refunds after the cell has been opened</li>
-                  <li>Products are sold as-is, please inspect before leaving</li>
-                  <li>Contact support if you experience any issues</li>
-                </ul>
-              </div>
-
-              <label className="flex items-start">
-                <input
-                  type="checkbox"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-1 h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                />
-                <span className="ml-2 text-sm text-gray-700">
-                  I have read and accept the terms and conditions
-                </span>
-              </label>
-            </div>
-
-            {/* Total */}
-            <div className="border-t pt-6 mb-6">
-              <div className="flex justify-between text-lg">
-                <span className="font-medium text-gray-900">Total:</span>
-                <span className="font-bold text-primary-600">{productData.price} UAH</span>
-              </div>
-            </div>
-
-            {/* Payment Button */}
-            <button
-              onClick={handlePayment}
-              disabled={!acceptedTerms || isProcessing}
-              className="w-full bg-primary-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              {isProcessing ? (
-                <>
-                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  Proceed to Payment
-                </>
-              )}
-            </button>
-
-            <p className="mt-4 text-xs text-gray-500 text-center">
-              Secure payment powered by LiqPay
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Ortomat</h2>
+          <div className="space-y-2">
+            <p className="font-medium">{ortomat.name}</p>
+            <p className="text-gray-600 flex items-center">
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {ortomat.address}
             </p>
           </div>
-        </main>
+        </div>
+
+        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <h2 className="text-xl font-semibold mb-4">Kontaktni dani</h2>
+          
+          <div className="mb-4">
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
+              Nomer telefonu
+            </label>
+            <input
+              type="tel"
+              id="phone"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="+380XXXXXXXXX"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              required
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              Dlya pidtverdzennya zamovlennya
+            </p>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4 mt-4">
+            <label className="flex items-start">
+              <input
+                type="checkbox"
+                checked={acceptedTerms}
+                onChange={(e) => setAcceptedTerms(e.target.checked)}
+                className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                required
+              />
+              <span className="ml-2 text-sm text-gray-700">
+                Ya pryymayu umovy pokupky ta zgoden z tem, scho tovar mozhlivo povernuty til'ky u vypadku tovarnogo braku
+              </span>
+            </label>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-200">
+            <div>
+              <p className="text-sm text-gray-500">Do splaty:</p>
+              <p className="text-3xl font-bold text-gray-900">{product.price} hrn</p>
+            </div>
+            
+            <button
+              type="submit"
+              disabled={createOrderMutation.isPending}
+              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              {createOrderMutation.isPending ? 'Obrobka...' : 'Perejty do oplaty'}
+            </button>
+          </div>
+        </form>
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Povernytysya nazad
+          </button>
+        </div>
       </div>
     </div>
   );
