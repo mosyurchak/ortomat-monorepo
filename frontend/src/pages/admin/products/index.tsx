@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
-import { ArrowLeft, Plus, Edit, Trash2, Package } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -20,39 +20,55 @@ export default function AdminProductsPage() {
     imageUrl: '',
   });
 
-  const { data: products, isLoading } = useQuery('products', () => api.getProducts());
-
-  const createMutation = useMutation(
-    (data: any) => api.createProduct(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('products');
-        toast.success('Product created!');
-        resetForm();
-      },
+  // Захист роуту
+  useEffect(() => {
+    if (!authLoading && (!user || user.role.toUpperCase() !== 'ADMIN')) {
+      router.push('/login');
     }
-  );
+  }, [user, authLoading, router]);
 
-  const updateMutation = useMutation(
-    ({ id, data }: any) => api.updateProduct(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('products');
-        toast.success('Product updated!');
-        resetForm();
-      },
-    }
-  );
+  // ✅ Новий синтаксис useQuery
+  const { data: products, isLoading } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => api.getProducts(),
+    enabled: !!user && user.role.toUpperCase() === 'ADMIN',
+  });
 
-  const deleteMutation = useMutation(
-    (id: string) => api.deleteProduct(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('products');
-        toast.success('Product deleted!');
-      },
-    }
-  );
+  // ✅ Новий синтаксис useMutation
+  const createMutation = useMutation({
+    mutationFn: (data: any) => api.createProduct(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      alert('Товар створено!');
+      resetForm();
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: any) => api.updateProduct(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      alert('Товар оновлено!');
+      resetForm();
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteProduct(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      alert('Товар видалено!');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
 
   const resetForm = () => {
     setShowModal(false);
@@ -90,23 +106,27 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Delete ${name}?`)) {
+    if (window.confirm(`Видалити ${name}?`)) {
       deleteMutation.mutate(id);
     }
   };
 
-  if (isLoading) {
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (!user || user.role.toUpperCase() !== 'ADMIN') {
+    return null;
   }
 
   return (
     <div>
       <Head>
-        <title>Manage Products - Admin</title>
+        <title>Управління Товарами - Admin</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -117,10 +137,12 @@ export default function AdminProductsPage() {
                 onClick={() => router.push('/admin')}
                 className="flex items-center text-gray-600 hover:text-gray-900"
               >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back
+                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Назад
               </button>
-              <h1 className="text-xl font-bold">Manage Products</h1>
+              <h1 className="text-xl font-bold">Управління Товарами</h1>
             </div>
           </div>
         </header>
@@ -129,10 +151,12 @@ export default function AdminProductsPage() {
           <div className="mb-6 flex justify-end">
             <button
               onClick={() => setShowModal(true)}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Add Product
+              <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Додати Товар
             </button>
           </div>
 
@@ -140,19 +164,21 @@ export default function AdminProductsPage() {
             <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Product</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Size</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Price</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Товар</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Категорія</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Розмір</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ціна</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {products?.data?.map((product: any) => (
-                  <tr key={product.id}>
+                {products?.map((product: any) => (
+                  <tr key={product.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <Package className="h-5 w-5 text-gray-400 mr-3" />
+                        <svg className="h-5 w-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
                         <div>
                           <p className="font-medium">{product.name}</p>
                           <p className="text-sm text-gray-500">{product.description}</p>
@@ -167,75 +193,81 @@ export default function AdminProductsPage() {
                         onClick={() => handleEdit(product)}
                         className="text-blue-600 hover:text-blue-800 mr-3"
                       >
-                        <Edit className="h-5 w-5" />
+                        Редагувати
                       </button>
                       <button
                         onClick={() => handleDelete(product.id, product.name)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        <Trash2 className="h-5 w-5" />
+                        Видалити
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {(!products || products.length === 0) && (
+              <div className="text-center py-12 text-gray-500">
+                Товарів ще немає
+              </div>
+            )}
           </div>
         </main>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">
-              {editingProduct ? 'Edit Product' : 'Add Product'}
+              {editingProduct ? 'Редагувати Товар' : 'Додати Товар'}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Name</label>
+                <label className="block text-sm font-medium mb-1">Назва</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Description</label>
+                <label className="block text-sm font-medium mb-1">Опис</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Category</label>
+                <label className="block text-sm font-medium mb-1">Категорія</label>
                 <input
                   type="text"
                   required
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Size</label>
+                <label className="block text-sm font-medium mb-1">Розмір</label>
                 <input
                   type="text"
                   value={formData.size}
                   onChange={(e) => setFormData({ ...formData, size: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Price (UAH)</label>
+                <label className="block text-sm font-medium mb-1">Ціна (UAH)</label>
                 <input
                   type="number"
                   required
@@ -243,17 +275,17 @@ export default function AdminProductsPage() {
                   step="0.01"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: parseFloat(e.target.value) })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Image URL</label>
+                <label className="block text-sm font-medium mb-1">URL Зображення</label>
                 <input
                   type="text"
                   value={formData.imageUrl}
                   onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg"
+                  className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -263,13 +295,18 @@ export default function AdminProductsPage() {
                   onClick={resetForm}
                   className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300"
                 >
-                  Cancel
+                  Скасувати
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {editingProduct ? 'Update' : 'Create'}
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Збереження...'
+                    : editingProduct
+                    ? 'Оновити'
+                    : 'Створити'}
                 </button>
               </div>
             </form>

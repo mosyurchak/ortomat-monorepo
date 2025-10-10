@@ -1,133 +1,246 @@
-import React from 'react';
-import Head from 'next/head';
-import Link from 'next/link';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { QrCode, TrendingUp, LogOut, BarChart3 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { useAuth } from '../../contexts/AuthContext';
+import { api } from '../../lib/api';
+import Head from 'next/head';
 
 export default function DoctorDashboard() {
   const router = useRouter();
+  const { user, isLoading: authLoading, logout } = useAuth();
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userId');
-    router.push('/login');
-  };
+  // Захист роуту
+  useEffect(() => {
+    if (!authLoading && (!user || user.role.toUpperCase() !== 'DOCTOR')) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
+
+  // Завантаження статистики
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['doctorStats', user?.id],
+    queryFn: () => api.getDoctorStats(user!.id),
+    enabled: !!user && user.role.toUpperCase() === 'DOCTOR',
+  });
+
+  // Завантаження QR-коду
+  const { data: qrData } = useQuery({
+    queryKey: ['doctorQR', user?.id],
+    queryFn: () => api.getDoctorQRCode(user!.id),
+    enabled: !!user && user.role.toUpperCase() === 'DOCTOR',
+  });
+
+  if (authLoading || statsLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <div className="text-xl text-gray-700">Завантаження...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.role.toUpperCase() !== 'DOCTOR') {
+    return null;
+  }
 
   return (
     <div>
       <Head>
-        <title>Doctor Dashboard - Ortomat</title>
+        <title>Кабінет Лікаря</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <h1 className="text-xl font-bold text-gray-900">Doctor Dashboard</h1>
+        <header className="bg-white shadow-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">
+                  Кабінет Лікаря
+                </h1>
+                <p className="text-gray-600 mt-1">
+                  Вітаємо, {user.firstName} {user.lastName}!
+                </p>
+              </div>
               <button
-                onClick={handleLogout}
-                className="flex items-center text-gray-600 hover:text-gray-900"
+                onClick={logout}
+                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
               >
-                <LogOut className="h-5 w-5 mr-2" />
                 Logout
               </button>
             </div>
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Welcome back!</h2>
-            <p className="text-gray-600">
-              Manage your referrals and track your earnings
-            </p>
-          </div>
-
-          {/* Quick Actions Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* QR Code Card */}
-            <Link
-              href="/doctor/qr-code"
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-primary-500"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-primary-100 p-3 rounded-full">
-                  <QrCode className="h-8 w-8 text-primary-600" />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          {/* Stats Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                  <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Продажі</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats?.totalSales || 0}
+                  </p>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                My QR Code
-              </h3>
-              <p className="text-sm text-gray-600">
-                View and share your referral QR code with patients
-              </p>
-            </Link>
+            </div>
 
-            {/* Statistics Card */}
-            <Link
-              href="/doctor/statistics"
-              className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-2 border-transparent hover:border-green-500"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-green-100 p-3 rounded-full">
-                  <BarChart3 className="h-8 w-8 text-green-600" />
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Заробіток</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats?.totalEarnings?.toFixed(2) || 0} UAH
+                  </p>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Sales Statistics
-              </h3>
-              <p className="text-sm text-gray-600">
-                View detailed statistics and earnings reports
-              </p>
-            </Link>
+            </div>
 
-            {/* Performance Card */}
-            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg shadow p-6 text-white">
-              <div className="flex items-center justify-between mb-4">
-                <div className="bg-white/20 p-3 rounded-full">
-                  <TrendingUp className="h-8 w-8 text-white" />
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                  <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Середній чек</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats?.totalSales > 0
+                      ? ((stats.totalEarnings / stats.totalSales) * 10).toFixed(2)
+                      : 0}{' '}
+                    UAH
+                  </p>
                 </div>
               </div>
-              <h3 className="text-lg font-semibold mb-2">
-                Quick Stats
-              </h3>
-              <p className="text-sm text-white/90">
-                Track your performance at a glance
-              </p>
-              <div className="mt-4 pt-4 border-t border-white/20">
-                <div className="flex justify-between text-sm">
-                  <span>This month</span>
-                  <span className="font-semibold">View details →</span>
+            </div>
+
+            <div className="bg-white rounded-lg shadow p-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                  <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
+                  </svg>
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm text-gray-500">Конверсія</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {stats?.totalSales > 0 ? '100' : '0'}%
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Info Section */}
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">
-              How it works
-            </h3>
-            <ul className="space-y-2 text-sm text-blue-800">
-              <li className="flex items-start">
-                <span className="font-bold mr-2">1.</span>
-                <span>Share your unique QR code with patients who need orthopedic products</span>
-              </li>
-              <li className="flex items-start">
-                <span className="font-bold mr-2">2.</span>
-                <span>Patients scan the code and purchase products from the ortomat</span>
-              </li>
-              <li className="flex items-start">
-                <span className="font-bold mr-2">3.</span>
-                <span>You earn commission on every sale made through your referral</span>
-              </li>
-              <li className="flex items-start">
-                <span className="font-bold mr-2">4.</span>
-                <span>Track all your earnings and statistics in real-time</span>
-              </li>
-            </ul>
+          {/* Referral Code */}
+          {qrData?.referralCode && (
+            <div className="bg-white rounded-lg shadow p-6 mb-8">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Ваш реферальний код
+              </h2>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-3xl font-bold text-blue-600 font-mono mb-2">
+                    {qrData.referralCode}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    Поділіться цим кодом з пацієнтами для отримання комісії
+                  </p>
+                </div>
+                <button
+                  onClick={() => router.push('/doctor/qr-code')}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
+                >
+                  Переглянути QR-код
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <button
+              onClick={() => router.push('/doctor/statistics')}
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Детальна Статистика
+              </h3>
+              <p className="text-gray-600">
+                Переглянути повну статистику продажів та заробітку
+              </p>
+            </button>
+
+            <button
+              onClick={() => router.push('/doctor/qr-code')}
+              className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                QR-код та посилання
+              </h3>
+              <p className="text-gray-600">
+                Завантажити QR-код або скопіювати посилання
+              </p>
+            </button>
           </div>
+
+          {/* Recent Sales */}
+          {stats?.recentSales && stats.recentSales.length > 0 && (
+            <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                Останні продажі
+              </h2>
+              <div className="overflow-x-auto">
+                <table className="min-w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Дата</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Товар</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Комісія</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.recentSales.slice(0, 5).map((sale: any) => (
+                      <tr key={sale.id} className="border-b hover:bg-gray-50">
+                        <td className="py-3 px-4 text-sm text-gray-600">
+                          {new Date(sale.createdAt).toLocaleDateString('uk-UA')}
+                        </td>
+                        <td className="py-3 px-4 text-sm">{sale.product?.name}</td>
+                        <td className="py-3 px-4 text-sm text-right font-semibold text-green-600">
+                          +{sale.commission?.toFixed(2) || 0} UAH
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {(!stats || stats.totalSales === 0) && (
+            <div className="bg-white rounded-lg shadow p-12 text-center">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+              </svg>
+              <p className="text-gray-500 mb-2">Поки що немає продажів</p>
+              <p className="text-sm text-gray-400">
+                Поділіться вашим реферальним кодом з пацієнтами
+              </p>
+            </div>
+          )}
         </main>
       </div>
     </div>

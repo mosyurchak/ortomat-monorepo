@@ -1,83 +1,91 @@
-import React, { useState } from 'react';
-import Head from 'next/head';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
-import { ArrowLeft, Plus, Edit, Trash2, MapPin } from 'lucide-react';
-import toast from 'react-hot-toast';
 
 export default function AdminOrtomatsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading } = useAuth();
+  
   const [showModal, setShowModal] = useState(false);
   const [editingOrtomat, setEditingOrtomat] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     address: '',
     totalCells: 37,
+    status: 'active',
   });
 
-  const { data: ortomats, isLoading } = useQuery('ortomats', () => api.getOrtomats());
-
-  const createMutation = useMutation(
-    (data: any) => api.createOrtomat(data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('ortomats');
-        toast.success('Ortomat created!');
-        resetForm();
-      },
-      onError: () => {
-        toast.error('Failed to create ortomat');
-      },
+  // Захист роуту
+  useEffect(() => {
+    if (!authLoading && (!user || user.role.toUpperCase() !== 'ADMIN')) {
+      router.push('/login');
     }
-  );
+  }, [user, authLoading, router]);
 
-  const updateMutation = useMutation(
-    ({ id, data }: any) => api.updateOrtomat(id, data),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('ortomats');
-        toast.success('Ortomat updated!');
-        resetForm();
-      },
-      onError: () => {
-        toast.error('Failed to update ortomat');
-      },
-    }
-  );
+  // Завантаження ортоматів
+  const { data: ortomats, isLoading } = useQuery({
+    queryKey: ['ortomats'],
+    queryFn: () => api.getOrtomats(),
+    enabled: !!user && user.role.toUpperCase() === 'ADMIN',
+  });
 
-  const deleteMutation = useMutation(
-    (id: string) => api.deleteOrtomat(id),
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries('ortomats');
-        toast.success('Ortomat deleted!');
-      },
-      onError: () => {
-        toast.error('Failed to delete ortomat');
-      },
-    }
-  );
+  // Створення ортомату
+  const createMutation = useMutation({
+    mutationFn: (data: any) => api.createOrtomat(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ortomats'] });
+      setShowModal(false);
+      resetForm();
+      alert('Ортомат успішно створено!');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // Оновлення ортомату
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => 
+      api.updateOrtomat(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ortomats'] });
+      setShowModal(false);
+      setEditingOrtomat(null);
+      resetForm();
+      alert('Ортомат успішно оновлено!');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // Видалення ортомату
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteOrtomat(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ortomats'] });
+      alert('Ортомат успішно видалено!');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
 
   const resetForm = () => {
-    setShowModal(false);
-    setEditingOrtomat(null);
-    setFormData({ name: '', address: '', totalCells: 37 });
-  };
-
-  const handleEdit = (ortomat: any) => {
-    setEditingOrtomat(ortomat);
     setFormData({
-      name: ortomat.name,
-      address: ortomat.address,
-      totalCells: ortomat.totalCells || 37,
+      name: '',
+      address: '',
+      totalCells: 37,
+      status: 'active',
     });
-    setShowModal(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
     if (editingOrtomat) {
       updateMutation.mutate({ id: editingOrtomat.id, data: formData });
     } else {
@@ -85,161 +93,230 @@ export default function AdminOrtomatsPage() {
     }
   };
 
-  const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Delete ${name}?`)) {
+  const handleEdit = (ortomat: any) => {
+    setEditingOrtomat(ortomat);
+    setFormData({
+      name: ortomat.name,
+      address: ortomat.address,
+      totalCells: ortomat.totalCells,
+      status: ortomat.status,
+    });
+    setShowModal(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Ви впевнені що хочете видалити цей ортомат?')) {
       deleteMutation.mutate(id);
     }
   };
 
-  if (isLoading) {
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingOrtomat(null);
+    resetForm();
+  };
+
+  if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+        <div className="text-xl">Завантаження...</div>
       </div>
     );
   }
 
+  if (!user || user.role.toUpperCase() !== 'ADMIN') {
+    return null;
+  }
+
   return (
-    <div>
-      <Head>
-        <title>Manage Ortomats - Admin</title>
-      </Head>
-
-      <div className="min-h-screen bg-gray-50">
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-16">
-              <button
-                onClick={() => router.push('/admin')}
-                className="flex items-center text-gray-600 hover:text-gray-900"
-              >
-                <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to Dashboard
-              </button>
-              <h1 className="text-xl font-bold text-gray-900">Manage Ortomats</h1>
-            </div>
-          </div>
-        </header>
-
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="mb-6 flex justify-end">
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <div className="mb-8 flex items-center justify-between">
+          <div>
             <button
-              onClick={() => setShowModal(true)}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 flex items-center"
+              onClick={() => router.push('/admin')}
+              className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
             >
-              <Plus className="h-5 w-5 mr-2" />
-              Create Ortomat
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Назад до Dashboard
             </button>
+            <h1 className="text-3xl font-bold text-gray-900">
+              Управління Ортоматами
+            </h1>
           </div>
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Додати Ортомат
+          </button>
+        </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {ortomats?.data?.map((ortomat: any) => (
-              <div key={ortomat.id} className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">{ortomat.name}</h3>
-                  
-                  <div className="flex items-start mb-4">
-                    <MapPin className="h-5 w-5 text-gray-400 mt-1 mr-2 flex-shrink-0" />
-                    <p className="text-sm text-gray-600">{ortomat.address}</p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded p-3">
-                      <p className="text-xs text-gray-600">Total Cells</p>
-                      <p className="text-2xl font-bold text-gray-900">{ortomat.totalCells || 37}</p>
+        {/* Ortomats List */}
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Назва
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Адреса
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Комірки
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Статус
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Дії
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {ortomats?.map((ortomat: any) => (
+                <tr key={ortomat.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      {ortomat.name}
                     </div>
-                    <div className="bg-green-50 rounded p-3">
-                      <p className="text-xs text-gray-600">Status</p>
-                      <p className="text-sm font-semibold text-green-600 capitalize">
-                        {ortomat.status || 'active'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900">{ortomat.address}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{ortomat.totalCells}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                      ortomat.status === 'active' 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {ortomat.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
+                      className="text-blue-600 hover:text-blue-900 mr-4"
+                    >
+                      Переглянути
+                    </button>
                     <button
                       onClick={() => handleEdit(ortomat)}
-                      className="flex-1 bg-blue-600 text-white py-2 px-4 rounded hover:bg-blue-700 flex items-center justify-center"
+                      className="text-indigo-600 hover:text-indigo-900 mr-4"
                     >
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
+                      Редагувати
                     </button>
                     <button
-                      onClick={() => handleDelete(ortomat.id, ortomat.name)}
-                      className="bg-red-600 text-white py-2 px-4 rounded hover:bg-red-700"
+                      onClick={() => handleDelete(ortomat.id)}
+                      className="text-red-600 hover:text-red-900"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      Видалити
                     </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </main>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {(!ortomats || ortomats.length === 0) && (
+            <div className="text-center py-12">
+              <p className="text-gray-500">Ортоматів ще немає</p>
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-md w-full mx-4">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              {editingOrtomat ? 'Edit Ortomat' : 'Create Ortomat'}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold mb-4">
+              {editingOrtomat ? 'Редагувати Ортомат' : 'Новий Ортомат'}
             </h2>
             
             <form onSubmit={handleSubmit}>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.address}
-                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Total Cells</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={formData.totalCells}
-                    onChange={(e) => setFormData({ ...formData, totalCells: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Назва
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
               </div>
 
-              <div className="flex gap-4 mt-6">
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Адреса
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Кількість комірок
+                </label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={formData.totalCells}
+                  onChange={(e) => setFormData({ ...formData, totalCells: parseInt(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Статус
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={resetForm}
-                  className="flex-1 bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
-                  Cancel
+                  Скасувати
                 </button>
                 <button
                   type="submit"
-                  disabled={createMutation.isLoading || updateMutation.isLoading}
-                  className="flex-1 bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 disabled:bg-gray-400"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
-                  {createMutation.isLoading || updateMutation.isLoading
-                    ? 'Saving...'
+                  {createMutation.isPending || updateMutation.isPending
+                    ? 'Збереження...'
                     : editingOrtomat
-                    ? 'Update'
-                    : 'Create'}
+                    ? 'Оновити'
+                    : 'Створити'}
                 </button>
               </div>
             </form>

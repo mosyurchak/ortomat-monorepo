@@ -2,8 +2,19 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '../lib/api';
 
+// ✅ Додали тип для ортомату
+interface Ortomat {
+  id: string;
+  name: string;
+  address: string;
+  totalCells: number;
+  status: 'active' | 'inactive';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export default function Home() {
-  const { data: ortomats, isLoading } = useQuery({
+  const { data: ortomats, isLoading } = useQuery<Ortomat[]>({
     queryKey: ['ortomats'],
     queryFn: api.getOrtomats.bind(api),
   });
@@ -41,7 +52,7 @@ export default function Home() {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ortomats.map((ortomat: any) => (
+              {ortomats.map((ortomat) => (
                 <Link
                   key={ortomat.id}
                   href={`/catalog/${ortomat.id}`}

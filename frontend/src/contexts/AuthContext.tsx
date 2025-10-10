@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Cookies from 'js-cookie';
-import { authApi, usersApi } from '../lib/api';
-import toast from 'react-hot-toast';
+import { api } from '../lib/api';
 
 interface User {
   id: string;
@@ -31,20 +29,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
-    const token = Cookies.get('token');
-    const storedUserId = localStorage.getItem('userId');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    console.log('🔍 Checking auth - token:', token ? 'exists' : 'missing', 'userId:', storedUserId); // DEBUG
+    console.log('🔍 Checking auth - token:', token ? 'exists' : 'missing');
 
-    if (token && storedUserId) {
+    if (token) {
       try {
-        const response = await usersApi.getProfile();
-        setUser(response.data);
-        console.log('✅ User loaded:', response.data); // DEBUG
+        const userData = await api.getProfile();
+        setUser(userData);
+        console.log('✅ User loaded:', userData);
       } catch (error) {
-        console.error('❌ Auth check failed:', error); // DEBUG
-        Cookies.remove('token');
-        localStorage.removeItem('userId');
+        console.error('❌ Auth check failed:', error);
+        localStorage.removeItem('token');
       }
     }
     setIsLoading(false);
@@ -52,54 +48,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await authApi.login(email, password);
-      console.log('📥 Login response:', response.data); // DEBUG
+      console.log('🔐 Attempting login...', email);
       
-      const { access_token, user: userData } = response.data;
+      const response = await api.login(email, password);
+      console.log('🔥 Login response:', response);
+      
+      const { access_token, user: userData } = response;
 
       if (!access_token) {
         throw new Error('No token received from server');
       }
 
-      // ⭐ Зберігаємо токен в cookies
-      Cookies.set('token', access_token, { 
-        expires: 7, // 7 днів
-        path: '/',
-        sameSite: 'lax'
-      });
-      localStorage.setItem('userId', userData.id);
+      // Зберігаємо токен
+      localStorage.setItem('token', access_token);
       
-      console.log('✅ Token saved to cookie:', access_token.substring(0, 20) + '...'); // DEBUG
+      console.log('✅ Token saved:', access_token.substring(0, 20) + '...');
+      console.log('👤 User data:', userData);
+      console.log('👤 User role:', userData.role, '(type:', typeof userData.role + ')');
       
       setUser(userData);
-      toast.success('Login successful!');
 
-      // ⭐ Невелика затримка щоб cookie встиг збережеться
+      // Невелика затримка щоб token встиг зберегтися
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Редирект залежно від ролі
-      if (userData.role === 'ADMIN') {
+      // ✅ Редирект залежно від ролі (case-insensitive)
+      const role = userData.role.toUpperCase();
+      
+      console.log('🔄 Redirecting based on role:', role);
+      
+      if (role === 'ADMIN') {
+        console.log('➡️ Redirecting to /admin');
         router.push('/admin');
-      } else if (userData.role === 'DOCTOR') {
+      } else if (role === 'DOCTOR') {
+        console.log('➡️ Redirecting to /doctor');
         router.push('/doctor');
-      } else if (userData.role === 'COURIER') {
+      } else if (role === 'COURIER') {
+        console.log('➡️ Redirecting to /courier');
         router.push('/courier');
       } else {
+        console.log('➡️ Redirecting to /dashboard');
         router.push('/dashboard');
       }
     } catch (error: any) {
-      console.error('❌ Login error:', error.response?.data); // DEBUG
-      toast.error(error.response?.data?.message || 'Login failed');
+      console.error('❌ Login error:', error);
       throw error;
     }
   };
 
   const logout = () => {
-    Cookies.remove('token');
-    localStorage.removeItem('userId');
+    localStorage.removeItem('token');
     setUser(null);
     router.push('/login');
-    toast.success('Logged out successfully');
   };
 
   return (

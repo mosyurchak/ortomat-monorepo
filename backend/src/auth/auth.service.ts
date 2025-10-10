@@ -12,18 +12,44 @@ export class AuthService {
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
+    console.log('🔍 Validating user:', email);
+    
     const user = await this.usersService.findByEmail(email);
-    if (user && await bcrypt.compare(password, user.password)) {
-      const { password, ...result } = user;
-      return result;
+    
+    if (!user) {
+      console.log('❌ User not found');
+      throw new UnauthorizedException('Invalid credentials');
     }
-    return null;
+    
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+    
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password');
+      throw new UnauthorizedException('Invalid credentials');
+    }
+    
+    console.log('✅ User validated:', user.email);
+    
+    const { password: _, ...result } = user;
+    return result;
   }
 
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    console.log('🔐 Generating token for:', user.email);
+    console.log('👤 User role from DB:', user.role);
+    
+    const payload = { 
+      email: user.email, 
+      sub: user.id, 
+      role: user.role 
+    };
+    
+    const access_token = this.jwtService.sign(payload);
+    
+    console.log('✅ Login successful:', user.email, 'Role:', user.role);
+    
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token,
       user: {
         id: user.id,
         email: user.email,
@@ -35,6 +61,8 @@ export class AuthService {
   }
 
   async register(registerDto: RegisterDto) {
+    console.log('📝 Registering new user:', registerDto.email);
+    
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     
     const user = await this.usersService.create({
@@ -42,6 +70,11 @@ export class AuthService {
       password: hashedPassword,
     });
 
-    return user;
+    console.log('✅ User registered:', user.email);
+
+    return {
+      message: 'User registered successfully',
+      userId: user.id,
+    };
   }
 }

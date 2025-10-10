@@ -8,7 +8,7 @@ export class OrdersService {
   constructor(
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
-    private ortomatsGateway: OrtomatsGateway, // ✅ Додали Gateway
+    private ortomatsGateway: OrtomatsGateway,
   ) {}
 
   async createOrder(data: {
@@ -17,6 +17,8 @@ export class OrdersService {
     referralCode?: string;
     customerPhone?: string;
   }) {
+    console.log('📦 Creating order...', data);
+
     // Find product and get price
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
@@ -83,15 +85,19 @@ export class OrdersService {
       },
     });
 
+    console.log('✅ Order created:', sale.orderNumber);
+
     return sale;
   }
 
   async processPayment(orderId: string) {
-    // STUB: Simulate LiqPay payment
+    console.log('💳 Processing payment for order:', orderId);
+
     const sale = await this.prisma.sale.findUnique({
       where: { id: orderId },
       include: {
         product: true,
+        ortomat: true,
       },
     });
 
@@ -99,14 +105,53 @@ export class OrdersService {
       throw new Error('Order not found');
     }
 
-    // Simulate LiqPay response
+    if (sale.status === 'completed') {
+      console.log('⚠️ Order already completed');
+      return {
+        success: true,
+        message: 'Order already completed',
+        orderId: sale.id,
+        orderNumber: sale.orderNumber,
+        cellNumber: sale.cellNumber,
+      };
+    }
+
+    // ✅ STUB: Симулюємо успішну оплату та ОДРАЗУ оновлюємо статус
+    console.log('✅ Payment successful (STUB), updating order status...');
+
+    const updatedSale = await this.prisma.sale.update({
+      where: { id: orderId },
+      data: {
+        status: 'completed',
+        paymentId: `STUB-PAY-${Date.now()}`,
+        completedAt: new Date(),
+      },
+    });
+
+    console.log('✅ Order status updated to completed');
+
+    // Оновлюємо інвентар (видаляємо товар з комірки)
+    try {
+      await this.ortomatsService.updateCellProduct(
+        sale.ortomatId,
+        sale.cellNumber,
+        null,
+      );
+      console.log('✅ Inventory updated - cell emptied');
+    } catch (error) {
+      console.error('❌ Failed to update inventory:', error);
+      // Продовжуємо навіть якщо не вдалось оновити інвентар
+    }
+
     return {
       success: true,
-      orderId: sale.id,
-      orderNumber: sale.orderNumber,
-      amount: sale.amount,
+      orderId: updatedSale.id,
+      orderNumber: updatedSale.orderNumber,
+      amount: updatedSale.amount,
       currency: 'UAH',
       description: `Purchase: ${sale.product.name}`,
+      cellNumber: updatedSale.cellNumber,
+      message: 'Payment processed successfully',
     };
   }
 
@@ -116,6 +161,8 @@ export class OrdersService {
     paymentId: string;
   }) {
     // STUB: Simulate LiqPay callback
+    console.log('🔔 Payment callback received:', data);
+
     const sale = await this.prisma.sale.findUnique({
       where: { id: data.orderId },
     });
@@ -139,12 +186,11 @@ export class OrdersService {
       await this.ortomatsService.updateCellProduct(
         sale.ortomatId,
         sale.cellNumber,
-        null
+        null,
       );
 
-      // ✅ ВАЖЛИВО: Команда на відкриття буде відправлена окремо
-      // коли користувач натисне кнопку "Open Cell"
-      
+      console.log('✅ Payment callback processed successfully');
+
       return {
         success: true,
         message: 'Payment processed successfully',
@@ -160,6 +206,8 @@ export class OrdersService {
         },
       });
 
+      console.log('❌ Payment failed');
+
       return {
         success: false,
         message: 'Payment failed',
@@ -172,7 +220,7 @@ export class OrdersService {
       where: { id },
       include: {
         product: true,
-        ortomat: true, // ✅ Додали ortomat для deviceId
+        ortomat: true,
         doctor: {
           select: {
             id: true,
@@ -201,8 +249,10 @@ export class OrdersService {
     });
   }
 
-  // ✅ ОНОВЛЕНО: Тепер використовує WebSocket Gateway
+  // ✅ Відкриття комірки через WebSocket
   async openCell(orderId: string) {
+    console.log('🔓 Opening cell for order:', orderId);
+
     const order = await this.prisma.sale.findUnique({
       where: { id: orderId },
       include: {
@@ -215,20 +265,23 @@ export class OrdersService {
     }
 
     if (order.status !== 'completed') {
-      throw new Error('Order is not completed yet');
+      throw new Error('Order is not completed yet. Please complete payment first.');
     }
 
-    // ✅ Використовуємо deviceId з бази даних
-    // Для тестування використовуємо 'locker-01'
+    // Для тестування використовуємо deviceId = "locker-01"
     // В production треба зберігати deviceId в таблиці ortomats
     const deviceId = 'locker-01'; // TODO: order.ortomat.deviceId в майбутньому
-    
-    // ✅ Перевіряємо чи контролер онлайн
+
+    console.log('🔍 Checking if device online:', deviceId);
+
+    // Перевіряємо чи контролер онлайн
     if (!this.ortomatsGateway.isDeviceOnline(deviceId)) {
       throw new Error(`Ortomat ${deviceId} is offline. Please try again later.`);
     }
 
-    // ✅ Відправляємо команду через WebSocket
+    console.log('📤 Sending open command via WebSocket...');
+
+    // Відправляємо команду через WebSocket
     const success = await this.ortomatsGateway.openCell(
       deviceId,
       order.cellNumber,

@@ -1,184 +1,148 @@
-// Замініть початок payment.tsx на це:
-
-import React, { useEffect, useState } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { ShoppingBag, CreditCard, Lock, CheckCircle } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { api } from '../lib/api';
 
 export default function PaymentPage() {
   const router = useRouter();
-  const { orderId } = router.query; // ⭐ Тепер отримуємо orderId
-  const [paymentProcessing, setPaymentProcessing] = useState(false);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
-  const [order, setOrder] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { orderId } = router.query;
+  const [processing, setProcessing] = useState(false);
 
-  // Завантажуємо замовлення
-  useEffect(() => {
-    if (orderId) {
-      loadOrder();
-    }
-  }, [orderId]);
+  // ✅ Завантажити дані замовлення
+  const { data: order, isLoading, error } = useQuery({
+    queryKey: ['order', orderId],
+    queryFn: () => api.getOrder(orderId as string),
+    enabled: !!orderId,
+  });
 
-  const loadOrder = async () => {
-    try {
-      const response = await fetch(`http://localhost:3001/orders/${orderId}`);
-      if (!response.ok) throw new Error('Order not found');
-      
-      const data = await response.json();
-      setOrder(data);
-      setLoading(false);
-    } catch (error) {
-      console.error('Failed to load order:', error);
-      toast.error('Order not found');
-      setLoading(false);
-    }
+  // ✅ Обробка оплати
+  const paymentMutation = useMutation({
+    mutationFn: (orderId: string) => api.processPayment(orderId),
+    onSuccess: () => {
+      // Stub оплата завжди успішна
+      setTimeout(() => {
+        router.push(`/success?orderId=${orderId}`);
+      }, 1000);
+    },
+    onError: (error: any) => {
+      alert(`Pomylka oplaty: ${error.message}`);
+      setProcessing(false);
+    },
+  });
+
+  const handlePayment = () => {
+    if (!orderId) return;
+    
+    setProcessing(true);
+    
+    // Stub: симулюємо оплату через LiqPay
+    setTimeout(() => {
+      paymentMutation.mutate(orderId as string);
+    }, 1500);
   };
 
-  const handlePayment = async () => {
-    setPaymentProcessing(true);
-
-    try {
-      // Ініціюємо оплату
-      await fetch(`http://localhost:3001/orders/${orderId}/pay`, {
-        method: 'POST',
-      });
-
-      // Симулюємо обробку платежу (stub)
-      setTimeout(async () => {
-        // Відправляємо callback (імітуємо LiqPay)
-        await fetch('http://localhost:3001/orders/callback', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            orderId: orderId,
-            status: 'success',
-            paymentId: `PAY-${Date.now()}`,
-          }),
-        });
-
-        setPaymentProcessing(false);
-        setPaymentSuccess(true);
-        toast.success('Payment successful!');
-        
-        // Redirect to success page
-        setTimeout(() => {
-          router.push(`/success?orderId=${orderId}`);
-        }, 2000);
-      }, 3000);
-    } catch (error) {
-      console.error('Payment failed:', error);
-      toast.error('Payment failed');
-      setPaymentProcessing(false);
-    }
-  };
-
-  useEffect(() => {
-    // Auto-trigger payment when order is loaded
-    if (order) {
-      handlePayment();
-    }
-  }, [order]);
-
-  if (loading || !order) {
+  if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-xl">Zavantazhennya zamovlennya...</div>
+      </div>
+    );
+  }
+
+  if (error || !order) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="text-xl text-red-600 mb-4">
+            Zamovlennya ne znaydeno
+          </div>
+          <button
+            onClick={() => router.push('/')}
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Povernytysya na golovnu
+          </button>
         </div>
       </div>
     );
   }
 
-  // Далі ваш існуючий JSX, але замініть productData на order.product
-  // і ortomatData на order.ortomat
-  
   return (
-    <div>
-      <Head>
-        <title>Payment Processing - Ortomat</title>
-      </Head>
-
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <div className="max-w-md w-full">
-          <div className="bg-white rounded-lg shadow-lg p-8">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
-                {paymentSuccess ? (
-                  <CheckCircle className="h-8 w-8 text-primary-600" />
-                ) : (
-                  <CreditCard className="h-8 w-8 text-primary-600" />
-                )}
-              </div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {paymentSuccess ? 'Payment Successful!' : 'Processing Payment...'}
-              </h1>
-              <p className="text-gray-600 mt-2">
-                {paymentSuccess 
-                  ? 'Your payment has been processed successfully'
-                  : 'Please wait while we process your payment'
-                }
-              </p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="max-w-md w-full mx-4">
+        <div className="bg-white rounded-lg shadow-lg p-8">
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+              </svg>
             </div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              Oplata zamovlennya
+            </h1>
+            <p className="text-gray-600">
+              #{order.orderNumber}
+            </p>
+          </div>
 
-            {/* Payment Info */}
-            <div className="border-t border-b py-6 mb-6">
-              <div className="flex items-center mb-4">
-                <div className="w-16 h-16 bg-gray-200 rounded flex-shrink-0">
-                  {order.product?.imageUrl ? (
-                    <img
-                      src={order.product.imageUrl}
-                      alt={order.product.name}
-                      className="w-full h-full object-cover rounded"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ShoppingBag className="h-6 w-6 text-gray-400" />
-                    </div>
-                  )}
-                </div>
-                <div className="ml-4 flex-1">
-                  <p className="font-medium text-gray-900">{order.product?.name}</p>
-                  <p className="text-sm text-gray-600">Order #{order.orderNumber}</p>
-                </div>
-              </div>
-              <div className="flex justify-between text-lg font-bold">
-                <span className="text-gray-900">Total:</span>
-                <span className="text-primary-600">{order.amount} UAH</span>
-              </div>
+          <div className="border-t border-b border-gray-200 py-4 mb-6">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-600">Tovar:</span>
+              <span className="font-medium">{order.product?.name || 'N/A'}</span>
             </div>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-gray-600">Ortomat:</span>
+              <span className="font-medium">{order.ortomat?.name || 'N/A'}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-600">Komirka:</span>
+              <span className="font-medium">#{order.cellNumber}</span>
+            </div>
+          </div>
 
-            {/* Processing Animation */}
-            {paymentProcessing && (
-              <div className="text-center py-6">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-200 border-t-primary-600 mx-auto mb-4"></div>
-                <p className="text-sm text-gray-600">Connecting to LiqPay...</p>
-                <p className="text-xs text-gray-500 mt-2">This may take a few moments</p>
-              </div>
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xl font-semibold">Do splaty:</span>
+              <span className="text-3xl font-bold text-gray-900">
+                {order.amount} hrn
+              </span>
+            </div>
+          </div>
+
+          <button
+            onClick={handlePayment}
+            disabled={processing || paymentMutation.isPending}
+            className="w-full bg-blue-600 text-white py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+          >
+            {processing || paymentMutation.isPending ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Obrobka oplaty...
+              </>
+            ) : (
+              <>
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+                Oplatyty (STUB)
+              </>
             )}
+          </button>
 
-            {/* Success Message */}
-            {paymentSuccess && (
-              <div className="text-center py-6">
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
-                  <p className="text-green-800 font-medium">Payment completed!</p>
-                  <p className="text-green-600 text-sm mt-1">
-                    Redirecting to pickup instructions...
-                  </p>
-                </div>
-              </div>
-            )}
+          <p className="text-center text-sm text-gray-500 mt-4">
+            Tse testovyy rezhym. Oplata ne vykonuyetsya.
+          </p>
 
-            {/* Security Badge */}
-            <div className="flex items-center justify-center text-xs text-gray-500">
-              <Lock className="h-3 w-3 mr-1" />
-              <span>Secured by LiqPay</span>
-            </div>
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.back()}
+              className="text-blue-600 hover:text-blue-700 text-sm"
+            >
+              Skasuvaty
+            </button>
           </div>
         </div>
       </div>
