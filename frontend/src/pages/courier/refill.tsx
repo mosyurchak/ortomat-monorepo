@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
-import { ortomatsApi, productsApi } from '../../lib/api';
+import { api } from '../../lib/api';
 import { ArrowLeft, Package, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -18,10 +18,7 @@ export default function CourierRefillPage() {
   // Завантажуємо інвентар ортомату
   const { data: inventory, isLoading: inventoryLoading } = useQuery(
     ['inventory', ortomatId],
-    async () => {
-      const response = await fetch(`http://localhost:3001/ortomats/${ortomatId}/inventory`);
-      return response.json();
-    },
+    () => api.getOrtomatInventory(ortomatId as string),
     { enabled: !!ortomatId }
   );
 
@@ -31,15 +28,10 @@ export default function CourierRefillPage() {
   // Мутація для поповнення
   const refillMutation = useMutation(
     async ({ cellNumber, productId }: { cellNumber: number; productId: string }) => {
-      const response = await fetch(
-        `http://localhost:3001/ortomats/${ortomatId}/cells/${cellNumber}/refill`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId, courierId: userId }),
-        }
-      );
-      return response.json();
+      return api.refillCell(ortomatId as string, cellNumber, {
+        productId,
+        courierId: userId as string,
+      });
     },
     {
       onSuccess: () => {
@@ -171,7 +163,7 @@ export default function CourierRefillPage() {
                   </div>
 
                   <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {products?.data?.map((product: any) => (
+                    {products?.map((product: any) => (
                       <button
                         key={product.id}
                         onClick={() => setSelectedProduct(product.id)}

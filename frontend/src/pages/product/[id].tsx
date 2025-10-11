@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery } from 'react-query';
-import { productsApi } from '../../lib/api';
+import { api } from '../../lib/api';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,7 +14,7 @@ export default function ProductPage() {
 
   const { data: product, isLoading } = useQuery(
     ['product', id],
-    () => productsApi.getOne(id as string),
+    () => api.getProduct(id as string),
     {
       enabled: !!id,
     }
@@ -51,9 +51,7 @@ export default function ProductPage() {
     );
   }
 
-  const productData = product?.data;
-
-  if (!productData) {
+  if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -69,7 +67,7 @@ export default function ProductPage() {
   return (
     <div>
       <Head>
-        <title>{productData.name} - Ortomat</title>
+        <title>{product.name} - Ortomat</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -95,10 +93,10 @@ export default function ProductPage() {
           <div className="bg-white rounded-lg shadow-lg overflow-hidden">
             <div className="md:flex">
               <div className="md:w-1/2">
-                {productData.imageUrl ? (
+                {product.imageUrl ? (
                   <img
-                    src={productData.imageUrl}
-                    alt={productData.name}
+                    src={product.imageUrl}
+                    alt={product.name}
                     className="w-full h-96 object-cover"
                   />
                 ) : (
@@ -110,26 +108,26 @@ export default function ProductPage() {
 
               <div className="md:w-1/2 p-8">
                 <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  {productData.name}
+                  {product.name}
                 </h1>
 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-primary-600">
-                    {productData.price} UAH
+                    {product.price} UAH
                   </span>
                 </div>
 
-                {productData.size && (
+                {product.size && (
                   <div className="mb-4">
                     <span className="text-sm font-medium text-gray-700">Size: </span>
-                    <span className="text-sm text-gray-900">{productData.size}</span>
+                    <span className="text-sm text-gray-900">{product.size}</span>
                   </div>
                 )}
 
-                {productData.description && (
+                {product.description && (
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
-                    <p className="text-gray-600">{productData.description}</p>
+                    <p className="text-gray-600">{product.description}</p>
                   </div>
                 )}
 
