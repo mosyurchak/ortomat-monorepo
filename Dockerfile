@@ -3,23 +3,12 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Copy root package files
-COPY package*.json ./
-COPY .npmrc* ./
-
-# Install root dependencies
-RUN npm install --legacy-peer-deps
-
-# Copy backend files
-COPY backend/package*.json ./backend/
-COPY backend/.npmrc* ./backend/
+# Copy backend files first
+COPY backend ./backend
 
 # Install backend dependencies
 WORKDIR /app/backend
 RUN npm install --legacy-peer-deps
-
-# Copy backend source
-COPY backend ./
 
 # Generate Prisma Client
 RUN npx prisma generate

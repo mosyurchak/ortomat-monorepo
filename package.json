@@ -12,8 +12,7 @@
     "dev:frontend": "cd frontend && npm run dev",
     "start": "cd backend && npm run start:prod",
     "start:prod": "cd backend && npm run start:prod",
-    "build": "cd backend && npm install --legacy-peer-deps && npx prisma generate && npm run build",
-    "postinstall": "cd backend && npm install --legacy-peer-deps"
+    "build": "cd backend && npm install --legacy-peer-deps && npx prisma generate && npm run build"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
