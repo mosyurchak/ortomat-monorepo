@@ -36,8 +36,8 @@ WORKDIR /app/backend
 COPY backend/package*.json ./
 COPY backend/.npmrc* ./
 
-# Install production dependencies only
-RUN npm ci --only=production --legacy-peer-deps
+# Install ALL dependencies (including dev for prisma)
+RUN npm install --legacy-peer-deps
 
 # Copy Prisma schema and generate client
 COPY backend/prisma ./prisma
@@ -45,6 +45,9 @@ RUN npx prisma generate
 
 # Copy built application from builder
 COPY --from=builder /app/backend/dist ./dist
+
+# Remove dev dependencies after prisma generate
+RUN npm prune --production
 
 # Expose port
 EXPOSE 3001
