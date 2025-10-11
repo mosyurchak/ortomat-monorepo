@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run start:dev",
-    "dev:frontend": "cd frontend && npm run dev"
+    "dev:frontend": "cd frontend && npm run dev",
+    "start": "cd backend && npm run start:prod",
+    "build": "cd backend && npm install && npm run build",
+    "postinstall": "cd backend && npx prisma generate"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"
