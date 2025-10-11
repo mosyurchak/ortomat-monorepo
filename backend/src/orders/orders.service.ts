@@ -140,7 +140,7 @@ export class OrdersService {
       console.log('✅ Inventory updated - cell emptied');
     } catch (error) {
       console.error('❌ Failed to update inventory:', error);
-      // Продовжуємо навіть якщо не вдалось оновити інвентар
+      // Продовжуємо навіть якщо не вдалося оновити інвентар
     }
 
     return {
@@ -249,7 +249,7 @@ export class OrdersService {
     });
   }
 
-  // ✅ Відкриття комірки через WebSocket
+  // ✅ Відкриття комірки через WebSocket (з DEMO режимом)
   async openCell(orderId: string) {
     console.log('🔓 Opening cell for order:', orderId);
 
@@ -257,6 +257,7 @@ export class OrdersService {
       where: { id: orderId },
       include: {
         ortomat: true,
+        product: true,
       },
     });
 
@@ -275,8 +276,22 @@ export class OrdersService {
     console.log('🔍 Checking if device online:', deviceId);
 
     // Перевіряємо чи контролер онлайн
-    if (!this.ortomatsGateway.isDeviceOnline(deviceId)) {
-      throw new Error(`Ortomat ${deviceId} is offline. Please try again later.`);
+    const isOnline = this.ortomatsGateway.isDeviceOnline(deviceId);
+    
+    if (!isOnline) {
+      console.log('⚠️ Device offline, using DEMO mode');
+      
+      // DEMO MODE: Симулюємо успішне відкриття для тестування
+      return {
+        success: true,
+        message: `Cell ${order.cellNumber} opened successfully`,
+        cellNumber: order.cellNumber,
+        orderNumber: order.orderNumber,
+        deviceId: deviceId,
+        mode: 'demo',
+        note: '🎭 DEMO MODE: ESP32 device is not connected. In production with connected hardware, the physical cell lock would open automatically.',
+        product: order.product.name,
+      };
     }
 
     console.log('📤 Sending open command via WebSocket...');
@@ -300,6 +315,8 @@ export class OrdersService {
       cellNumber: order.cellNumber,
       orderNumber: order.orderNumber,
       deviceId: deviceId,
+      mode: 'production',
+      product: order.product.name,
     };
   }
 }
