@@ -2,10 +2,8 @@ import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useAuth } from '../contexts/AuthContext';
-import { useQuery } from 'react-query';
+import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
-import { UserPlus } from 'lucide-react';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -19,10 +17,14 @@ export default function Register() {
     ortomatId: '',
   });
   const [isLoading, setIsLoading] = useState(false);
-  const { register } = useAuth();
+  const [error, setError] = useState('');
   const router = useRouter();
 
-  const { data: ortomats } = useQuery('ortomats', api.getOrtomats);
+  // Завантаження ортоматів
+  const { data: ortomats } = useQuery({
+    queryKey: ['ortomats'],
+    queryFn: () => api.getOrtomats(),
+  });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -32,12 +34,15 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     try {
-      await register(formData);
+      await api.register(formData);
+      alert('Реєстрація успішна! Тепер ви можете увійти.');
       router.push('/login');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
+      setError(error.message || 'Помилка реєстрації');
     } finally {
       setIsLoading(false);
     }
@@ -46,21 +51,23 @@ export default function Register() {
   return (
     <>
       <Head>
-        <title>Register - Ortomat</title>
+        <title>Реєстрація - Ortomat</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <div className="flex justify-center">
-            <UserPlus className="h-12 w-12 text-primary-600" />
+            <svg className="h-12 w-12 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
+            Створити акаунт
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link href="/login" className="font-medium text-primary-600 hover:text-primary-500">
-              sign in to existing account
+            Або{' '}
+            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
+              увійдіть в існуючий акаунт
             </Link>
           </p>
         </div>
@@ -68,39 +75,45 @@ export default function Register() {
         <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
           <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
             <form className="space-y-6" onSubmit={handleSubmit}>
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+                  {error}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
+                  Роль
                 </label>
                 <div className="flex space-x-4">
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       name="role"
                       value="DOCTOR"
                       checked={formData.role === 'DOCTOR'}
                       onChange={handleChange}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Doctor</span>
+                    <span className="ml-2 text-sm text-gray-700">👨‍⚕️ Лікар</span>
                   </label>
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input
                       type="radio"
                       name="role"
                       value="COURIER"
                       checked={formData.role === 'COURIER'}
                       onChange={handleChange}
-                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
-                    <span className="ml-2 text-sm text-gray-700">Courier</span>
+                    <span className="ml-2 text-sm text-gray-700">🚚 Кур'єр</span>
                   </label>
                 </div>
               </div>
 
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Last Name
+                  Прізвище
                 </label>
                 <input
                   type="text"
@@ -109,13 +122,13 @@ export default function Register() {
                   required
                   value={formData.lastName}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
 
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  First Name
+                  Ім'я
                 </label>
                 <input
                   type="text"
@@ -124,13 +137,27 @@ export default function Register() {
                   required
                   value={formData.firstName}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
+                  По батькові (необов'язково)
+                </label>
+                <input
+                  type="text"
+                  name="middleName"
+                  id="middleName"
+                  value={formData.middleName}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Phone
+                  Телефон
                 </label>
                 <input
                   type="tel"
@@ -140,7 +167,7 @@ export default function Register() {
                   value={formData.phone}
                   onChange={handleChange}
                   placeholder="+380501234567"
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
 
@@ -155,13 +182,13 @@ export default function Register() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Password
+                  Пароль
                 </label>
                 <input
                   type="password"
@@ -171,13 +198,14 @@ export default function Register() {
                   minLength={6}
                   value={formData.password}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
+                <p className="mt-1 text-xs text-gray-500">Мінімум 6 символів</p>
               </div>
 
               <div>
                 <label htmlFor="ortomatId" className="block text-sm font-medium text-gray-700">
-                  Select Ortomat
+                  Виберіть Ортомат
                 </label>
                 <select
                   name="ortomatId"
@@ -185,10 +213,10 @@ export default function Register() {
                   required
                   value={formData.ortomatId}
                   onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
-                  <option value="">Select an ortomat</option>
-                  {ortomats?.data.map((ortomat: any) => (
+                  <option value="">Виберіть ортомат</option>
+                  {ortomats?.map((ortomat: any) => (
                     <option key={ortomat.id} value={ortomat.id}>
                       {ortomat.name} - {ortomat.address}
                     </option>
@@ -200,9 +228,9 @@ export default function Register() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:bg-gray-400"
+                  className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
                 >
-                  {isLoading ? 'Registering...' : 'Register'}
+                  {isLoading ? 'Реєстрація...' : 'Зареєструватись'}
                 </button>
               </div>
             </form>
