@@ -1,23 +1,24 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // Enable CORS
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:3002', 'http://localhost:3003'],
+    origin: process.env.FRONTEND_URL || '*',
     credentials: true,
   });
   
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
-  
+  // Global prefix
   app.setGlobalPrefix('api');
   
-  await app.listen(3001);
-  console.log('Backend server running on http://localhost:3001');
+  // Port from environment or default
+  const port = process.env.PORT || 3001;
+  
+  // Listen on 0.0.0.0 for Railway
+  await app.listen(port, '0.0.0.0');
+  
+  console.log(`🚀 Backend running on port ${port}`);
 }
 bootstrap();
