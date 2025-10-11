@@ -150,3 +150,10 @@ export default function ProductPage() {
     </div>
   );
 }
+
+// Disable static generation for this dynamic page
+export async function getServerSideProps() {
+  return {
+    props: {},
+  };
+}

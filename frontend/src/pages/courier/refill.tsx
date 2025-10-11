@@ -15,17 +15,14 @@ export default function CourierRefillPage() {
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
 
-  // Завантажуємо інвентар ортомату
   const { data: inventory, isLoading: inventoryLoading } = useQuery(
     ['inventory', ortomatId],
     () => api.getOrtomatInventory(ortomatId as string),
     { enabled: !!ortomatId }
   );
 
-  // Завантажуємо список товарів
   const { data: products } = useQuery('products', () => api.getProducts());
 
-  // Мутація для поповнення
   const refillMutation = useMutation(
     async ({ cellNumber, productId }: { cellNumber: number; productId: string }) => {
       return api.refillCell(ortomatId as string, cellNumber, {
@@ -84,7 +81,6 @@ export default function CourierRefillPage() {
       </Head>
 
       <div className="min-h-screen bg-gray-50">
-        {/* Header */}
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
@@ -101,7 +97,6 @@ export default function CourierRefillPage() {
         </header>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             <div className="bg-white rounded-lg shadow p-4">
               <p className="text-sm text-gray-600">Total Cells</p>
@@ -118,7 +113,6 @@ export default function CourierRefillPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left: Cell Selection */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Empty Cell</h2>
               
@@ -150,7 +144,6 @@ export default function CourierRefillPage() {
               )}
             </div>
 
-            {/* Right: Product Selection */}
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Product</h2>
               
@@ -215,7 +208,6 @@ export default function CourierRefillPage() {
             </div>
           </div>
 
-          {/* Filled Cells Preview */}
           {filledCells.length > 0 && (
             <div className="mt-8 bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Filled Cells</h2>
@@ -239,4 +231,11 @@ export default function CourierRefillPage() {
       </div>
     </div>
   );
+}
+
+// Disable static generation for this page
+export async function getServerSideProps() {
+  return {
+    props: {},
+  };
 }

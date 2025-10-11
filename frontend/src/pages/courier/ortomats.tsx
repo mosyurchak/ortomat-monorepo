@@ -13,7 +13,6 @@ export default function CourierOrtomatsPage() {
   const { data: ortomats, isLoading } = useQuery(
     ['courier-ortomats', userId],
     async () => {
-      // Використовуємо api.getOrtomats() замість прямого fetch
       return api.getOrtomats();
     },
     { enabled: !!userId }
@@ -141,4 +140,11 @@ export default function CourierOrtomatsPage() {
       </div>
     </div>
   );
+}
+
+// Disable static generation for this page
+export async function getServerSideProps() {
+  return {
+    props: {},
+  };
 }
