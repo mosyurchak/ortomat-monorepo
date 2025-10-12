@@ -2,12 +2,13 @@ import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '../../lib/api';
+import { useTranslation } from '../../hooks/useTranslation'; // ← ДОДАНО
 
 export default function CatalogPage() {
+  const { t } = useTranslation(); // ← ДОДАНО
   const router = useRouter();
   const { id, ref } = router.query;
 
-  // ✅ Новий синтаксис React Query v4+
   const { data: catalog, isLoading, error } = useQuery({
     queryKey: ['catalog', id, ref],
     queryFn: () => api.getOrtomatCatalog(id as string, ref as string),
@@ -17,7 +18,7 @@ export default function CatalogPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Завантаження каталогу...</div>
+        <div className="text-xl">{t('common.loading')}</div> {/* ← ЗМІНЕНО */}
       </div>
     );
   }
@@ -26,7 +27,7 @@ export default function CatalogPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl text-red-600">
-          Помилка завантаження каталогу
+          {t('errors.generic')} {/* ← ЗМІНЕНО */}
         </div>
       </div>
     );
@@ -35,7 +36,7 @@ export default function CatalogPage() {
   if (!catalog) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Каталог не знайдено</div>
+        <div className="text-xl">{t('errors.notFound')}</div> {/* ← ЗМІНЕНО */}
       </div>
     );
   }
@@ -48,7 +49,7 @@ export default function CatalogPage() {
         {/* Header */}
         <div className="mb-8">
           <Link href="/" className="text-blue-600 hover:text-blue-700 mb-4 inline-block">
-            ← Назад до списку ортоматів
+            ← {t('common.back')} {/* ← ЗМІНЕНО */}
           </Link>
           
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -73,14 +74,14 @@ export default function CatalogPage() {
         {/* Products Grid */}
         <div className="mb-6">
           <h2 className="text-2xl font-semibold mb-4">
-            Доступні товари ({products?.length || 0})
+            {t('catalog.title')} ({products?.length || 0}) {/* ← ЗМІНЕНО */}
           </h2>
         </div>
 
         {!products || products.length === 0 ? (
           <div className="text-center py-12 bg-white rounded-lg shadow-md">
             <p className="text-gray-500 text-lg">
-              В цьому ортоматі немає доступних товарів
+              {t('catalog.noProducts')} {/* ← ЗМІНЕНО */}
             </p>
           </div>
         ) : (
@@ -110,7 +111,7 @@ export default function CatalogPage() {
 
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <span className="text-sm text-gray-500">Категорія:</span>
+                      <span className="text-sm text-gray-500">{t('admin.category')}:</span> {/* ← ЗМІНЕНО */}
                       <p className="font-medium">{product.category}</p>
                     </div>
                     {product.size && (
@@ -123,7 +124,7 @@ export default function CatalogPage() {
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                     <div className="text-2xl font-bold text-gray-900">
-                      {product.price} грн
+                      {product.price} {t('catalog.uah')} {/* ← ЗМІНЕНО */}
                     </div>
                     
                     <Link
@@ -137,13 +138,13 @@ export default function CatalogPage() {
                       }}
                       className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                     >
-                      Купити
+                      {t('product.buyNow')} {/* ← ЗМІНЕНО */}
                     </Link>
                   </div>
 
                   {product.availableQuantity !== undefined && (
                     <div className="mt-2 text-sm text-gray-500">
-                      В наявності: {product.availableQuantity} шт.
+                      {t('catalog.inStock')}: {product.availableQuantity} {t('product.pieces')} {/* ← ЗМІНЕНО */}
                     </div>
                   )}
                 </div>

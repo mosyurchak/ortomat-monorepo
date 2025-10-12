@@ -3,10 +3,12 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import { useEffect } from 'react';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function AdminDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // Захист роуту - тільки для адміна
   useEffect(() => {
@@ -48,7 +50,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-xl text-gray-700">Checking authentication...</div>
+          <div className="text-xl text-gray-700">{t('auth.checkingAuth')}</div>
         </div>
       </div>
     );
@@ -65,7 +67,7 @@ export default function AdminDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-xl text-gray-700">Loading dashboard...</div>
+          <div className="text-xl text-gray-700">{t('admin.loadingDashboard')}</div>
         </div>
       </div>
     );
@@ -76,13 +78,13 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="text-xl text-red-600 mb-4">Failed to load dashboard</div>
+          <div className="text-xl text-red-600 mb-4">{t('admin.failedToLoad')}</div>
           <p className="text-gray-600 mb-4">{(error as Error).message}</p>
           <button
             onClick={() => window.location.reload()}
             className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
-            Retry
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -96,10 +98,10 @@ export default function AdminDashboard() {
         <div className="mb-8 flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-gray-900">
-              Admin Dashboard
+              {t('admin.dashboard')}
             </h1>
             <p className="text-gray-600 mt-2">
-              Вітаємо, {user.firstName} {user.lastName}!
+              {t('admin.welcome', { firstName: user.firstName, lastName: user.lastName })}
             </p>
           </div>
           <button
@@ -109,7 +111,7 @@ export default function AdminDashboard() {
             }}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
           >
-            Logout
+            {t('auth.logout')}
           </button>
         </div>
 
@@ -124,7 +126,7 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Total Users</p>
+                <p className="text-sm text-gray-500">{t('admin.totalUsers')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats?.totalUsers || 0}
                 </p>
@@ -141,7 +143,7 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Total Ortomats</p>
+                <p className="text-sm text-gray-500">{t('admin.totalOrtomats')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats?.totalOrtomats || 0}
                 </p>
@@ -158,7 +160,7 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Total Sales</p>
+                <p className="text-sm text-gray-500">{t('admin.totalSales')}</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {stats?.totalSales || 0}
                 </p>
@@ -175,9 +177,9 @@ export default function AdminDashboard() {
                 </svg>
               </div>
               <div className="ml-4">
-                <p className="text-sm text-gray-500">Total Revenue</p>
+                <p className="text-sm text-gray-500">{t('admin.totalRevenue')}</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {stats?.totalRevenue || 0} UAH
+                  {stats?.totalRevenue || 0} {t('common.currency')}
                 </p>
               </div>
             </div>
@@ -191,10 +193,10 @@ export default function AdminDashboard() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Управління Ортоматами
+              {t('admin.manageOrtomats')}
             </h3>
             <p className="text-gray-600">
-              Додавання, редагування та видалення ортоматів
+              {t('admin.manageOrtomatsDesc')}
             </p>
           </button>
 
@@ -203,10 +205,10 @@ export default function AdminDashboard() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Управління Товарами
+              {t('admin.manageProducts')}
             </h3>
             <p className="text-gray-600">
-              Додавання, редагування та видалення товарів
+              {t('admin.manageProductsDesc')}
             </p>
           </button>
 
@@ -215,10 +217,10 @@ export default function AdminDashboard() {
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Управління Користувачами
+              {t('admin.manageUsers')}
             </h3>
             <p className="text-gray-600">
-              Перегляд лікарів та кур'єрів
+              {t('admin.manageUsersDesc')}
             </p>
           </button>
         </div>
@@ -227,16 +229,16 @@ export default function AdminDashboard() {
         {stats?.topDoctors && stats.topDoctors.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Топ-5 Лікарів
+              {t('admin.topDoctors')}
             </h2>
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Ім'я</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Email</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Продажі</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Заробіток</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.name')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.email')}</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.sales')}</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.earnings')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,7 +250,7 @@ export default function AdminDashboard() {
                       <td className="py-3 px-4 text-gray-600">{doctor.email}</td>
                       <td className="py-3 px-4 text-right">{doctor.totalSales || 0}</td>
                       <td className="py-3 px-4 text-right font-semibold">
-                        {doctor.totalEarnings || 0} UAH
+                        {doctor.totalEarnings || 0} {t('common.currency')}
                       </td>
                     </tr>
                   ))}
@@ -262,16 +264,16 @@ export default function AdminDashboard() {
         {stats?.topProducts && stats.topProducts.length > 0 && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Топ-5 Товарів
+              {t('admin.topProducts')}
             </h2>
             <div className="overflow-x-auto">
               <table className="min-w-full">
                 <thead>
                   <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Товар</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Категорія</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Продажі</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Виручка</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.product')}</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.category')}</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.sales')}</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.revenue')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,7 +283,7 @@ export default function AdminDashboard() {
                       <td className="py-3 px-4 text-gray-600">{product.category}</td>
                       <td className="py-3 px-4 text-right">{product.salesCount || 0}</td>
                       <td className="py-3 px-4 text-right font-semibold">
-                        {product.revenue || 0} UAH
+                        {product.revenue || 0} {t('common.currency')}
                       </td>
                     </tr>
                   ))}

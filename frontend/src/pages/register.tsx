@@ -4,8 +4,10 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function Register() {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     role: 'DOCTOR' as 'DOCTOR' | 'COURIER',
     firstName: '',
@@ -38,11 +40,11 @@ export default function Register() {
 
     try {
       await api.register(formData);
-      alert('Реєстрація успішна! Тепер ви можете увійти.');
+      alert(t('register.success'));
       router.push('/login');
     } catch (error: any) {
       console.error('Registration error:', error);
-      setError(error.message || 'Помилка реєстрації');
+      setError(error.message || t('register.error'));
     } finally {
       setIsLoading(false);
     }
@@ -51,7 +53,7 @@ export default function Register() {
   return (
     <>
       <Head>
-        <title>Реєстрація - Ortomat</title>
+        <title>{t('register.title')} - Ortomat</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -62,12 +64,12 @@ export default function Register() {
             </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Створити акаунт
+            {t('register.createAccount')}
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
-            Або{' '}
+            {t('register.or')}{' '}
             <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-              увійдіть в існуючий акаунт
+              {t('register.loginExisting')}
             </Link>
           </p>
         </div>
@@ -83,7 +85,7 @@ export default function Register() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Роль
+                  {t('register.role')}
                 </label>
                 <div className="flex space-x-4">
                   <label className="flex items-center cursor-pointer">
@@ -95,7 +97,7 @@ export default function Register() {
                       onChange={handleChange}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
-                    <span className="ml-2 text-sm text-gray-700">👨‍⚕️ Лікар</span>
+                    <span className="ml-2 text-sm text-gray-700">👨‍⚕️ {t('register.doctor')}</span>
                   </label>
                   <label className="flex items-center cursor-pointer">
                     <input
@@ -106,14 +108,14 @@ export default function Register() {
                       onChange={handleChange}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                     />
-                    <span className="ml-2 text-sm text-gray-700">🚚 Кур'єр</span>
+                    <span className="ml-2 text-sm text-gray-700">🚚 {t('register.courier')}</span>
                   </label>
                 </div>
               </div>
 
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  Прізвище
+                  {t('register.lastName')}
                 </label>
                 <input
                   type="text"
@@ -128,7 +130,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  Ім'я
+                  {t('register.firstName')}
                 </label>
                 <input
                   type="text"
@@ -143,7 +145,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
-                  По батькові (необов'язково)
+                  {t('register.middleName')}
                 </label>
                 <input
                   type="text"
@@ -157,7 +159,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  Телефон
+                  {t('auth.phone')}
                 </label>
                 <input
                   type="tel"
@@ -173,7 +175,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  Email
+                  {t('auth.email')}
                 </label>
                 <input
                   type="email"
@@ -188,7 +190,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  Пароль
+                  {t('auth.password')}
                 </label>
                 <input
                   type="password"
@@ -200,12 +202,12 @@ export default function Register() {
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <p className="mt-1 text-xs text-gray-500">Мінімум 6 символів</p>
+                <p className="mt-1 text-xs text-gray-500">{t('register.passwordHint')}</p>
               </div>
 
               <div>
                 <label htmlFor="ortomatId" className="block text-sm font-medium text-gray-700">
-                  Виберіть Ортомат
+                  {t('register.selectOrtomat')}
                 </label>
                 <select
                   name="ortomatId"
@@ -215,7 +217,7 @@ export default function Register() {
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 >
-                  <option value="">Виберіть ортомат</option>
+                  <option value="">{t('register.chooseOrtomat')}</option>
                   {ortomats?.map((ortomat: any) => (
                     <option key={ortomat.id} value={ortomat.id}>
                       {ortomat.name} - {ortomat.address}
@@ -230,7 +232,7 @@ export default function Register() {
                   disabled={isLoading}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
                 >
-                  {isLoading ? 'Реєстрація...' : 'Зареєструватись'}
+                  {isLoading ? t('register.registering') : t('register.registerButton')}
                 </button>
               </div>
             </form>

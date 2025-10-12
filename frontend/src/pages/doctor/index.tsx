@@ -4,10 +4,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import Head from 'next/head';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function DoctorDashboard() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
+  const { t } = useTranslation();
 
   // Захист роуту
   useEffect(() => {
@@ -35,7 +37,7 @@ export default function DoctorDashboard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <div className="text-xl text-gray-700">Завантаження...</div>
+          <div className="text-xl text-gray-700">{t('common.loading')}</div>
         </div>
       </div>
     );
@@ -48,7 +50,7 @@ export default function DoctorDashboard() {
   return (
     <div>
       <Head>
-        <title>Кабінет Лікаря</title>
+        <title>{t('doctor.cabinet')}</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -58,17 +60,17 @@ export default function DoctorDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Кабінет Лікаря
+                  {t('doctor.cabinet')}
                 </h1>
                 <p className="text-gray-600 mt-1">
-                  Вітаємо, {user.firstName} {user.lastName}!
+                  {t('doctor.welcome', { firstName: user.firstName, lastName: user.lastName })}
                 </p>
               </div>
               <button
                 onClick={logout}
                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
               >
-                Logout
+                {t('auth.logout')}
               </button>
             </div>
           </div>
@@ -85,7 +87,7 @@ export default function DoctorDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-500">Продажі</p>
+                  <p className="text-sm text-gray-500">{t('doctor.sales')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.totalSales || 0}
                   </p>
@@ -101,9 +103,9 @@ export default function DoctorDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-500">Заробіток</p>
+                  <p className="text-sm text-gray-500">{t('doctor.earnings')}</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {stats?.totalEarnings?.toFixed(2) || 0} UAH
+                    {stats?.totalEarnings?.toFixed(2) || 0} {t('common.currency')}
                   </p>
                 </div>
               </div>
@@ -117,12 +119,12 @@ export default function DoctorDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-500">Середній чек</p>
+                  <p className="text-sm text-gray-500">{t('doctor.averageCheck')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.totalSales > 0
                       ? ((stats.totalEarnings / stats.totalSales) * 10).toFixed(2)
                       : 0}{' '}
-                    UAH
+                    {t('common.currency')}
                   </p>
                 </div>
               </div>
@@ -136,7 +138,7 @@ export default function DoctorDashboard() {
                   </svg>
                 </div>
                 <div className="ml-4">
-                  <p className="text-sm text-gray-500">Конверсія</p>
+                  <p className="text-sm text-gray-500">{t('doctor.conversion')}</p>
                   <p className="text-2xl font-bold text-gray-900">
                     {stats?.totalSales > 0 ? '100' : '0'}%
                   </p>
@@ -149,7 +151,7 @@ export default function DoctorDashboard() {
           {qrData?.referralCode && (
             <div className="bg-white rounded-lg shadow p-6 mb-8">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Ваш реферальний код
+                {t('doctor.referralCode')}
               </h2>
               <div className="flex items-center justify-between">
                 <div>
@@ -157,14 +159,14 @@ export default function DoctorDashboard() {
                     {qrData.referralCode}
                   </p>
                   <p className="text-sm text-gray-600">
-                    Поділіться цим кодом з пацієнтами для отримання комісії
+                    {t('doctor.shareCode')}
                   </p>
                 </div>
                 <button
                   onClick={() => router.push('/doctor/qr-code')}
                   className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700"
                 >
-                  Переглянути QR-код
+                  {t('doctor.viewQRCode')}
                 </button>
               </div>
             </div>
@@ -177,10 +179,10 @@ export default function DoctorDashboard() {
               className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Детальна Статистика
+                {t('doctor.detailedStats')}
               </h3>
               <p className="text-gray-600">
-                Переглянути повну статистику продажів та заробітку
+                {t('doctor.detailedStatsDesc')}
               </p>
             </button>
 
@@ -189,10 +191,10 @@ export default function DoctorDashboard() {
               className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
             >
               <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                QR-код та посилання
+                {t('doctor.qrCodeAndLinks')}
               </h3>
               <p className="text-gray-600">
-                Завантажити QR-код або скопіювати посилання
+                {t('doctor.qrCodeAndLinksDesc')}
               </p>
             </button>
           </div>
@@ -201,15 +203,15 @@ export default function DoctorDashboard() {
           {stats?.recentSales && stats.recentSales.length > 0 && (
             <div className="bg-white rounded-lg shadow p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-4">
-                Останні продажі
+                {t('doctor.recentSales')}
               </h2>
               <div className="overflow-x-auto">
                 <table className="min-w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Дата</th>
-                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Товар</th>
-                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Комісія</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('common.date')}</th>
+                      <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.product')}</th>
+                      <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('doctor.commission')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -220,7 +222,7 @@ export default function DoctorDashboard() {
                         </td>
                         <td className="py-3 px-4 text-sm">{sale.product?.name}</td>
                         <td className="py-3 px-4 text-sm text-right font-semibold text-green-600">
-                          +{sale.commission?.toFixed(2) || 0} UAH
+                          +{sale.commission?.toFixed(2) || 0} {t('common.currency')}
                         </td>
                       </tr>
                     ))}
@@ -235,9 +237,9 @@ export default function DoctorDashboard() {
               <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
               </svg>
-              <p className="text-gray-500 mb-2">Поки що немає продажів</p>
+              <p className="text-gray-500 mb-2">{t('doctor.noSalesYet')}</p>
               <p className="text-sm text-gray-400">
-                Поділіться вашим реферальним кодом з пацієнтами
+                {t('doctor.shareCodeWithPatients')}
               </p>
             </div>
           )}

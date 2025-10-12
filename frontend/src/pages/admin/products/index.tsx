@@ -4,11 +4,13 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function AdminProductsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -39,11 +41,11 @@ export default function AdminProductsPage() {
     mutationFn: (data: any) => api.createProduct(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      alert('Товар створено!');
+      alert(t('admin.productCreated'));
       resetForm();
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -51,11 +53,11 @@ export default function AdminProductsPage() {
     mutationFn: ({ id, data }: any) => api.updateProduct(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      alert('Товар оновлено!');
+      alert(t('admin.productUpdated'));
       resetForm();
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -63,10 +65,10 @@ export default function AdminProductsPage() {
     mutationFn: (id: string) => api.deleteProduct(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
-      alert('Товар видалено!');
+      alert(t('admin.productDeleted'));
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -106,7 +108,7 @@ export default function AdminProductsPage() {
   };
 
   const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`Видалити ${name}?`)) {
+    if (window.confirm(t('admin.confirmDeleteProduct', { name }))) {
       deleteMutation.mutate(id);
     }
   };
@@ -126,7 +128,7 @@ export default function AdminProductsPage() {
   return (
     <div>
       <Head>
-        <title>Управління Товарами - Admin</title>
+        <title>{t('admin.manageProducts')} - Admin</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -140,9 +142,9 @@ export default function AdminProductsPage() {
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Назад
+                {t('common.back')}
               </button>
-              <h1 className="text-xl font-bold">Управління Товарами</h1>
+              <h1 className="text-xl font-bold">{t('admin.manageProducts')}</h1>
             </div>
           </div>
         </header>
@@ -156,7 +158,7 @@ export default function AdminProductsPage() {
               <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Додати Товар
+              {t('admin.addProduct')}
             </button>
           </div>
 
@@ -164,11 +166,11 @@ export default function AdminProductsPage() {
             <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Товар</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Категорія</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Розмір</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ціна</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.product')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.category')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.size')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.price')}</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">{t('admin.actions')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y">
@@ -187,19 +189,19 @@ export default function AdminProductsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm">{product.category}</td>
                     <td className="px-6 py-4 text-sm">{product.size || '-'}</td>
-                    <td className="px-6 py-4 text-sm font-semibold">{product.price} UAH</td>
+                    <td className="px-6 py-4 text-sm font-semibold">{product.price} {t('common.currency')}</td>
                     <td className="px-6 py-4 text-right">
                       <button
                         onClick={() => handleEdit(product)}
                         className="text-blue-600 hover:text-blue-800 mr-3"
                       >
-                        Редагувати
+                        {t('admin.edit')}
                       </button>
                       <button
                         onClick={() => handleDelete(product.id, product.name)}
                         className="text-red-600 hover:text-red-800"
                       >
-                        Видалити
+                        {t('admin.delete')}
                       </button>
                     </td>
                   </tr>
@@ -209,7 +211,7 @@ export default function AdminProductsPage() {
 
             {(!products || products.length === 0) && (
               <div className="text-center py-12 text-gray-500">
-                Товарів ще немає
+                {t('admin.noProducts')}
               </div>
             )}
           </div>
@@ -220,12 +222,12 @@ export default function AdminProductsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-8 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-6">
-              {editingProduct ? 'Редагувати Товар' : 'Додати Товар'}
+              {editingProduct ? t('admin.editProduct') : t('admin.addProduct')}
             </h2>
             
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">Назва</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.name')}</label>
                 <input
                   type="text"
                   required
@@ -236,7 +238,7 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Опис</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.description')}</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -246,7 +248,7 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Категорія</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.category')}</label>
                 <input
                   type="text"
                   required
@@ -257,7 +259,7 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Розмір</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.size')}</label>
                 <input
                   type="text"
                   value={formData.size}
@@ -267,7 +269,7 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">Ціна (UAH)</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.price')} ({t('common.currency')})</label>
                 <input
                   type="number"
                   required
@@ -280,7 +282,7 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1">URL Зображення</label>
+                <label className="block text-sm font-medium mb-1">{t('admin.imageUrl')}</label>
                 <input
                   type="text"
                   value={formData.imageUrl}
@@ -295,7 +297,7 @@ export default function AdminProductsPage() {
                   onClick={resetForm}
                   className="flex-1 bg-gray-200 py-2 rounded-lg hover:bg-gray-300"
                 >
-                  Скасувати
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -303,10 +305,10 @@ export default function AdminProductsPage() {
                   className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? 'Збереження...'
+                    ? t('common.saving')
                     : editingProduct
-                    ? 'Оновити'
-                    : 'Створити'}
+                    ? t('admin.update')
+                    : t('admin.create')}
                 </button>
               </div>
             </form>

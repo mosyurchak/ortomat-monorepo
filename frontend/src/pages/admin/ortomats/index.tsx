@@ -3,11 +3,13 @@ import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function AdminOrtomatsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   
   const [showModal, setShowModal] = useState(false);
   const [editingOrtomat, setEditingOrtomat] = useState<any>(null);
@@ -39,10 +41,10 @@ export default function AdminOrtomatsPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
       setShowModal(false);
       resetForm();
-      alert('Ортомат успішно створено!');
+      alert(t('admin.ortomatCreated'));
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -55,10 +57,10 @@ export default function AdminOrtomatsPage() {
       setShowModal(false);
       setEditingOrtomat(null);
       resetForm();
-      alert('Ортомат успішно оновлено!');
+      alert(t('admin.ortomatUpdated'));
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -67,10 +69,10 @@ export default function AdminOrtomatsPage() {
     mutationFn: (id: string) => api.deleteOrtomat(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
-      alert('Ортомат успішно видалено!');
+      alert(t('admin.ortomatDeleted'));
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -105,7 +107,7 @@ export default function AdminOrtomatsPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (confirm('Ви впевнені що хочете видалити цей ортомат?')) {
+    if (confirm(t('admin.confirmDeleteOrtomat'))) {
       deleteMutation.mutate(id);
     }
   };
@@ -119,7 +121,7 @@ export default function AdminOrtomatsPage() {
   if (authLoading || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Завантаження...</div>
+        <div className="text-xl">{t('common.loading')}</div>
       </div>
     );
   }
@@ -141,10 +143,10 @@ export default function AdminOrtomatsPage() {
               <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              Назад до Dashboard
+              {t('admin.backToDashboard')}
             </button>
             <h1 className="text-3xl font-bold text-gray-900">
-              Управління Ортоматами
+              {t('admin.manageOrtomats')}
             </h1>
           </div>
           <button
@@ -154,7 +156,7 @@ export default function AdminOrtomatsPage() {
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Додати Ортомат
+            {t('admin.addOrtomat')}
           </button>
         </div>
 
@@ -164,19 +166,19 @@ export default function AdminOrtomatsPage() {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Назва
+                  {t('admin.name')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Адреса
+                  {t('admin.address')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Комірки
+                  {t('admin.cells')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Статус
+                  {t('admin.status')}
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Дії
+                  {t('admin.actions')}
                 </th>
               </tr>
             </thead>
@@ -200,7 +202,7 @@ export default function AdminOrtomatsPage() {
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-red-100 text-red-800'
                     }`}>
-                      {ortomat.status}
+                      {ortomat.status === 'active' ? t('admin.active') : t('admin.inactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -208,19 +210,19 @@ export default function AdminOrtomatsPage() {
                       onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
                       className="text-blue-600 hover:text-blue-900 mr-4"
                     >
-                      Переглянути
+                      {t('admin.view')}
                     </button>
                     <button
                       onClick={() => handleEdit(ortomat)}
                       className="text-indigo-600 hover:text-indigo-900 mr-4"
                     >
-                      Редагувати
+                      {t('admin.edit')}
                     </button>
                     <button
                       onClick={() => handleDelete(ortomat.id)}
                       className="text-red-600 hover:text-red-900"
                     >
-                      Видалити
+                      {t('admin.delete')}
                     </button>
                   </td>
                 </tr>
@@ -230,7 +232,7 @@ export default function AdminOrtomatsPage() {
 
           {(!ortomats || ortomats.length === 0) && (
             <div className="text-center py-12">
-              <p className="text-gray-500">Ортоматів ще немає</p>
+              <p className="text-gray-500">{t('admin.noOrtomats')}</p>
             </div>
           )}
         </div>
@@ -241,13 +243,13 @@ export default function AdminOrtomatsPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h2 className="text-2xl font-bold mb-4">
-              {editingOrtomat ? 'Редагувати Ортомат' : 'Новий Ортомат'}
+              {editingOrtomat ? t('admin.editOrtomat') : t('admin.newOrtomat')}
             </h2>
             
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Назва
+                  {t('admin.name')}
                 </label>
                 <input
                   type="text"
@@ -260,7 +262,7 @@ export default function AdminOrtomatsPage() {
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Адреса
+                  {t('admin.address')}
                 </label>
                 <input
                   type="text"
@@ -273,7 +275,7 @@ export default function AdminOrtomatsPage() {
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Кількість комірок
+                  {t('admin.cellsCount')}
                 </label>
                 <input
                   type="number"
@@ -287,15 +289,15 @@ export default function AdminOrtomatsPage() {
 
               <div className="mb-6">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Статус
+                  {t('admin.status')}
                 </label>
                 <select
                   value={formData.status}
                   onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="active">{t('admin.active')}</option>
+                  <option value="inactive">{t('admin.inactive')}</option>
                 </select>
               </div>
 
@@ -305,7 +307,7 @@ export default function AdminOrtomatsPage() {
                   onClick={handleCloseModal}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
-                  Скасувати
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="submit"
@@ -313,10 +315,10 @@ export default function AdminOrtomatsPage() {
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
                 >
                   {createMutation.isPending || updateMutation.isPending
-                    ? 'Збереження...'
+                    ? t('common.saving')
                     : editingOrtomat
-                    ? 'Оновити'
-                    : 'Створити'}
+                    ? t('admin.update')
+                    : t('admin.create')}
                 </button>
               </div>
             </form>

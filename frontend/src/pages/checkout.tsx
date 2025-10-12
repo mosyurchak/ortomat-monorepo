@@ -2,9 +2,11 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../lib/api';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function CheckoutPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { productId, ortomatId, ref } = router.query;
   const [phone, setPhone] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -27,7 +29,7 @@ export default function CheckoutPage() {
       router.push(`/payment?orderId=${data.id}`);
     },
     onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
     },
   });
 
@@ -35,12 +37,12 @@ export default function CheckoutPage() {
     e.preventDefault();
 
     if (!acceptedTerms) {
-      alert('Будь ласка, прийміть умови покупки');
+      alert(t('checkout.acceptTermsError'));
       return;
     }
 
     if (!phone) {
-      alert('Будь ласка, введіть номер телефону');
+      alert(t('checkout.phoneRequired'));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function CheckoutPage() {
   if (loadingProduct || loadingOrtomat) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Zavantazhennya...</div>
+        <div className="text-xl">{t('common.loading')}</div>
       </div>
     );
   }
@@ -63,7 +65,7 @@ export default function CheckoutPage() {
   if (!product || !ortomat) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-red-600">Tovar abo ortomat ne znayideno</div>
+        <div className="text-xl text-red-600">{t('checkout.notFound')}</div>
       </div>
     );
   }
@@ -72,11 +74,11 @@ export default function CheckoutPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h1 className="text-3xl font-bold text-gray-900 mb-8">
-          Oformlennya zamovlennya
+          {t('checkout.title')}
         </h1>
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Tovar</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('checkout.product')}</h2>
           
           <div className="flex items-start space-x-4">
             <div className="flex-shrink-0 w-24 h-24 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
@@ -93,18 +95,18 @@ export default function CheckoutPage() {
                 <p className="text-gray-600 text-sm mb-2">{product.description}</p>
               )}
               <div className="flex items-center space-x-4 text-sm text-gray-500">
-                <span>Kategoriya: {product.category}</span>
-                {product.size && <span>Rozmir: {product.size}</span>}
+                <span>{t('common.category')}: {product.category}</span>
+                {product.size && <span>{t('common.size')}: {product.size}</span>}
               </div>
               <div className="mt-2 text-2xl font-bold text-gray-900">
-                {product.price} hrn
+                {product.price} {t('common.currency')}
               </div>
             </div>
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Ortomat</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('checkout.ortomat')}</h2>
           <div className="space-y-2">
             <p className="font-medium">{ortomat.name}</p>
             <p className="text-gray-600 flex items-center">
@@ -118,11 +120,11 @@ export default function CheckoutPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-md p-6 mb-6">
-          <h2 className="text-xl font-semibold mb-4">Kontaktni dani</h2>
+          <h2 className="text-xl font-semibold mb-4">{t('checkout.contactInfo')}</h2>
           
           <div className="mb-4">
             <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-              Nomer telefonu
+              {t('auth.phone')}
             </label>
             <input
               type="tel"
@@ -134,7 +136,7 @@ export default function CheckoutPage() {
               required
             />
             <p className="mt-1 text-sm text-gray-500">
-              Dlya pidtverdzennya zamovlennya
+              {t('checkout.phoneHelper')}
             </p>
           </div>
 
@@ -148,15 +150,15 @@ export default function CheckoutPage() {
                 required
               />
               <span className="ml-2 text-sm text-gray-700">
-                Ya pryymayu umovy pokupky ta zgoden z tem, scho tovar mozhlivo povernuty til'ky u vypadku tovarnogo braku
+                {t('checkout.acceptTerms')}
               </span>
             </label>
           </div>
 
           <div className="mt-6 flex items-center justify-between pt-4 border-t border-gray-200">
             <div>
-              <p className="text-sm text-gray-500">Do splaty:</p>
-              <p className="text-3xl font-bold text-gray-900">{product.price} hrn</p>
+              <p className="text-sm text-gray-500">{t('checkout.toPay')}:</p>
+              <p className="text-3xl font-bold text-gray-900">{product.price} {t('common.currency')}</p>
             </div>
             
             <button
@@ -164,7 +166,7 @@ export default function CheckoutPage() {
               disabled={createOrderMutation.isPending}
               className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {createOrderMutation.isPending ? 'Obrobka...' : 'Perejty do oplaty'}
+              {createOrderMutation.isPending ? t('checkout.processing') : t('checkout.goToPayment')}
             </button>
           </div>
         </form>
@@ -175,7 +177,7 @@ export default function CheckoutPage() {
             onClick={() => router.back()}
             className="text-blue-600 hover:text-blue-700"
           >
-            Povernytysya nazad
+            {t('common.back')}
           </button>
         </div>
       </div>

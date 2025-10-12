@@ -6,9 +6,11 @@ import { useQuery } from 'react-query';
 import { api } from '../../lib/api';
 import { ArrowLeft, ShoppingBag } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProductPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { id, ortomat, ref } = router.query;
   const [isOrdering, setIsOrdering] = useState(false);
 
@@ -22,7 +24,7 @@ export default function ProductPage() {
 
   const handleBuy = () => {
     if (!ortomat) {
-      toast.error('Ortomat information is missing');
+      toast.error(t('product.ortomatMissing'));
       return;
     }
 
@@ -45,7 +47,7 @@ export default function ProductPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading product...</p>
+          <p className="mt-4 text-gray-600">{t('product.loadingProduct')}</p>
         </div>
       </div>
     );
@@ -55,9 +57,9 @@ export default function ProductPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">Product not found</p>
+          <p className="text-gray-600">{t('product.notFound')}</p>
           <Link href="/" className="mt-4 text-primary-600 hover:text-primary-700">
-            Back to home
+            {t('product.backToHome')}
           </Link>
         </div>
       </div>
@@ -79,7 +81,7 @@ export default function ProductPage() {
                 className="flex items-center text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft className="h-5 w-5 mr-2" />
-                Back to catalog
+                {t('product.backToCatalog')}
               </button>
               <div className="flex items-center">
                 <ShoppingBag className="h-8 w-8 text-primary-600" />
@@ -113,20 +115,20 @@ export default function ProductPage() {
 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-primary-600">
-                    {product.price} UAH
+                    {product.price} {t('common.currency')}
                   </span>
                 </div>
 
                 {product.size && (
                   <div className="mb-4">
-                    <span className="text-sm font-medium text-gray-700">Size: </span>
+                    <span className="text-sm font-medium text-gray-700">{t('common.size')}: </span>
                     <span className="text-sm text-gray-900">{product.size}</span>
                   </div>
                 )}
 
                 {product.description && (
                   <div className="mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-2">Description</h2>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-2">{t('product.description')}</h2>
                     <p className="text-gray-600">{product.description}</p>
                   </div>
                 )}
@@ -136,11 +138,11 @@ export default function ProductPage() {
                   disabled={isOrdering}
                   className="w-full bg-primary-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-primary-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isOrdering ? 'Processing...' : 'Buy Now'}
+                  {isOrdering ? t('product.processing') : t('product.buyNow')}
                 </button>
 
                 <p className="mt-4 text-sm text-gray-500 text-center">
-                  Secure payment via LiqPay
+                  {t('product.securePayment')}
                 </p>
               </div>
             </div>

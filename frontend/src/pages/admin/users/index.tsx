@@ -4,10 +4,12 @@ import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
+import { useTranslation } from '../../../hooks/useTranslation';
 
 export default function AdminUsersPage() {
   const router = useRouter();
   const { user: currentUser, isLoading: authLoading } = useAuth();
+  const { t } = useTranslation();
   const [filter, setFilter] = useState<'ALL' | 'DOCTOR' | 'COURIER'>('ALL');
 
   // Захист роуту
@@ -48,7 +50,7 @@ export default function AdminUsersPage() {
   return (
     <div>
       <Head>
-        <title>Управління Користувачами - Admin</title>
+        <title>{t('admin.manageUsers')} - Admin</title>
       </Head>
 
       <div className="min-h-screen bg-gray-50">
@@ -62,9 +64,9 @@ export default function AdminUsersPage() {
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
-                Назад
+                {t('common.back')}
               </button>
-              <h1 className="text-xl font-bold">Управління Користувачами</h1>
+              <h1 className="text-xl font-bold">{t('admin.manageUsers')}</h1>
             </div>
           </div>
         </header>
@@ -75,7 +77,7 @@ export default function AdminUsersPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Лікарі</p>
+                  <p className="text-sm text-gray-600 mb-1">{t('admin.doctors')}</p>
                   <p className="text-3xl font-bold text-blue-600">{doctorsCount}</p>
                 </div>
                 <div className="bg-blue-100 p-3 rounded-full">
@@ -89,7 +91,7 @@ export default function AdminUsersPage() {
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Кур'єри</p>
+                  <p className="text-sm text-gray-600 mb-1">{t('admin.couriers')}</p>
                   <p className="text-3xl font-bold text-green-600">{couriersCount}</p>
                 </div>
                 <div className="bg-green-100 p-3 rounded-full">
@@ -112,7 +114,7 @@ export default function AdminUsersPage() {
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
-              Всі Користувачі
+              {t('admin.allUsers')}
             </button>
             <button
               onClick={() => setFilter('DOCTOR')}
@@ -122,7 +124,7 @@ export default function AdminUsersPage() {
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
-              Лікарі ({doctorsCount})
+              {t('admin.doctors')} ({doctorsCount})
             </button>
             <button
               onClick={() => setFilter('COURIER')}
@@ -132,7 +134,7 @@ export default function AdminUsersPage() {
                   : 'bg-white text-gray-700 hover:bg-gray-100'
               }`}
             >
-              Кур'єри ({couriersCount})
+              {t('admin.couriers')} ({couriersCount})
             </button>
           </div>
 
@@ -141,10 +143,10 @@ export default function AdminUsersPage() {
             <table className="min-w-full">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Користувач</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Роль</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Контакти</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Дата реєстрації</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.user')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.role')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.contacts')}</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">{t('admin.registrationDate')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -175,7 +177,7 @@ export default function AdminUsersPage() {
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {user.role}
+                        {user.role === 'DOCTOR' ? t('register.doctor') : user.role === 'COURIER' ? t('register.courier') : user.role}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -204,7 +206,7 @@ export default function AdminUsersPage() {
 
             {filteredUsers?.length === 0 && (
               <div className="text-center py-12 text-gray-500">
-                Користувачів не знайдено
+                {t('admin.noUsers')}
               </div>
             )}
           </div>

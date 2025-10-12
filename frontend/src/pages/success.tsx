@@ -2,9 +2,11 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState } from 'react';
 import { api } from '../lib/api';
+import { useTranslation } from '../hooks/useTranslation';
 
 export default function SuccessPage() {
   const router = useRouter();
+  const { t } = useTranslation();
   const { orderId } = router.query;
   const [cellOpening, setCellOpening] = useState(false);
   const [cellOpened, setCellOpened] = useState(false);
@@ -24,7 +26,7 @@ export default function SuccessPage() {
       setCellOpening(false);
     },
     onError: (error: any) => {
-      alert(`Pomylka: ${error.message}`);
+      alert(`${t('errors.general')}: ${error.message}`);
       setCellOpening(false);
     },
   });
@@ -43,7 +45,7 @@ export default function SuccessPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Zavantazhennya...</div>
+        <div className="text-xl">{t('common.loading')}</div>
       </div>
     );
   }
@@ -53,13 +55,13 @@ export default function SuccessPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="text-xl text-red-600 mb-4">
-            Zamovlennya ne znaydeno
+            {t('success.orderNotFound')}
           </div>
           <button
             onClick={() => router.push('/')}
             className="text-blue-600 hover:text-blue-700"
           >
-            Povernytysya na golovnu
+            {t('success.backToHome')}
           </button>
         </div>
       </div>
@@ -78,26 +80,26 @@ export default function SuccessPage() {
               </svg>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Dyakuyemo za pokupku!
+              {t('success.thankYou')}
             </h1>
             <p className="text-gray-600">
-              Vashe zamovlennya uspishno oformleno
+              {t('success.orderSuccess')}
             </p>
           </div>
 
           {/* Order Details */}
           <div className="border-t border-b border-gray-200 py-4 mb-6 space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Nomer zamovlennya:</span>
+              <span className="text-gray-600">{t('success.orderNumber')}:</span>
               <span className="font-semibold">{order.orderNumber}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Nomer komirky:</span>
+              <span className="text-gray-600">{t('success.cellNumber')}:</span>
               <span className="font-semibold text-xl text-blue-600">#{order.cellNumber}</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-gray-600">Suma:</span>
-              <span className="font-semibold">{order.amount} hrn</span>
+              <span className="text-gray-600">{t('success.amount')}:</span>
+              <span className="font-semibold">{order.amount} {t('common.currency')}</span>
             </div>
           </div>
 
@@ -110,9 +112,13 @@ export default function SuccessPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                   <div className="text-sm text-yellow-800">
-                    <p className="font-semibold mb-1">Uvaga!</p>
-                    <p>Pidijdit do ortomatu <strong>#{order.cellNumber}</strong> ta natysnit knopku nizhche.</p>
-                    <p className="mt-1">Komirka vidkryetsya na <strong>30 sekund</strong>.</p>
+                    <p className="font-semibold mb-1">{t('success.attention')}!</p>
+                    <p>
+                      Підійдіть до ортомату <strong>#{order.cellNumber}</strong> та натисніть кнопку нижче.
+                    </p>
+                    <p className="mt-1">
+                      Комірка відкриється на <strong>30 секунд</strong>.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -128,14 +134,14 @@ export default function SuccessPage() {
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
-                    Vidkryttya komirky...
+                    {t('success.openingCell')}
                   </>
                 ) : (
                   <>
                     <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
                     </svg>
-                    Vidchynyty komirku #{order.cellNumber}
+                    Відчинити комірку #{order.cellNumber}
                   </>
                 )}
               </button>
@@ -149,10 +155,10 @@ export default function SuccessPage() {
                   </svg>
                   <div>
                     <p className="font-semibold text-green-800 mb-1">
-                      Komirka vidkryta!
+                      {t('success.cellOpened')}!
                     </p>
                     <p className="text-sm text-green-700">
-                      U vas ye 30 sekund, shchob zabraty tovar z komirky #{order.cellNumber}
+                      У вас є 30 секунд, щоб забрати товар з комірки <strong>#{order.cellNumber}</strong>
                     </p>
                   </div>
                 </div>
@@ -166,7 +172,7 @@ export default function SuccessPage() {
               onClick={() => router.push('/')}
               className="text-blue-600 hover:text-blue-700 font-medium"
             >
-              Povernytysya na golovnu
+              {t('success.backToHome')}
             </button>
           </div>
         </div>
