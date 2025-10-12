@@ -4,9 +4,36 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
-  // Enable CORS
+  // CORS - підтримка множинних доменів
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'https://ortomat-monorepo.vercel.app',
+    'https://ortomat.com.ua',
+    'https://www.ortomat.com.ua',
+  ];
+
+  // Додаємо FRONTEND_URL з environment якщо є
+  if (process.env.FRONTEND_URL) {
+    const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+    allowedOrigins.push(...envOrigins);
+  }
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || '*',
+    origin: (origin, callback) => {
+      // Дозволяємо запити без origin (Postman, curl, etc)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+
+      // Перевіряємо чи origin в списку дозволених
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('❌ CORS blocked origin:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   });
   
@@ -20,5 +47,6 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   
   console.log(`🚀 Backend running on port ${port}`);
+  console.log('✅ Allowed CORS origins:', allowedOrigins);
 }
 bootstrap();
