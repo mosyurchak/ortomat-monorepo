@@ -36,11 +36,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (token) {
       try {
         const userData = await api.getProfile();
+        console.log('✅ User loaded from token:', userData);
         setUser(userData);
-        console.log('✅ User loaded:', userData);
       } catch (error) {
         console.error('❌ Auth check failed:', error);
-        localStorage.removeItem('token');
+        // НЕ видаляємо token одразу, даємо шанс
+        // Можливо це тимчасова помилка мережі
+        console.log('⚠️ Keeping token, might be network issue');
       }
     }
     setIsLoading(false);
@@ -51,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('🔐 Attempting login...', email);
       
       const response = await api.login(email, password);
-      console.log('🔥 Login response:', response);
+      console.log('📥 Login response:', response);
       
       const { access_token, user: userData } = response;
 
@@ -68,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       setUser(userData);
 
-      // Невелика затримка щоб token встиг зберегтися
+      // Невелика затримка щоб token встиг зберегтись
       await new Promise(resolve => setTimeout(resolve, 100));
 
       // ✅ Редирект залежно від ролі (case-insensitive)
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
+    console.log('🚪 Logging out...');
     localStorage.removeItem('token');
     setUser(null);
     router.push('/login');
