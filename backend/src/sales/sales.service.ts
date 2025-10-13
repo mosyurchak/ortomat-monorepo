@@ -32,7 +32,7 @@ export class SalesService {
 
     // ✅ Топ-5 лікарів за кількістю продажів
     const doctorsWithSales = await this.prisma.user.findMany({
-      where: { role: 'DOCTOR' }, // ✅ Uppercase
+      where: { role: 'DOCTOR' },
       include: {
         _count: {
           select: {
@@ -107,24 +107,59 @@ export class SalesService {
     };
   }
 
-  // ✅ Статистика лікаря
+  // ✅ Статистика лікаря - ВИПРАВЛЕНО
   async getDoctorStats(doctorId: string) {
     console.log('📊 Getting doctor stats for:', doctorId);
 
+    // Перевіряємо чи лікар існує
+    const doctor = await this.prisma.user.findUnique({
+      where: { id: doctorId },
+      include: {
+        doctorOrtomats: true,
+      },
+    });
+
+    if (!doctor) {
+      throw new Error('Doctor not found');
+    }
+
+    console.log('👤 Doctor:', doctor.email);
+    console.log('🏥 Doctor ortomats:', doctor.doctorOrtomats.length);
+
+    // Знаходимо всі продажі де doctorId співпадає
     const sales = await this.prisma.sale.findMany({
       where: {
         doctorId,
         status: 'completed',
       },
       include: {
-        product: true,
-        ortomat: true,
+        product: {
+          select: {
+            name: true,
+          },
+        },
+        ortomat: {
+          select: {
+            name: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',
       },
-      take: 10,
     });
+
+    console.log('💰 Found sales:', sales.length);
+    
+    // Додатковий дебаг - показуємо перший продаж
+    if (sales.length > 0) {
+      console.log('📦 First sale:', {
+        id: sales[0].id,
+        doctorId: sales[0].doctorId,
+        amount: sales[0].amount,
+        commission: sales[0].commission,
+      });
+    }
 
     const totalSales = sales.length;
     const totalEarnings = sales.reduce(
@@ -132,24 +167,34 @@ export class SalesService {
       0,
     );
 
+    console.log('📊 Stats:', { totalSales, totalEarnings });
+
+    // Беремо останні 10 продажів для відображення
+    const recentSales = sales.slice(0, 10);
+
     // Статистика по місяцях (PostgreSQL)
-    const salesByMonth = await this.prisma.$queryRaw`
-      SELECT 
-        DATE_TRUNC('month', "createdAt") as month,
-        COUNT(*)::int as count,
-        COALESCE(SUM(commission), 0)::float as earnings
-      FROM "Sale"
-      WHERE "doctorId" = ${doctorId}
-        AND status = 'completed'
-      GROUP BY month
-      ORDER BY month DESC
-      LIMIT 6
-    `;
+    let salesByMonth = [];
+    try {
+      salesByMonth = await this.prisma.$queryRaw`
+        SELECT 
+          DATE_TRUNC('month', "createdAt") as month,
+          COUNT(*)::int as count,
+          COALESCE(SUM(commission), 0)::float as earnings
+        FROM sales
+        WHERE "doctorId" = ${doctorId}
+          AND status = 'completed'
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 6
+      `;
+    } catch (error) {
+      console.error('Error getting sales by month:', error);
+    }
 
     return {
       totalSales,
       totalEarnings,
-      recentSales: sales,
+      recentSales,
       salesByMonth,
     };
   }
@@ -161,20 +206,45 @@ export class SalesService {
     amount: number;
     referralCode?: string;
     paymentId?: string;
+    customerPhone?: string;
   }) {
     let doctorId = null;
     let commission = null;
+    let doctorOrtomatId = null;
+
+    console.log('💰 Creating sale with data:', {
+      productId: data.productId,
+      ortomatId: data.ortomatId,
+      referralCode: data.referralCode,
+    });
 
     // Якщо є реферальний код, знаходимо лікаря і обчислюємо комісію
     if (data.referralCode) {
+      console.log('🔍 Looking for referral code:', data.referralCode);
+      
       const doctorOrtomat = await this.prisma.doctorOrtomat.findUnique({
         where: { referralCode: data.referralCode },
+        include: {
+          doctor: true,
+        },
       });
 
       if (doctorOrtomat) {
         doctorId = doctorOrtomat.doctorId;
+        doctorOrtomatId = doctorOrtomat.id;
         commission = (data.amount * doctorOrtomat.commissionPercent) / 100;
+        
+        console.log('✅ Found doctor:', {
+          doctorId,
+          doctorEmail: doctorOrtomat.doctor.email,
+          commission,
+          commissionPercent: doctorOrtomat.commissionPercent,
+        });
+      } else {
+        console.log('⚠️ Referral code not found:', data.referralCode);
       }
+    } else {
+      console.log('⚠️ No referral code provided');
     }
 
     // Створюємо продаж
@@ -184,17 +254,46 @@ export class SalesService {
         ortomatId: data.ortomatId,
         cellNumber: data.cellNumber,
         amount: data.amount,
-        doctorId,
+        doctorId, // ✅ Обов'язково встановлюємо doctorId
         commission,
         referralCode: data.referralCode,
         paymentId: data.paymentId,
+        customerPhone: data.customerPhone,
         status: 'completed',
+        doctorOrtomatId, // ✅ Зберігаємо зв'язок
+        completedAt: new Date(),
       },
       include: {
         product: true,
-        doctor: true,
+        doctor: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
       },
     });
+
+    console.log('✅ Sale created:', {
+      saleId: sale.id,
+      doctorId: sale.doctorId,
+      commission: sale.commission,
+      amount: sale.amount,
+    });
+
+    // Оновлюємо статистику в doctorOrtomat якщо є
+    if (doctorOrtomatId) {
+      await this.prisma.doctorOrtomat.update({
+        where: { id: doctorOrtomatId },
+        data: {
+          totalSales: { increment: 1 },
+          totalEarnings: { increment: commission || 0 },
+        },
+      });
+      console.log('✅ Updated doctor ortomat stats');
+    }
 
     // Видаляємо продукт з комірки
     await this.ortomatsService.updateCellProduct(
