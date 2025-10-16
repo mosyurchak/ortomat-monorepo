@@ -12,8 +12,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { OrtomatsService } from './ortomats.service';
 import { OrtomatsGateway } from './ortomats.gateway';
-import { CreateOrtomatDto, UpdateOrtomatDto } from './dto/create-ortomat.dto.ts';
-import { UpdateCellProductDto, MarkCellFilledDto } from './dto/update-cell.dto.ts';
+import { CreateOrtomatDto, UpdateOrtomatDto } from './dto/create-ortomat.dto';
+import { UpdateCellProductDto, MarkCellFilledDto } from './dto/update-cell.dto';
 
 @Controller('ortomats')
 export class OrtomatsController {
