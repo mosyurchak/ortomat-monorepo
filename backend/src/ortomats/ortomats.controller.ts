@@ -12,6 +12,8 @@ import {
 import { AuthGuard } from '@nestjs/passport';
 import { OrtomatsService } from './ortomats.service';
 import { OrtomatsGateway } from './ortomats.gateway';
+import { CreateOrtomatDto, UpdateOrtomatDto } from './dto/create-ortomat.dto';
+import { UpdateCellProductDto, MarkCellFilledDto } from './dto/update-cell.dto';
 
 @Controller('ortomats')
 export class OrtomatsController {
@@ -20,9 +22,8 @@ export class OrtomatsController {
     private readonly ortomatsGateway: OrtomatsGateway,
   ) {}
 
-  // ==================== WebSocket Device Status (ПЕРШЕ МІСЦЕ!) ====================
+  // ==================== WebSocket Device Status ====================
   
-  // ✅ Статус всіх WebSocket пристроїв
   @Get('devices/status')
   getDevicesStatus() {
     const devices = this.ortomatsGateway.getConnectedDevices();
@@ -38,7 +39,6 @@ export class OrtomatsController {
     };
   }
 
-  // ✅ Статус конкретного WebSocket пристрою
   @Get('devices/:deviceId/status')
   getDeviceStatus(@Param('deviceId') deviceId: string) {
     const isOnline = this.ortomatsGateway.isDeviceOnline(deviceId);
@@ -55,7 +55,7 @@ export class OrtomatsController {
 
   @UseGuards(AuthGuard('jwt'))
   @Post()
-  create(@Body() createOrtomatDto: any) {
+  create(@Body() createOrtomatDto: CreateOrtomatDto) {
     return this.ortomatsService.create(createOrtomatDto);
   }
 
@@ -79,7 +79,6 @@ export class OrtomatsController {
     return this.ortomatsService.getCatalogWithAvailability(id, referralCode);
   }
 
-  // Inventory endpoint для кур'єра
   @Get(':id/inventory')
   getInventory(@Param('id') id: string) {
     return this.ortomatsService.getInventory(id);
@@ -87,7 +86,7 @@ export class OrtomatsController {
 
   @UseGuards(AuthGuard('jwt'))
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateOrtomatDto: any) {
+  update(@Param('id') id: string, @Body() updateOrtomatDto: UpdateOrtomatDto) {
     return this.ortomatsService.update(id, updateOrtomatDto);
   }
 
@@ -131,12 +130,13 @@ export class OrtomatsController {
     return this.ortomatsService.openCell(id, body.cellNumber);
   }
 
+  // ✅ Адмін: Прив'язати/видалити товар з комірки
   @UseGuards(AuthGuard('jwt'))
-  @Post(':id/cells/:cellNumber/product')
+  @Patch(':id/cells/:cellNumber/product')
   updateCellProduct(
     @Param('id') id: string,
     @Param('cellNumber') cellNumber: string,
-    @Body() body: { productId: string | null },
+    @Body() body: UpdateCellProductDto,
   ) {
     return this.ortomatsService.updateCellProduct(
       id,
@@ -145,7 +145,37 @@ export class OrtomatsController {
     );
   }
 
-  // Refill endpoint для кур'єра
+  // ✅ НОВИЙ: Кур'єр відкриває комірку для поповнення
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/cells/:cellNumber/open-for-refill')
+  openCellForRefill(
+    @Param('id') id: string,
+    @Param('cellNumber') cellNumber: string,
+    @Body() body: { courierId: string },
+  ) {
+    return this.ortomatsService.openCellForRefill(
+      id,
+      parseInt(cellNumber),
+      body.courierId,
+    );
+  }
+
+  // ✅ НОВИЙ: Кур'єр відмічає комірку як заповнену
+  @UseGuards(AuthGuard('jwt'))
+  @Post(':id/cells/:cellNumber/mark-filled')
+  markCellFilled(
+    @Param('id') id: string,
+    @Param('cellNumber') cellNumber: string,
+    @Body() body: MarkCellFilledDto,
+  ) {
+    return this.ortomatsService.markCellFilled(
+      id,
+      parseInt(cellNumber),
+      body.courierId,
+    );
+  }
+
+  // Старий refill endpoint - залишаємо для зворотної сумісності
   @Post(':id/cells/:cellNumber/refill')
   refillCell(
     @Param('id') id: string,

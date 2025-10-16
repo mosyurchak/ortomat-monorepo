@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Завантаження...",
+    "viewDetails": "Детальніше",
     "error": "Помилка",
     "success": "Успішно",
     "cancel": "Скасувати",
@@ -90,6 +91,11 @@
     "showInStock": "Тільки в наявності"
   },
   "product": {
+    "color": "Колір",
+    "material": "Матеріал", 
+    "manufacturer": "Виробник",
+    "video": "Відео",
+    "terms": "Умови покупки",
     "title": "Товар",
     "description": "Опис товару",
     "characteristics": "Характеристики",
@@ -165,6 +171,12 @@
   },
   "admin": {
     "dashboard": "Адміністративна панель",
+    "city": "Місто",
+    "manageCells": "Управління комірками",
+    "assignProduct": "Призначити товар",
+    "selectProduct": "Оберіть товар",
+    "cellAssigned": "Товар призначено комірці",
+    "noCells": "Комірок не знайдено",
     "welcome": "Вітаємо, {{firstName}} {{lastName}}!",
     "doctors": "Лікарі",
     "couriers": "Кур'єри",
@@ -314,6 +326,12 @@
     "shareCodeWithPatients": "Поділіться вашим реферальним кодом з пацієнтами"
   },
   "courier": {
+    "inventory": "Інвентар Комірок",
+    "opening": "Відкриття...",
+    "placeProduct": "Покладіть товар",
+    "closeCell": "Закрийте комірку",
+    "cellFilled": "Комірка заповнена!",
+    "openAndFill": "Відкрити та заповнити",
     "dashboard": "Панель кур'єра",
     "cellNumber": "Комірка #{{number}}",
     "cabinet": "Кабінет кур'єра",

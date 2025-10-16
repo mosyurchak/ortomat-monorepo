@@ -16,6 +16,7 @@ export default function AdminOrtomatsPage() {
   const [formData, setFormData] = useState({
     name: '',
     address: '',
+    city: '', // ✅ ДОДАНО
     totalCells: 37,
     status: 'active',
   });
@@ -80,6 +81,7 @@ export default function AdminOrtomatsPage() {
     setFormData({
       name: '',
       address: '',
+      city: '', // ✅ ДОДАНО
       totalCells: 37,
       status: 'active',
     });
@@ -100,6 +102,7 @@ export default function AdminOrtomatsPage() {
     setFormData({
       name: ortomat.name,
       address: ortomat.address,
+      city: ortomat.city || '', // ✅ ДОДАНО
       totalCells: ortomat.totalCells,
       status: ortomat.status,
     });
@@ -172,6 +175,9 @@ export default function AdminOrtomatsPage() {
                   {t('admin.address')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  {t('admin.city')}
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {t('admin.cells')}
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -194,6 +200,9 @@ export default function AdminOrtomatsPage() {
                     <div className="text-sm text-gray-900">{ortomat.address}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{ortomat.city || '-'}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{ortomat.totalCells}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -207,7 +216,7 @@ export default function AdminOrtomatsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
+                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
                       className="text-blue-600 hover:text-blue-900 mr-4"
                     >
                       {t('admin.view')}
@@ -269,6 +278,20 @@ export default function AdminOrtomatsPage() {
                   required
                   value={formData.address}
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              {/* ✅ ДОДАНО: Поле "Місто" */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {t('admin.city')}
+                </label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                  placeholder="Київ, Львів, Одеса..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>

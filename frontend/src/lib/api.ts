@@ -9,10 +9,9 @@ class ApiClient {
   }
 
   private async request(endpoint: string, options: RequestInit = {}) {
-    // ✅ endpoint вже містить /api (наприклад: /api/ortomats)
     const url = `${this.baseURL}${endpoint}`;
     
-    console.log('API Request:', url); // Для дебагу
+    console.log('API Request:', url);
     
     const token = typeof window !== 'undefined' 
       ? localStorage.getItem('token') 
@@ -92,6 +91,30 @@ class ApiClient {
 
   async getDeviceStatus(deviceId: string) {
     return this.request(`/api/ortomats/devices/${deviceId}/status`);
+  }
+
+  // ✅ НОВИЙ: Оновити товар комірки (адмін)
+  async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
+    return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/product`, {
+      method: 'PATCH',
+      body: JSON.stringify({ productId }),
+    });
+  }
+
+  // ✅ НОВИЙ: Відкрити комірку для поповнення (кур'єр)
+  async openCellForRefill(ortomatId: string, cellNumber: number, courierId: string) {
+    return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/open-for-refill`, {
+      method: 'POST',
+      body: JSON.stringify({ courierId }),
+    });
+  }
+
+  // ✅ НОВИЙ: Відмітити комірку як заповнену (кур'єр)
+  async markCellFilled(ortomatId: string, cellNumber: number, courierId: string) {
+    return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/mark-filled`, {
+      method: 'POST',
+      body: JSON.stringify({ courierId }),
+    });
   }
 
   // ==================== PRODUCTS ====================

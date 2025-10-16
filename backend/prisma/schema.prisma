@@ -56,6 +56,7 @@ model Ortomat {
   id      String @id @default(uuid())
   name    String
   address String
+  city    String? // ✅ ДОДАНО: Місто
   totalCells Int @default(37)
   status String @default("active")
   createdAt DateTime @default(now())
@@ -74,7 +75,7 @@ model Cell {
   number   Int
   ortomatId String
   productId String?
-  isAvailable Boolean @default(true)
+  isAvailable Boolean @default(true) // ✅ true = порожня (червона), false = заповнена (зелена)
   lastRefillDate DateTime?
   courierId String?
   createdAt DateTime @default(now())
@@ -90,12 +91,22 @@ model Cell {
 model Product {
   id          String  @id @default(uuid())
   name        String
-  description String?
+  description String? @db.Text // ✅ ЗМІНЕНО: тепер Text для довгих описів
   category    String
   size        String?
   price       Float
-  imageUrl    String?
+  
+  // ✅ ДОДАНО: Нові поля для карточки товару
+  images      String[] @default([]) // Масив URL зображень (до 6 штук)
+  color       String?
+  material    String?
+  manufacturer String?
   videoUrl    String?
+  termsAndConditions String? @db.Text // Умови покупки
+  
+  // Старе поле imageUrl залишаємо для зворотної сумісності
+  imageUrl    String?
+  
   attributes  Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
