@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import Head from 'next/head';
@@ -8,15 +8,8 @@ import { useTranslation } from '../../hooks/useTranslation';
 
 export default function CourierDashboard() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { user, isLoading: authLoading, logout } = useAuth();
   const { t } = useTranslation();
-  const [showRefillModal, setShowRefillModal] = useState(false);
-  const [selectedOrtomat, setSelectedOrtomat] = useState<any>(null);
-  const [refillData, setRefillData] = useState({
-    cellNumber: 1,
-    productId: '',
-  });
 
   // Захист роуту
   useEffect(() => {
@@ -31,73 +24,6 @@ export default function CourierDashboard() {
     queryFn: () => api.getOrtomats(),
     enabled: !!user && user.role.toUpperCase() === 'COURIER',
   });
-
-  // Завантаження товарів
-  const { data: products } = useQuery({
-    queryKey: ['products'],
-    queryFn: () => api.getProducts(),
-    enabled: !!user && user.role.toUpperCase() === 'COURIER',
-  });
-
-  // Завантаження інвентарю вибраного ортомату
-  const { data: inventory } = useQuery({
-    queryKey: ['inventory', selectedOrtomat?.id],
-    queryFn: () => api.getOrtomatInventory(selectedOrtomat!.id),
-    enabled: !!selectedOrtomat,
-  });
-
-  // Мутація для поповнення комірки
-  const refillMutation = useMutation({
-    mutationFn: (data: any) =>
-      api.refillCell(data.ortomatId, data.cellNumber, {
-        productId: data.productId,
-        courierId: user!.id,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['inventory', selectedOrtomat?.id] });
-      queryClient.invalidateQueries({ queryKey: ['ortomats'] });
-      alert(t('courier.cellRefilled'));
-      setShowRefillModal(false);
-      setRefillData({ cellNumber: 1, productId: '' });
-    },
-    onError: (error: any) => {
-      alert(`${t('errors.general')}: ${error.message}`);
-    },
-  });
-
-  const handleOpenRefillModal = (ortomat: any) => {
-    setSelectedOrtomat(ortomat);
-    setShowRefillModal(true);
-  };
-
-  const handleCloseRefillModal = () => {
-    setShowRefillModal(false);
-    setSelectedOrtomat(null);
-    setRefillData({ cellNumber: 1, productId: '' });
-  };
-
-  const handleRefill = (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!selectedOrtomat || !refillData.productId) {
-      alert(t('courier.selectProduct'));
-      return;
-    }
-
-    refillMutation.mutate({
-      ortomatId: selectedOrtomat.id,
-      cellNumber: refillData.cellNumber,
-      productId: refillData.productId,
-      courierId: user!.id,
-    });
-  };
-
-  // Визначення порожніх комірок
-  const emptyCells = inventory
-    ? Array.from({ length: selectedOrtomat?.totalCells || 37 }, (_, i) => i + 1).filter(
-        (cellNum) => !inventory.some((cell: any) => cell.number === cellNum && cell.productId),
-      )
-    : [];
 
   if (authLoading || ortomatsLoading) {
     return (
@@ -152,10 +78,10 @@ export default function CourierDashboard() {
           {/* Ortomats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {ortomats?.map((ortomat: any) => {
-              const filledCells = ortomat.cells?.filter((c: any) => c.productId).length || 0;
-              const fillPercentage = Math.round(
-                (filledCells / ortomat.totalCells) * 100,
-              );
+              const filledCells = ortomat.cells?.filter((c: any) => c.productId && !c.isAvailable).length || 0;
+              const fillPercentage = ortomat.totalCells 
+                ? Math.round((filledCells / ortomat.totalCells) * 100)
+                : 0;
 
               return (
                 <div
@@ -170,6 +96,9 @@ export default function CourierDashboard() {
                           {ortomat.name}
                         </h3>
                         <p className="text-sm text-gray-600">{ortomat.address}</p>
+                        {ortomat.city && (
+                          <p className="text-xs text-gray-500 mt-1">{ortomat.city}</p>
+                        )}
                       </div>
                       <span
                         className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
@@ -204,34 +133,32 @@ export default function CourierDashboard() {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => handleOpenRefillModal(ortomat)}
-                        className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center"
+                    {/* ✅ ВИДАЛЕНО: Кнопка "Поповнення" - залишили тільки "Деталі" */}
+                    <button
+                      onClick={() => router.push(`/courier/ortomats/${ortomat.id}`)}
+                      className="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center"
+                    >
+                      <svg
+                        className="w-5 h-5 mr-2"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <svg
-                          className="w-5 h-5 mr-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        {t('courier.refill')}
-                      </button>
-                      <button
-                        onClick={() => router.push(`/courier/ortomats/${ortomat.id}`)}
-                        className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-300"
-                      >
-                        {t('courier.details')}
-                      </button>
-                    </div>
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                        />
+                      </svg>
+                      {t('courier.details')}
+                    </button>
                   </div>
                 </div>
               );
@@ -261,80 +188,6 @@ export default function CourierDashboard() {
           )}
         </main>
       </div>
-
-      {/* Refill Modal */}
-      {showRefillModal && selectedOrtomat && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold mb-4">
-              {t('courier.refillOrtomat', { name: selectedOrtomat.name })}
-            </h2>
-
-            <form onSubmit={handleRefill}>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('courier.cell')}
-                </label>
-                <select
-                  value={refillData.cellNumber}
-                  onChange={(e) =>
-                    setRefillData({ ...refillData, cellNumber: parseInt(e.target.value) })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {emptyCells.length > 0 ? (
-                    emptyCells.map((cellNum) => (
-                      <option key={cellNum} value={cellNum}>
-                        {t('courier.cellNumber', { number: cellNum })} ({t('courier.empty')})
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">{t('courier.noEmptyCells')}</option>
-                  )}
-                </select>
-              </div>
-
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('admin.product')}
-                </label>
-                <select
-                  value={refillData.productId}
-                  onChange={(e) =>
-                    setRefillData({ ...refillData, productId: e.target.value })
-                  }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  required
-                >
-                  <option value="">{t('courier.selectProduct')}</option>
-                  {products?.map((product: any) => (
-                    <option key={product.id} value={product.id}>
-                      {product.name} - {product.price} {t('common.currency')}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex justify-end space-x-3">
-                <button
-                  type="button"
-                  onClick={handleCloseRefillModal}
-                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                >
-                  {t('common.cancel')}
-                </button>
-                <button
-                  type="submit"
-                  disabled={refillMutation.isPending || emptyCells.length === 0}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
-                >
-                  {refillMutation.isPending ? t('common.saving') : t('courier.addProduct')}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

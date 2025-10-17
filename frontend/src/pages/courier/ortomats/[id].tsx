@@ -126,7 +126,11 @@ export default function CourierOrtomatDetailPage() {
 
   const filledCells = inventory?.filter((c: Cell) => !c.isAvailable && c.productId).length || 0;
   const emptyCells = inventory?.filter((c: Cell) => c.isAvailable && c.productId).length || 0;
-  const fillPercentage = Math.round((filledCells / (ortomat?.totalCells || 37)) * 100);
+  
+  // ✅ ВИПРАВЛЕНО: Використовуємо реальну кількість комірок
+  const fillPercentage = ortomat?.totalCells 
+    ? Math.round((filledCells / ortomat.totalCells) * 100) 
+    : 0;
 
   return (
     <div>
@@ -138,8 +142,9 @@ export default function CourierOrtomatDetailPage() {
         <header className="bg-white shadow-sm border-b">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
+              {/* ✅ ВИПРАВЛЕНО: Використовуємо router.back() */}
               <button
-                onClick={() => router.push('/courier/ortomats')}
+                onClick={() => router.back()}
                 className="flex items-center text-gray-600 hover:text-gray-900"
               >
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -225,7 +230,8 @@ export default function CourierOrtomatDetailPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-bold mb-4">Інвентар Комірок</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {Array.from({ length: ortomat?.totalCells || 37 }, (_, i) => i + 1).map(
+              {/* ✅ ВИПРАВЛЕНО: Використовуємо реальну кількість комірок без fallback на 37 */}
+              {Array.from({ length: ortomat?.totalCells || 0 }, (_, i) => i + 1).map(
                 (cellNum) => {
                   const cell = inventory?.find((c: Cell) => c.number === cellNum);
                   
