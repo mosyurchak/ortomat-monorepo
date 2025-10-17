@@ -62,7 +62,19 @@ export default function AdminCellsManagementPage() {
     },
   });
 
-  const handleCellClick = (cell: Cell) => {
+  const handleCellClick = (cellNumber: number) => {
+    // Знаходимо комірку в інвентарі або створюємо нову
+    const existingCell = cells?.find((c: Cell) => c.number === cellNumber);
+    
+    const cell = existingCell || {
+      id: `temp-${cellNumber}`,
+      number: cellNumber,
+      ortomatId: id as string,
+      productId: null,
+      isAvailable: true,
+      product: null,
+    } as Cell;
+
     setSelectedCell(cell);
     setSelectedProductId(cell.productId || '');
     setShowModal(true);
@@ -97,13 +109,18 @@ export default function AdminCellsManagementPage() {
     return null;
   }
 
-  if (!ortomat || !cells) {
+  if (!ortomat) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-xl text-red-600">{t('errors.notFound')}</div>
       </div>
     );
   }
+
+  // ✅ ВИПРАВЛЕНО: Рахуємо статистику правильно
+  const filledCells = cells?.filter((c: Cell) => c.productId && !c.isAvailable).length || 0;
+  const assignedCells = cells?.filter((c: Cell) => c.productId).length || 0;
+  const unassignedCells = ortomat.totalCells - assignedCells;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -130,22 +147,22 @@ export default function AdminCellsManagementPage() {
 
         {/* Info Card */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             <div>
               <p className="text-sm text-gray-600 mb-1">{t('admin.totalCells')}</p>
               <p className="text-2xl font-bold text-gray-900">{ortomat.totalCells}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">{t('admin.filledCells')}</p>
-              <p className="text-2xl font-bold text-green-600">
-                {cells.filter((c: Cell) => c.productId && !c.isAvailable).length}
-              </p>
+              <p className="text-sm text-gray-600 mb-1">Призначено товар</p>
+              <p className="text-2xl font-bold text-blue-600">{assignedCells}</p>
             </div>
             <div>
-              <p className="text-sm text-gray-600 mb-1">{t('admin.emptyCells')}</p>
-              <p className="text-2xl font-bold text-gray-600">
-                {cells.filter((c: Cell) => !c.productId).length}
-              </p>
+              <p className="text-sm text-gray-600 mb-1">{t('admin.filledCells')}</p>
+              <p className="text-2xl font-bold text-green-600">{filledCells}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-600 mb-1">Без товару</p>
+              <p className="text-2xl font-bold text-gray-600">{unassignedCells}</p>
             </div>
           </div>
         </div>
@@ -154,31 +171,36 @@ export default function AdminCellsManagementPage() {
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">{t('admin.cells')}</h2>
           
-          {(!cells || cells.length === 0) ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500">{t('admin.noCells')}</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-              {cells.map((cell: Cell) => (
+          {/* ✅ ВИПРАВЛЕНО: Відображаємо всі комірки від 1 до totalCells */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+            {Array.from({ length: ortomat.totalCells }, (_, i) => i + 1).map((cellNumber) => {
+              const cell = cells?.find((c: Cell) => c.number === cellNumber);
+              const hasProduct = cell?.productId;
+              const isFilled = hasProduct && !cell.isAvailable;
+
+              return (
                 <button
-                  key={cell.id}
-                  onClick={() => handleCellClick(cell)}
+                  key={cellNumber}
+                  onClick={() => handleCellClick(cellNumber)}
                   className={`p-4 rounded-lg border-2 transition-all hover:shadow-lg ${
-                    cell.productId
-                      ? 'border-blue-500 bg-blue-50 hover:bg-blue-100'
+                    hasProduct
+                      ? isFilled
+                        ? 'border-green-500 bg-green-50 hover:bg-green-100'
+                        : 'border-blue-500 bg-blue-50 hover:bg-blue-100'
                       : 'border-gray-300 bg-gray-50 hover:bg-gray-100'
                   }`}
                 >
                   <div className="text-center">
-                    <p className="text-lg font-bold mb-1">#{cell.number}</p>
-                    {cell.product ? (
+                    <p className="text-lg font-bold mb-1">#{cellNumber}</p>
+                    {cell?.product ? (
                       <div>
                         <p className="text-xs text-gray-600 mb-1 truncate">
                           {cell.product.name}
                         </p>
-                        <p className="text-xs font-semibold text-blue-600">
-                          {t('admin.product')}
+                        <p className={`text-xs font-semibold ${
+                          isFilled ? 'text-green-600' : 'text-blue-600'
+                        }`}>
+                          {isFilled ? 'Заповнена' : 'Призначено'}
                         </p>
                       </div>
                     ) : (
@@ -188,9 +210,9 @@ export default function AdminCellsManagementPage() {
                     )}
                   </div>
                 </button>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -199,7 +221,7 @@ export default function AdminCellsManagementPage() {
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h2 className="text-2xl font-bold mb-4">
-              {t('admin.assignProduct')} - {t('courier.cellNumber', { number: selectedCell.number })}
+              {t('admin.assignProduct')} - Комірка #{selectedCell.number}
             </h2>
             
             <form onSubmit={handleSubmit}>
@@ -262,7 +284,6 @@ export default function AdminCellsManagementPage() {
   );
 }
 
-// SSR для динамічних роутів
 export async function getServerSideProps() {
   return {
     props: {},
