@@ -1,8 +1,12 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import { WsAdapter } from '@nestjs/platform-ws';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ✅ WebSocket adapter для ESP32
+  app.useWebSocketAdapter(new WsAdapter(app));
   
   // CORS - підтримка множинних доменів
   const allowedOrigins = [
@@ -20,7 +24,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Дозволяємо запити без origin (Postman, curl, etc)
+      // Дозволяємо запити без origin (Postman, curl, ESP32, etc)
       if (!origin) {
         callback(null, true);
         return;
@@ -47,6 +51,8 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   
   console.log(`🚀 Backend running on port ${port}`);
+  console.log(`🔌 WebSocket server on ws://0.0.0.0:${port}/ws`);
   console.log('✅ Allowed CORS origins:', allowedOrigins);
 }
+
 bootstrap();
