@@ -3,11 +3,12 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   
-  // ✅ Виправлення для React Query на Vercel
+  // ✅ КРИТИЧНО: Transpile React Query для Vercel
   transpilePackages: ['@tanstack/react-query'],
   
+  // ✅ ВИМКНУТИ experimental.esmExternals
   experimental: {
-    esmExternals: 'loose',
+    esmExternals: false,
   },
   
   // Додаємо підтримку environment variables
@@ -17,6 +18,7 @@ const nextConfig = {
   },
   
   webpack: (config, { isServer }) => {
+    // ✅ Додаємо fallback для browser
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -25,6 +27,13 @@ const nextConfig = {
         tls: false,
       };
     }
+    
+    // ✅ КРИТИЧНО: Force CommonJS для React Query
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'react/jsx-runtime': 'react/jsx-runtime.js',
+    };
+    
     return config;
   },
 };
