@@ -6,6 +6,26 @@ import { api } from '../../lib/api';
 import { ArrowLeft, Package, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+interface Cell {
+  id: string;
+  number: number;
+  productId?: string;
+  isAvailable: boolean;
+  product?: {
+    id: string;
+    name: string;
+    size?: string;
+    price: number;
+  };
+}
+
+interface Product {
+  id: string;
+  name: string;
+  size?: string;
+  price: number;
+}
+
 export default function CourierRefillPage() {
   const router = useRouter();
   const { ortomatId } = router.query;
@@ -15,14 +35,14 @@ export default function CourierRefillPage() {
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
 
-  // ✅ React Query v5 синтаксис
-  const { data: inventory, isLoading: inventoryLoading } = useQuery({
+  // ✅ React Query v5 синтаксис з типами
+  const { data: inventory, isLoading: inventoryLoading } = useQuery<Cell[]>({
     queryKey: ['inventory', ortomatId],
     queryFn: () => api.getOrtomatInventory(ortomatId as string),
     enabled: !!ortomatId,
   });
 
-  const { data: products } = useQuery({
+  const { data: products } = useQuery<Product[]>({
     queryKey: ['products'],
     queryFn: () => api.getProducts(),
   });
@@ -73,8 +93,8 @@ export default function CourierRefillPage() {
     );
   }
 
-  const emptyCells = inventory?.filter((cell: any) => !cell.product || !cell.isAvailable) || [];
-  const filledCells = inventory?.filter((cell: any) => cell.product && cell.isAvailable) || [];
+  const emptyCells = inventory?.filter((cell) => !cell.product || !cell.isAvailable) || [];
+  const filledCells = inventory?.filter((cell) => cell.product && cell.isAvailable) || [];
 
   return (
     <div>
@@ -120,7 +140,7 @@ export default function CourierRefillPage() {
               
               {emptyCells.length > 0 ? (
                 <div className="grid grid-cols-4 gap-2 max-h-96 overflow-y-auto">
-                  {emptyCells.map((cell: any) => (
+                  {emptyCells.map((cell) => (
                     <button
                       key={cell.id}
                       onClick={() => setSelectedCell(cell.number)}
@@ -158,7 +178,7 @@ export default function CourierRefillPage() {
                   </div>
 
                   <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {products?.map((product: any) => (
+                    {products?.map((product) => (
                       <button
                         key={product.id}
                         onClick={() => setSelectedProduct(product.id)}
@@ -214,7 +234,7 @@ export default function CourierRefillPage() {
             <div className="mt-8 bg-white rounded-lg shadow p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Filled Cells</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {filledCells.map((cell: any) => (
+                {filledCells.map((cell) => (
                   <div
                     key={cell.id}
                     className="p-3 border border-gray-200 rounded-lg bg-green-50"

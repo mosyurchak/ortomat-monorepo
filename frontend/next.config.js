@@ -28,12 +28,6 @@ const nextConfig = {
       };
     }
     
-    // ✅ КРИТИЧНО: Force CommonJS для React Query
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'react/jsx-runtime': 'react/jsx-runtime.js',
-    };
-    
     return config;
   },
 };
