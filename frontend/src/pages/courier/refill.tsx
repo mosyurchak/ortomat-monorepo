@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { ArrowLeft, Package, CheckCircle, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -15,33 +15,35 @@ export default function CourierRefillPage() {
   const [selectedCell, setSelectedCell] = useState<number | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<string>('');
 
-  const { data: inventory, isLoading: inventoryLoading } = useQuery(
-    ['inventory', ortomatId],
-    () => api.getOrtomatInventory(ortomatId as string),
-    { enabled: !!ortomatId }
-  );
+  // ✅ React Query v5 синтаксис
+  const { data: inventory, isLoading: inventoryLoading } = useQuery({
+    queryKey: ['inventory', ortomatId],
+    queryFn: () => api.getOrtomatInventory(ortomatId as string),
+    enabled: !!ortomatId,
+  });
 
-  const { data: products } = useQuery('products', () => api.getProducts());
+  const { data: products } = useQuery({
+    queryKey: ['products'],
+    queryFn: () => api.getProducts(),
+  });
 
-  const refillMutation = useMutation(
-    async ({ cellNumber, productId }: { cellNumber: number; productId: string }) => {
+  const refillMutation = useMutation({
+    mutationFn: async ({ cellNumber, productId }: { cellNumber: number; productId: string }) => {
       return api.refillCell(ortomatId as string, cellNumber, {
         productId,
         courierId: userId as string,
       });
     },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(['inventory', ortomatId]);
-        toast.success('Cell refilled successfully!');
-        setSelectedCell(null);
-        setSelectedProduct('');
-      },
-      onError: () => {
-        toast.error('Failed to refill cell');
-      },
-    }
-  );
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['inventory', ortomatId] });
+      toast.success('Cell refilled successfully!');
+      setSelectedCell(null);
+      setSelectedProduct('');
+    },
+    onError: () => {
+      toast.error('Failed to refill cell');
+    },
+  });
 
   const handleRefill = () => {
     if (!selectedCell || !selectedProduct) {
@@ -64,7 +66,7 @@ export default function CourierRefillPage() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading inventory...</p>
         </div>
       </div>
@@ -174,7 +176,7 @@ export default function CourierRefillPage() {
                             )}
                           </div>
                           <div className="text-right">
-                            <p className="font-bold text-primary-600">{product.price} UAH</p>
+                            <p className="font-bold text-blue-600">{product.price} UAH</p>
                           </div>
                         </div>
                       </button>
@@ -183,10 +185,10 @@ export default function CourierRefillPage() {
 
                   <button
                     onClick={handleRefill}
-                    disabled={!selectedProduct || refillMutation.isLoading}
+                    disabled={!selectedProduct || refillMutation.isPending}
                     className="w-full bg-green-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
                   >
-                    {refillMutation.isLoading ? (
+                    {refillMutation.isPending ? (
                       <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
                         Refilling...
@@ -233,7 +235,6 @@ export default function CourierRefillPage() {
   );
 }
 
-// Disable static generation for this page
 export async function getServerSideProps() {
   return {
     props: {},
