@@ -42,6 +42,7 @@ export default function AdminCellsManagementPage() {
     enabled: !!user && user.role.toUpperCase() === 'ADMIN',
   });
 
+  // Оновлення товару комірки
   const updateCellMutation = useMutation({
     mutationFn: ({ cellNumber, productId }: { cellNumber: number; productId: string | null }) =>
       api.updateCellProduct(id as string, cellNumber, productId),
@@ -51,22 +52,26 @@ export default function AdminCellsManagementPage() {
       setShowModal(false);
       setSelectedCell(null);
       setSelectedProductId('');
-      alert('Товар призначено!');
+      alert('Товар оновлено!');
     },
     onError: (error: any) => {
       alert(`Помилка: ${error.message}`);
     },
   });
 
-  const openCellMutation = useMutation({
+  // Відкриття і заповнення комірки (для синьої)
+  const openAndFillMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) =>
       api.openCellForRefill(id as string, cellNumber, adminId),
     onSuccess: () => {
       setIsOpening(false);
-      alert('Комірка відкрита!');
-      queryClient.invalidateQueries({ queryKey: ['inventory', id] });
-      setShowModal(false);
-      setSelectedCell(null);
+      // Після відкриття відмічаємо як заповнену
+      if (selectedCell && user) {
+        markFilledMutation.mutate({
+          cellNumber: selectedCell.number,
+          adminId: user.id,
+        });
+      }
     },
     onError: (error: any) => {
       setIsOpening(false);
@@ -74,31 +79,36 @@ export default function AdminCellsManagementPage() {
     },
   });
 
-  // ✅ НОВИЙ: Очищення заповненої комірки (емуляція видачі товару)
-  const emptyFilledCellMutation = useMutation({
-    mutationFn: ({ cellNumber }: { cellNumber: number }) =>
-      api.markCellFilled(id as string, cellNumber, user!.id), // Викликаємо markCellFilled щоб перемкнути isAvailable
-    onSuccess: () => {
-      setIsOpening(false);
-      queryClient.invalidateQueries({ queryKey: ['inventory', id] });
-      setShowModal(false);
-      setSelectedCell(null);
-      alert('Комірка очищена!');
-    },
-    onError: (error: any) => {
-      setIsOpening(false);
-      alert(`Помилка: ${error.message}`);
-    },
-  });
-
+  // Відмітка комірки як заповненої
   const markFilledMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) =>
       api.markCellFilled(id as string, cellNumber, adminId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', id] });
+      queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
+      setShowModal(false);
+      setSelectedCell(null);
       alert('Комірка заповнена!');
     },
     onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // Очищення заповненої комірки (робить її порожньою)
+  const clearFilledCellMutation = useMutation({
+    mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) => 
+      api.markCellFilled(id as string, cellNumber, adminId),
+    onSuccess: () => {
+      setIsOpening(false);
+      queryClient.invalidateQueries({ queryKey: ['inventory', id] });
+      queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
+      setShowModal(false);
+      setSelectedCell(null);
+      alert('Комірка очищена та відкрита!');
+    },
+    onError: (error: any) => {
+      setIsOpening(false);
       alert(`Помилка: ${error.message}`);
     },
   });
@@ -129,26 +139,22 @@ export default function AdminCellsManagementPage() {
     });
   };
 
+  // Заповнити порожню комірку
   const handleFillCell = () => {
     if (!selectedCell || !user) return;
     setIsOpening(true);
-    openCellMutation.mutate({
+    openAndFillMutation.mutate({
       cellNumber: selectedCell.number,
       adminId: user.id,
     });
-    setTimeout(() => {
-      markFilledMutation.mutate({
-        cellNumber: selectedCell.number,
-        adminId: user.id,
-      });
-    }, 1000);
   };
 
-  const handleOpenFilledCell = () => {
+  // Очистити заповнену комірку
+  const handleClearFilledCell = () => {
     if (!selectedCell || !user) return;
-    if (confirm('Відкрити комірку? Після цього вона стане порожньою.')) {
+    if (confirm('Очистити комірку? Вона стане порожньою (синьою) але товар залишиться призначений.')) {
       setIsOpening(true);
-      openCellMutation.mutate({
+      clearFilledCellMutation.mutate({
         cellNumber: selectedCell.number,
         adminId: user.id,
       });
@@ -263,58 +269,125 @@ export default function AdminCellsManagementPage() {
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h2 className="text-2xl font-bold mb-4">Комірка #{selectedCell.number}</h2>
             
+            {/* ЗЕЛЕНА - Заповнена */}
             {selectedCell.productId && !selectedCell.isAvailable ? (
               <div>
                 <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm font-medium text-green-900 mb-2">Комірка заповнена</p>
+                  <p className="text-sm font-medium text-green-900 mb-2">✅ Комірка заповнена</p>
                   <p className="text-lg font-bold text-green-700">{selectedCell.product?.name}</p>
                 </div>
                 <button
-                  onClick={handleOpenFilledCell}
+                  onClick={handleClearFilledCell}
                   disabled={isOpening}
-                  className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 disabled:bg-gray-400 mb-3"
+                  className="w-full bg-orange-600 text-white py-3 rounded-lg hover:bg-orange-700 disabled:bg-gray-400 mb-3 flex items-center justify-center"
                 >
-                  {isOpening ? 'Відкриття...' : 'Відкрити комірку'}
+                  {isOpening ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Очищення...
+                    </>
+                  ) : (
+                    '🔓 Очистити комірку'
+                  )}
                 </button>
-                <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg">Скасувати</button>
+                <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg hover:bg-gray-50">
+                  Скасувати
+                </button>
               </div>
             ) : selectedCell.productId && selectedCell.isAvailable ? (
+              /* СИНЯ - Порожня з товаром */
               <div>
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm font-medium text-blue-900 mb-2">Товар для комірки:</p>
+                <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <p className="text-sm font-medium text-blue-900 mb-2">📦 Призначений товар:</p>
                   <p className="text-lg font-bold text-blue-700">{selectedCell.product?.name}</p>
                 </div>
+
+                {/* Форма зміни товару */}
+                <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                  <form onSubmit={handleSubmit}>
+                    <label className="block text-sm font-medium mb-2">Змінити товар:</label>
+                    <select
+                      value={selectedProductId}
+                      onChange={(e) => setSelectedProductId(e.target.value)}
+                      className="w-full px-3 py-2 border rounded-md mb-3"
+                    >
+                      <option value="">Прибрати товар</option>
+                      {products?.map((product: Product) => (
+                        <option key={product.id} value={product.id}>
+                          {product.name} - {product.price} грн
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={updateCellMutation.isPending}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                    >
+                      {updateCellMutation.isPending ? 'Збереження...' : '💾 Зберегти зміни'}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Кнопка заповнити */}
                 <button
                   onClick={handleFillCell}
                   disabled={isOpening}
-                  className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 mb-3"
+                  className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400 mb-3 flex items-center justify-center"
                 >
-                  {isOpening ? 'Заповнення...' : 'Заповнити комірку'}
+                  {isOpening ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Заповнення...
+                    </>
+                  ) : (
+                    '✅ Заповнити комірку'
+                  )}
                 </button>
-                <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg">Скасувати</button>
+                
+                <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg hover:bg-gray-50">
+                  Скасувати
+                </button>
               </div>
             ) : (
+              /* СІРА - Без товару */
               <form onSubmit={handleSubmit}>
                 <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Оберіть товар</label>
+                  <label className="block text-sm font-medium mb-2">Призначити товар:</label>
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
                     className="w-full px-3 py-2 border rounded-md"
                   >
-                    <option value="">Порожня</option>
+                    <option value="">Порожня (без товару)</option>
                     {products?.map((product: Product) => (
                       <option key={product.id} value={product.id}>
                         {product.name} - {product.price} грн
                       </option>
                     ))}
                   </select>
+                  <p className="mt-2 text-xs text-gray-500">
+                    Оберіть товар для цієї комірки
+                  </p>
                 </div>
                 <div className="flex space-x-3">
-                  <button type="button" onClick={handleCloseModal} className="flex-1 py-2 border rounded-lg">
+                  <button 
+                    type="button" 
+                    onClick={handleCloseModal} 
+                    className="flex-1 py-2 border rounded-lg hover:bg-gray-50"
+                  >
                     Скасувати
                   </button>
-                  <button type="submit" disabled={updateCellMutation.isPending} className="flex-1 bg-blue-600 text-white py-2 rounded-lg">
+                  <button 
+                    type="submit" 
+                    disabled={updateCellMutation.isPending} 
+                    className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                  >
                     {updateCellMutation.isPending ? 'Збереження...' : 'Зберегти'}
                   </button>
                 </div>
