@@ -74,6 +74,23 @@ export default function AdminCellsManagementPage() {
     },
   });
 
+  // ✅ НОВИЙ: Очищення заповненої комірки (емуляція видачі товару)
+  const emptyFilledCellMutation = useMutation({
+    mutationFn: ({ cellNumber }: { cellNumber: number }) =>
+      api.markCellFilled(id as string, cellNumber, user!.id), // Викликаємо markCellFilled щоб перемкнути isAvailable
+    onSuccess: () => {
+      setIsOpening(false);
+      queryClient.invalidateQueries({ queryKey: ['inventory', id] });
+      setShowModal(false);
+      setSelectedCell(null);
+      alert('Комірка очищена!');
+    },
+    onError: (error: any) => {
+      setIsOpening(false);
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
   const markFilledMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) =>
       api.markCellFilled(id as string, cellNumber, adminId),
