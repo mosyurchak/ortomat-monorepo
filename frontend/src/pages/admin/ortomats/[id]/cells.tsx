@@ -42,7 +42,7 @@ export default function AdminCellsManagementPage() {
     enabled: !!user && user.role.toUpperCase() === 'ADMIN',
   });
 
-  // Оновлення товару комірки
+  // Оновлення товару комірки (СІРА → СИНЯ або СИНЯ → СИНЯ)
   const updateCellMutation = useMutation({
     mutationFn: ({ cellNumber, productId }: { cellNumber: number; productId: string | null }) =>
       api.updateCellProduct(id as string, cellNumber, productId),
@@ -52,14 +52,14 @@ export default function AdminCellsManagementPage() {
       setShowModal(false);
       setSelectedCell(null);
       setSelectedProductId('');
-      alert('Товар оновлено!');
+      alert('Товар оновлено! Комірка тепер синя (призначений товар, порожня)');
     },
     onError: (error: any) => {
       alert(`Помилка: ${error.message}`);
     },
   });
 
-  // Відкриття і заповнення комірки (для синьої)
+  // Відкриття і заповнення комірки (СИНЯ → ЗЕЛЕНА)
   const openAndFillMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) =>
       api.openCellForRefill(id as string, cellNumber, adminId),
@@ -79,7 +79,7 @@ export default function AdminCellsManagementPage() {
     },
   });
 
-  // Відмітка комірки як заповненої
+  // Відмітка комірки як заповненої (СИНЯ → ЗЕЛЕНА)
   const markFilledMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) =>
       api.markCellFilled(id as string, cellNumber, adminId),
@@ -88,24 +88,24 @@ export default function AdminCellsManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка заповнена!');
+      alert('Комірка заповнена! Тепер вона зелена (заповнена товаром)');
     },
     onError: (error: any) => {
       alert(`Помилка: ${error.message}`);
     },
   });
 
-  // Очищення заповненої комірки (робить її порожньою)
+  // Очищення заповненої комірки (ЗЕЛЕНА → СИНЯ)
   const clearFilledCellMutation = useMutation({
     mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) => 
-      api.markCellFilled(id as string, cellNumber, adminId),
+      api.openCellForRefill(id as string, cellNumber, adminId),
     onSuccess: () => {
       setIsOpening(false);
       queryClient.invalidateQueries({ queryKey: ['inventory', id] });
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка очищена та відкрита!');
+      alert('Комірка очищена та відкрита! Тепер вона синя (призначений товар, порожня)');
     },
     onError: (error: any) => {
       setIsOpening(false);
@@ -133,13 +133,16 @@ export default function AdminCellsManagementPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedCell) return;
+    
+    // СІРА → СИНЯ: призначаємо товар порожній комірці
+    // СИНЯ → СИНЯ: змінюємо товар у порожній комірці
     updateCellMutation.mutate({
       cellNumber: selectedCell.number,
       productId: selectedProductId || null,
     });
   };
 
-  // Заповнити порожню комірку
+  // СИНЯ → ЗЕЛЕНА: заповнити порожню комірку
   const handleFillCell = () => {
     if (!selectedCell || !user) return;
     setIsOpening(true);
@@ -149,7 +152,7 @@ export default function AdminCellsManagementPage() {
     });
   };
 
-  // Очистити заповнену комірку
+  // ЗЕЛЕНА → СИНЯ: очистити заповнену комірку
   const handleClearFilledCell = () => {
     if (!selectedCell || !user) return;
     if (confirm('Очистити комірку? Вона стане порожньою (синьою) але товар залишиться призначений.')) {
@@ -226,6 +229,16 @@ export default function AdminCellsManagementPage() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-bold mb-4">Комірки</h2>
+          <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <p className="text-sm font-medium text-gray-700">
+              <span className="inline-block w-4 h-4 bg-gray-300 rounded mr-2"></span>
+              Сіра = порожня (без товару) | 
+              <span className="inline-block w-4 h-4 bg-blue-500 rounded mx-2"></span>
+              Синя = призначений товар (порожня) | 
+              <span className="inline-block w-4 h-4 bg-green-500 rounded mx-2"></span>
+              Зелена = заповнена товаром
+            </p>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
             {Array.from({ length: ortomat.totalCells }, (_, i) => i + 1).map((cellNumber) => {
               const cell = cells?.find((c: Cell) => c.number === cellNumber);
@@ -250,11 +263,11 @@ export default function AdminCellsManagementPage() {
                       <div>
                         <p className="text-xs text-gray-600 mb-1 truncate">{cell.product.name}</p>
                         <p className={`text-xs font-semibold ${isFilled ? 'text-green-600' : 'text-blue-600'}`}>
-                          {isFilled ? 'Заповнена' : 'Призначено'}
+                          {isFilled ? '✅ Заповнена' : '📦 Призначено'}
                         </p>
                       </div>
                     ) : (
-                      <p className="text-xs text-gray-500">Порожня</p>
+                      <p className="text-xs text-gray-500">⬜ Порожня</p>
                     )}
                   </div>
                 </button>
@@ -273,8 +286,9 @@ export default function AdminCellsManagementPage() {
             {selectedCell.productId && !selectedCell.isAvailable ? (
               <div>
                 <div className="mb-6 p-4 bg-green-50 rounded-lg border border-green-200">
-                  <p className="text-sm font-medium text-green-900 mb-2">✅ Комірка заповнена</p>
+                  <p className="text-sm font-medium text-green-900 mb-2">✅ Комірка заповнена товаром</p>
                   <p className="text-lg font-bold text-green-700">{selectedCell.product?.name}</p>
+                  <p className="text-xs text-green-600 mt-1">Статус: ЗЕЛЕНА (фізично заповнена)</p>
                 </div>
                 <button
                   onClick={handleClearFilledCell}
@@ -290,9 +304,12 @@ export default function AdminCellsManagementPage() {
                       Очищення...
                     </>
                   ) : (
-                    '🔓 Очистити комірку'
+                    '🔓 Очистити комірку (ЗЕЛЕНА → СИНЯ)'
                   )}
                 </button>
+                <p className="text-xs text-gray-500 mb-3 text-center">
+                  Комірка стане синьою (порожня з товаром)
+                </p>
                 <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg hover:bg-gray-50">
                   Скасувати
                 </button>
@@ -303,12 +320,13 @@ export default function AdminCellsManagementPage() {
                 <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                   <p className="text-sm font-medium text-blue-900 mb-2">📦 Призначений товар:</p>
                   <p className="text-lg font-bold text-blue-700">{selectedCell.product?.name}</p>
+                  <p className="text-xs text-blue-600 mt-1">Статус: СИНЯ (призначено, порожня)</p>
                 </div>
 
-                {/* Форма зміни товару */}
+                {/* Форма зміни товару (СИНЯ → СИНЯ) */}
                 <div className="mb-4 p-4 bg-gray-50 rounded-lg">
                   <form onSubmit={handleSubmit}>
-                    <label className="block text-sm font-medium mb-2">Змінити товар:</label>
+                    <label className="block text-sm font-medium mb-2">Змінити товар (СИНЯ → СИНЯ):</label>
                     <select
                       value={selectedProductId}
                       onChange={(e) => setSelectedProductId(e.target.value)}
@@ -331,7 +349,7 @@ export default function AdminCellsManagementPage() {
                   </form>
                 </div>
 
-                {/* Кнопка заповнити */}
+                {/* Кнопка заповнити (СИНЯ → ЗЕЛЕНА) */}
                 <button
                   onClick={handleFillCell}
                   disabled={isOpening}
@@ -346,9 +364,12 @@ export default function AdminCellsManagementPage() {
                       Заповнення...
                     </>
                   ) : (
-                    '✅ Заповнити комірку'
+                    '✅ Заповнити комірку (СИНЯ → ЗЕЛЕНА)'
                   )}
                 </button>
+                <p className="text-xs text-gray-500 mb-3 text-center">
+                  Комірка стане зеленою (заповнена товаром)
+                </p>
                 
                 <button onClick={handleCloseModal} className="w-full py-2 border rounded-lg hover:bg-gray-50">
                   Скасувати
@@ -358,7 +379,10 @@ export default function AdminCellsManagementPage() {
               /* СІРА - Без товару */
               <form onSubmit={handleSubmit}>
                 <div className="mb-6">
-                  <label className="block text-sm font-medium mb-2">Призначити товар:</label>
+                  <div className="mb-4 p-3 bg-gray-100 rounded-lg">
+                    <p className="text-sm text-gray-600">Статус: СІРА (порожня, без товару)</p>
+                  </div>
+                  <label className="block text-sm font-medium mb-2">Призначити товар (СІРА → СИНЯ):</label>
                   <select
                     value={selectedProductId}
                     onChange={(e) => setSelectedProductId(e.target.value)}
@@ -372,7 +396,7 @@ export default function AdminCellsManagementPage() {
                     ))}
                   </select>
                   <p className="mt-2 text-xs text-gray-500">
-                    Оберіть товар для цієї комірки
+                    Оберіть товар для цієї комірки. Комірка стане синьою (призначено, порожня)
                   </p>
                 </div>
                 <div className="flex space-x-3">
