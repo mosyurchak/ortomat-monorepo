@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from '../ortomats/ortomats.service';
 import { OrtomatsGateway } from '../ortomats/ortomats.gateway';
+import { LogsService } from '../logs/logs.service'; // ✅ ДОДАНО
 
 @Injectable()
 export class OrdersService {
@@ -9,6 +10,7 @@ export class OrdersService {
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
     private ortomatsGateway: OrtomatsGateway,
+    private logsService: LogsService, // ✅ ДОДАНО
   ) {}
 
   async createOrder(data: {
@@ -19,7 +21,6 @@ export class OrdersService {
   }) {
     console.log('📦 Creating order...', data);
 
-    // Find product and get price
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
     });
@@ -28,7 +29,6 @@ export class OrdersService {
       throw new Error('Product not found');
     }
 
-    // Find available cell with this product
     const cell = await this.prisma.cell.findFirst({
       where: {
         ortomatId: data.ortomatId,
@@ -40,7 +40,6 @@ export class OrdersService {
       throw new Error('Product not available in this ortomat');
     }
 
-    // Find doctor if referral code provided
     let doctorId = null;
     let commission = null;
 
@@ -55,10 +54,8 @@ export class OrdersService {
       }
     }
 
-    // Генеруємо унікальний номер замовлення
     const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
-    // Create sale record
     const sale = await this.prisma.sale.create({
       data: {
         orderNumber,
@@ -86,6 +83,15 @@ export class OrdersService {
     });
 
     console.log('✅ Order created:', sale.orderNumber);
+
+    // ✅ ДОДАНО: Логування
+    await this.logsService.logOrderCreated({
+      orderId: sale.id,
+      amount: sale.amount,
+      productId: data.productId,
+      ortomatId: data.ortomatId,
+      userId: sale.doctorId || undefined,
+    });
 
     return sale;
   }
@@ -116,7 +122,6 @@ export class OrdersService {
       };
     }
 
-    // ✅ STUB: Симулюємо успішну оплату та ОДРАЗУ оновлюємо статус
     console.log('✅ Payment successful (STUB), updating order status...');
 
     const updatedSale = await this.prisma.sale.update({
@@ -130,7 +135,13 @@ export class OrdersService {
 
     console.log('✅ Order status updated to completed');
 
-    // Оновлюємо інвентар (видаляємо товар з комірки)
+    // ✅ ДОДАНО: Логування успішної оплати
+    await this.logsService.logPaymentSuccess({
+      orderId: updatedSale.id,
+      amount: updatedSale.amount,
+      ortomatId: sale.ortomatId,
+    });
+
     try {
       await this.ortomatsService.updateCellProduct(
         sale.ortomatId,
@@ -140,7 +151,6 @@ export class OrdersService {
       console.log('✅ Inventory updated - cell emptied');
     } catch (error) {
       console.error('❌ Failed to update inventory:', error);
-      // Продовжуємо навіть якщо не вдалося оновити інвентар
     }
 
     return {
@@ -160,8 +170,7 @@ export class OrdersService {
     status: string;
     paymentId: string;
   }) {
-    // STUB: Simulate LiqPay callback
-    console.log('🔔 Payment callback received:', data);
+    console.log('📞 Payment callback received:', data);
 
     const sale = await this.prisma.sale.findUnique({
       where: { id: data.orderId },
@@ -172,7 +181,6 @@ export class OrdersService {
     }
 
     if (data.status === 'success') {
-      // Update sale status
       await this.prisma.sale.update({
         where: { id: data.orderId },
         data: {
@@ -182,7 +190,6 @@ export class OrdersService {
         },
       });
 
-      // Remove product from cell
       await this.ortomatsService.updateCellProduct(
         sale.ortomatId,
         sale.cellNumber,
@@ -198,7 +205,6 @@ export class OrdersService {
         orderNumber: sale.orderNumber,
       };
     } else {
-      // Payment failed
       await this.prisma.sale.update({
         where: { id: data.orderId },
         data: {
@@ -249,9 +255,8 @@ export class OrdersService {
     });
   }
 
-  // ✅ Відкриття комірки через WebSocket (з DEMO режимом)
   async openCell(orderId: string) {
-    console.log('🔓 Opening cell for order:', orderId);
+    console.log('🔐 Opening cell for order:', orderId);
 
     const order = await this.prisma.sale.findUnique({
       where: { id: orderId },
@@ -269,19 +274,15 @@ export class OrdersService {
       throw new Error('Order is not completed yet. Please complete payment first.');
     }
 
-    // Для тестування використовуємо deviceId = "locker-01"
-    // В production треба зберігати deviceId в таблиці ortomats
-    const deviceId = 'locker-01'; // TODO: order.ortomat.deviceId в майбутньому
+    const deviceId = 'locker-01';
 
     console.log('🔍 Checking if device online:', deviceId);
 
-    // Перевіряємо чи контролер онлайн
     const isOnline = this.ortomatsGateway.isDeviceOnline(deviceId);
     
     if (!isOnline) {
       console.log('⚠️ Device offline, using DEMO mode');
       
-      // DEMO MODE: Симулюємо успішне відкриття для тестування
       return {
         success: true,
         message: `Cell ${order.cellNumber} opened successfully`,
@@ -296,7 +297,6 @@ export class OrdersService {
 
     console.log('📤 Sending open command via WebSocket...');
 
-    // Відправляємо команду через WebSocket
     const success = await this.ortomatsGateway.openCell(
       deviceId,
       order.cellNumber,
@@ -308,6 +308,22 @@ export class OrdersService {
     }
 
     console.log(`✅ WebSocket command sent to ${deviceId}, cell ${order.cellNumber}`);
+
+    // ✅ ДОДАНО: Логування відкриття комірки
+    await this.logsService.createLog({
+      type: 'WEBSOCKET_COMMAND',
+      category: 'system',
+      message: `Opening cell #${order.cellNumber} for order ${order.orderNumber}`,
+      ortomatId: order.ortomatId,
+      cellNumber: order.cellNumber,
+      metadata: {
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        deviceId,
+        mode: isOnline ? 'production' : 'demo',
+      },
+      severity: 'INFO',
+    });
 
     return {
       success: true,

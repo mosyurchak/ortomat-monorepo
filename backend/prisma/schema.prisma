@@ -32,6 +32,45 @@ enum OrderStatus {
   CANCELLED
 }
 
+// ✅ ДОДАНО: Нові enum для логування
+enum LogType {
+  // Cells
+  CELL_OPENED
+  CELL_FILLED
+  CELL_CLEARED
+  CELL_PRODUCT_ASSIGNED
+  CELL_ERROR
+  
+  // Orders
+  ORDER_CREATED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  
+  // Couriers
+  COURIER_CHECKIN
+  COURIER_REFILL
+  
+  // System
+  DEVICE_ONLINE
+  DEVICE_OFFLINE
+  API_ERROR
+  WEBSOCKET_COMMAND
+  
+  // Security
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  UNAUTHORIZED_ACCESS
+}
+
+enum Severity {
+  INFO
+  WARNING
+  ERROR
+  CRITICAL
+}
+
 model User {
   id        String   @id @default(uuid())
   email     String   @unique
@@ -48,6 +87,7 @@ model User {
   doctorOrtomats DoctorOrtomat[]
   courierOrtomats CourierOrtomat[]
   sales Sale[]
+  activityLogs ActivityLog[] // ✅ ДОДАНО
 
   @@map("users")
 }
@@ -56,7 +96,7 @@ model Ortomat {
   id      String @id @default(uuid())
   name    String
   address String
-  city    String? // ✅ ДОДАНО: Місто
+  city    String?
   totalCells Int @default(37)
   status String @default("active")
   createdAt DateTime @default(now())
@@ -66,6 +106,7 @@ model Ortomat {
   doctors DoctorOrtomat[]
   couriers CourierOrtomat[]
   sales Sale[]
+  activityLogs ActivityLog[] // ✅ ДОДАНО
 
   @@map("ortomats")
 }
@@ -75,7 +116,7 @@ model Cell {
   number   Int
   ortomatId String
   productId String?
-  isAvailable Boolean @default(true) // ✅ true = порожня (червона), false = заповнена (зелена)
+  isAvailable Boolean @default(true)
   lastRefillDate DateTime?
   courierId String?
   createdAt DateTime @default(now())
@@ -91,20 +132,18 @@ model Cell {
 model Product {
   id          String  @id @default(uuid())
   name        String
-  description String? @db.Text // ✅ ЗМІНЕНО: тепер Text для довгих описів
+  description String? @db.Text
   category    String
   size        String?
   price       Float
   
-  // ✅ ДОДАНО: Нові поля для карточки товару
-  images      String[] @default([]) // Масив URL зображень (до 6 штук)
+  images      String[] @default([])
   color       String?
   material    String?
   manufacturer String?
   videoUrl    String?
-  termsAndConditions String? @db.Text // Умови покупки
+  termsAndConditions String? @db.Text
   
-  // Старе поле imageUrl залишаємо для зворотної сумісності
   imageUrl    String?
   
   attributes  Json?
@@ -174,4 +213,28 @@ model Sale {
   doctorOrtomat DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
 
   @@map("sales")
+}
+
+// ✅ ДОДАНО: Нова модель для логування
+model ActivityLog {
+  id          String   @id @default(uuid())
+  type        LogType
+  category    String
+  message     String   @db.Text
+  metadata    Json?
+  userId      String?
+  ortomatId   String?
+  cellNumber  Int?
+  severity    Severity @default(INFO)
+  createdAt   DateTime @default(now())
+
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  ortomat Ortomat? @relation(fields: [ortomatId], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([category])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([ortomatId])
+  @@map("activity_logs")
 }

@@ -10,7 +10,6 @@ export default function AdminDashboard() {
   const router = useRouter();
   const { t } = useTranslation();
 
-  // Захист роуту - тільки для адміна
   useEffect(() => {
     if (!authLoading) {
       console.log('🔒 Admin route guard - user:', user);
@@ -31,7 +30,6 @@ export default function AdminDashboard() {
     }
   }, [user, authLoading, router]);
 
-  // ✅ Завантаження статистики
   const { data: stats, isLoading: statsLoading, error } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
@@ -44,7 +42,6 @@ export default function AdminDashboard() {
     retry: 1,
   });
 
-  // Показуємо loader поки перевіряємо auth
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -56,12 +53,10 @@ export default function AdminDashboard() {
     );
   }
 
-  // Якщо немає користувача - не показуємо нічого (редирект в useEffect)
   if (!user || user.role.toUpperCase() !== 'ADMIN') {
     return null;
   }
 
-  // Показуємо loader поки завантажуються дані
   if (statsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -73,7 +68,6 @@ export default function AdminDashboard() {
     );
   }
 
-  // Показуємо помилку якщо є
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -187,15 +181,18 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <button
             onClick={() => router.push('/admin/ortomats')}
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {t('admin.manageOrtomats')}
-            </h3>
-            <p className="text-gray-600">
+            <div className="flex items-center mb-3">
+              <span className="text-3xl mr-3">🏪</span>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('admin.manageOrtomats')}
+              </h3>
+            </div>
+            <p className="text-gray-600 text-sm">
               {t('admin.manageOrtomatsDesc')}
             </p>
           </button>
@@ -204,10 +201,13 @@ export default function AdminDashboard() {
             onClick={() => router.push('/admin/products')}
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {t('admin.manageProducts')}
-            </h3>
-            <p className="text-gray-600">
+            <div className="flex items-center mb-3">
+              <span className="text-3xl mr-3">📦</span>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('admin.manageProducts')}
+              </h3>
+            </div>
+            <p className="text-gray-600 text-sm">
               {t('admin.manageProductsDesc')}
             </p>
           </button>
@@ -216,11 +216,30 @@ export default function AdminDashboard() {
             onClick={() => router.push('/admin/users')}
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              {t('admin.manageUsers')}
-            </h3>
-            <p className="text-gray-600">
+            <div className="flex items-center mb-3">
+              <span className="text-3xl mr-3">👥</span>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {t('admin.manageUsers')}
+              </h3>
+            </div>
+            <p className="text-gray-600 text-sm">
               {t('admin.manageUsersDesc')}
+            </p>
+          </button>
+
+          {/* ✅ ДОДАНО: Кнопка логів */}
+          <button
+            onClick={() => router.push('/admin/logs')}
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left border-2 border-blue-200"
+          >
+            <div className="flex items-center mb-3">
+              <span className="text-3xl mr-3">📊</span>
+              <h3 className="text-lg font-semibold text-gray-900">
+                Логи активності
+              </h3>
+            </div>
+            <p className="text-gray-600 text-sm">
+              Моніторинг подій системи
             </p>
           </button>
         </div>
@@ -295,4 +314,8 @@ export default function AdminDashboard() {
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps() {
+  return { props: {} };
 }

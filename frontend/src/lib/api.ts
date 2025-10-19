@@ -93,7 +93,6 @@ class ApiClient {
     return this.request(`/api/ortomats/devices/${deviceId}/status`);
   }
 
-  // ✅ НОВИЙ: Оновити товар комірки (адмін)
   async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
     return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/product`, {
       method: 'PATCH',
@@ -101,7 +100,6 @@ class ApiClient {
     });
   }
 
-  // ✅ НОВИЙ: Відкрити комірку для поповнення (кур'єр)
   async openCellForRefill(ortomatId: string, cellNumber: number, courierId: string) {
     return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/open-for-refill`, {
       method: 'POST',
@@ -109,7 +107,6 @@ class ApiClient {
     });
   }
 
-  // ✅ НОВИЙ: Відмітити комірку як заповнену (кур'єр)
   async markCellFilled(ortomatId: string, cellNumber: number, courierId: string) {
     return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/mark-filled`, {
       method: 'POST',
@@ -254,6 +251,54 @@ class ApiClient {
     return this.request(`/api/ortomats/${ortomatId}/cells/${cellNumber}/refill`, {
       method: 'POST',
       body: JSON.stringify(data),
+    });
+  }
+
+  // ==================== LOGS ====================
+  
+  async getLogs(filters?: {
+    type?: string;
+    category?: string;
+    severity?: string;
+    ortomatId?: string;
+    userId?: string;
+    startDate?: string;
+    endDate?: string;
+    limit?: number;
+    offset?: number;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.type) params.append('type', filters.type);
+    if (filters?.category) params.append('category', filters.category);
+    if (filters?.severity) params.append('severity', filters.severity);
+    if (filters?.ortomatId) params.append('ortomatId', filters.ortomatId);
+    if (filters?.userId) params.append('userId', filters.userId);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+    if (filters?.limit) params.append('limit', filters.limit.toString());
+    if (filters?.offset) params.append('offset', filters.offset.toString());
+
+    const query = params.toString();
+    return this.request(`/api/logs${query ? `?${query}` : ''}`);
+  }
+
+  async getLogsStats(filters?: {
+    ortomatId?: string;
+    startDate?: string;
+    endDate?: string;
+  }) {
+    const params = new URLSearchParams();
+    if (filters?.ortomatId) params.append('ortomatId', filters.ortomatId);
+    if (filters?.startDate) params.append('startDate', filters.startDate);
+    if (filters?.endDate) params.append('endDate', filters.endDate);
+
+    const query = params.toString();
+    return this.request(`/api/logs/stats${query ? `?${query}` : ''}`);
+  }
+
+  async cleanOldLogs(days: number = 30) {
+    return this.request(`/api/logs/clean?days=${days}`, {
+      method: 'DELETE',
     });
   }
 }
