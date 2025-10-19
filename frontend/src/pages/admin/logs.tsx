@@ -238,11 +238,11 @@ export default function AdminLogsPage() {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Час</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Категорія</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Важливість</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Повідомлення</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Користувач</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Категорія</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
