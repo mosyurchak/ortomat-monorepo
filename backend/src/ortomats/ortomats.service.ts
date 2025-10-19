@@ -224,25 +224,48 @@ export class OrtomatsService {
     return { success: true, message: `Cell ${cellNumber} opened` };
   }
 
-  // ✅ ОНОВЛЕНО: Прив'язати товар до комірки (для адміна)
+  // ✅ ВИПРАВЛЕНО: Призначити товар до комірки (для адміна)
+  // СІРА → СИНЯ: призначити товар (isAvailable залишається TRUE)
+  // СИНЯ → СИНЯ: змінити товар (isAvailable залишається TRUE)
   async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
-    const cell = await this.prisma.cell.findFirst({
+    // Перевіряємо чи існує комірка
+    let cell = await this.prisma.cell.findFirst({
       where: {
         ortomatId,
         number: cellNumber,
       },
     });
 
+    // Якщо комірки немає - створюємо її
     if (!cell) {
-      throw new NotFoundException(`Cell ${cellNumber} not found in ortomat ${ortomatId}`);
+      cell = await this.prisma.cell.create({
+        data: {
+          number: cellNumber,
+          ortomatId,
+          productId,
+          isAvailable: true, // ✅ Завжди TRUE при призначенні товару (СИНЯ)
+        },
+      });
+      
+      return this.prisma.cell.findUnique({
+        where: { id: cell.id },
+        include: { product: true },
+      });
     }
 
-    // Якщо productId === null, комірка стає порожньою
+    // Якщо комірка існує - оновлюємо
+    // ✅ ВИПРАВЛЕНО: isAvailable завжди TRUE при зміні productId
+    // Тобто комірка стає або залишається СИНЬОЮ (порожня з товаром)
     return this.prisma.cell.update({
       where: { id: cell.id },
       data: {
         productId,
-        isAvailable: productId === null, // true якщо порожня
+        // ✅ КРИТИЧНО: При призначенні/зміні товару комірка стає СИНЬОЮ (isAvailable: true)
+        // При видаленні товару (productId: null) комірка стає СІРОЮ (isAvailable: true)
+        isAvailable: true,
+      },
+      include: {
+        product: true,
       },
     });
   }
@@ -262,7 +285,7 @@ export class OrtomatsService {
     return cells.map(cell => ({
       id: cell.id,
       number: cell.number,
-      isAvailable: cell.isAvailable, // true = порожня (червона), false = заповнена (зелена)
+      isAvailable: cell.isAvailable, // true = порожня (синя/сіра), false = заповнена (зелена)
       lastRefillDate: cell.lastRefillDate,
       productId: cell.productId,
       product: cell.product ? {
@@ -274,7 +297,9 @@ export class OrtomatsService {
     }));
   }
 
-  // ✅ НОВИЙ: Відкрити комірку для поповнення (кур'єр)
+  // ✅ ВИПРАВЛЕНО: Відкрити комірку для поповнення (кур'єр)
+  // СИНЯ → відкриття для заповнення
+  // ЗЕЛЕНА → відкриття для очищення (ЗЕЛЕНА → СИНЯ)
   async openCellForRefill(ortomatId: string, cellNumber: number, courierId: string) {
     const cell = await this.prisma.cell.findFirst({
       where: {
@@ -290,27 +315,47 @@ export class OrtomatsService {
       throw new NotFoundException('Cell not found');
     }
 
-    if (!cell.isAvailable) {
-      throw new BadRequestException('Cell is already filled. Cannot refill.');
-    }
-
     if (!cell.productId) {
       throw new BadRequestException('No product assigned to this cell by admin.');
     }
 
-    // Тут би викликали WebSocket для відкриття комірки
-    // Поки що просто повертаємо success
+    // ✅ ВИПРАВЛЕНО: Дозволяємо відкривати як порожні (СИНЯ), так і заповнені (ЗЕЛЕНА) комірки
+    // Якщо комірка заповнена (isAvailable: false) - це ЗЕЛЕНА → СИНЯ (очищення)
+    // Якщо комірка порожня (isAvailable: true) - це СИНЯ → відкриття для заповнення
+    
+    if (!cell.isAvailable) {
+      // ЗЕЛЕНА → СИНЯ: очищуємо заповнену комірку
+      await this.prisma.cell.update({
+        where: { id: cell.id },
+        data: {
+          isAvailable: true, // Робимо порожньою (СИНЯ)
+          lastRefillDate: null,
+        },
+      });
+      
+      return {
+        success: true,
+        message: `Cell ${cellNumber} cleared and opened`,
+        cellNumber,
+        product: cell.product,
+        action: 'cleared', // Комірка була очищена
+        note: 'Cell is now empty (blue) but product is still assigned',
+      };
+    }
 
+    // СИНЯ: комірка вже порожня, просто відкриваємо для заповнення
     return {
       success: true,
       message: `Cell ${cellNumber} opened for refill`,
       cellNumber,
       product: cell.product,
+      action: 'opened', // Комірка відкрита для заповнення
       note: 'Please place the product inside and close the cell',
     };
   }
 
-  // ✅ НОВИЙ: Відмітити комірку як заповнену (кур'єр після закриття)
+  // ✅ ВИПРАВЛЕНО: Відмітити комірку як заповнену (кур'єр після закриття)
+  // СИНЯ → ЗЕЛЕНА: після фізичного заповнення
   async markCellFilled(ortomatId: string, cellNumber: number, courierId: string) {
     const cell = await this.prisma.cell.findFirst({
       where: {
@@ -323,10 +368,14 @@ export class OrtomatsService {
       throw new NotFoundException('Cell not found');
     }
 
+    if (!cell.productId) {
+      throw new BadRequestException('Cannot mark cell as filled without assigned product');
+    }
+
     const updatedCell = await this.prisma.cell.update({
       where: { id: cell.id },
       data: {
-        isAvailable: false, // Комірка тепер заповнена (зелена)
+        isAvailable: false, // ✅ Комірка тепер заповнена (ЗЕЛЕНА)
         lastRefillDate: new Date(),
         courierId,
       },
