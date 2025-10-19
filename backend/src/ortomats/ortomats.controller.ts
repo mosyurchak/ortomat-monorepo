@@ -145,7 +145,7 @@ export class OrtomatsController {
     );
   }
 
-  // ✅ НОВИЙ: Кур'єр відкриває комірку для поповнення
+  // ✅ ВИПРАВЛЕНО: Кур'єр відкриває комірку для поповнення + WebSocket
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/cells/:cellNumber/open-for-refill')
   openCellForRefill(
@@ -153,14 +153,16 @@ export class OrtomatsController {
     @Param('cellNumber') cellNumber: string,
     @Body() body: { courierId: string },
   ) {
+    // 🔥 ПЕРЕДАЄМО gateway для WebSocket
     return this.ortomatsService.openCellForRefill(
       id,
       parseInt(cellNumber),
       body.courierId,
+      this.ortomatsGateway, // ✅ Додано
     );
   }
 
-  // ✅ НОВИЙ: Кур'єр відмічає комірку як заповнену
+  // ✅ Кур'єр відмічає комірку як заповнену
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/cells/:cellNumber/mark-filled')
   markCellFilled(

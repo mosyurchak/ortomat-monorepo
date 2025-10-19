@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
+import { OrtomatsGateway } from './ortomats.gateway';
 
 @Injectable()
 export class OrtomatsService {
@@ -297,10 +298,13 @@ export class OrtomatsService {
     }));
   }
 
-  // ✅ ВИПРАВЛЕНО: Відкрити комірку для поповнення (кур'єр)
-  // СИНЯ → відкриття для заповнення
-  // ЗЕЛЕНА → відкриття для очищення (ЗЕЛЕНА → СИНЯ)
-  async openCellForRefill(ortomatId: string, cellNumber: number, courierId: string) {
+  // ✅ ВИПРАВЛЕНО: Відкрити комірку для поповнення (кур'єр) + WebSocket
+  async openCellForRefill(
+    ortomatId: string, 
+    cellNumber: number, 
+    courierId: string, 
+    gateway?: OrtomatsGateway
+  ) {
     const cell = await this.prisma.cell.findFirst({
       where: {
         ortomatId,
@@ -308,6 +312,7 @@ export class OrtomatsService {
       },
       include: {
         product: true,
+        ortomat: true,
       },
     });
 
@@ -319,10 +324,10 @@ export class OrtomatsService {
       throw new BadRequestException('No product assigned to this cell by admin.');
     }
 
-    // ✅ ВИПРАВЛЕНО: Дозволяємо відкривати як порожні (СИНЯ), так і заповнені (ЗЕЛЕНА) комірки
-    // Якщо комірка заповнена (isAvailable: false) - це ЗЕЛЕНА → СИНЯ (очищення)
-    // Якщо комірка порожня (isAvailable: true) - це СИНЯ → відкриття для заповнення
+    // Визначаємо дію: очищення або заповнення
+    const action = !cell.isAvailable ? 'cleared' : 'opened';
     
+    // Оновлюємо БД
     if (!cell.isAvailable) {
       // ЗЕЛЕНА → СИНЯ: очищуємо заповнену комірку
       await this.prisma.cell.update({
@@ -332,25 +337,37 @@ export class OrtomatsService {
           lastRefillDate: null,
         },
       });
-      
-      return {
-        success: true,
-        message: `Cell ${cellNumber} cleared and opened`,
-        cellNumber,
-        product: cell.product,
-        action: 'cleared', // Комірка була очищена
-        note: 'Cell is now empty (blue) but product is still assigned',
-      };
     }
 
-    // СИНЯ: комірка вже порожня, просто відкриваємо для заповнення
+    // 🔥 ДОДАНО: Відправляємо команду через WebSocket
+    const deviceId = 'locker-01'; // TODO: cell.ortomat.deviceId в майбутньому
+    
+    if (gateway) {
+      const isOnline = gateway.isDeviceOnline(deviceId);
+      
+      if (isOnline) {
+        console.log(`📤 Sending WebSocket command to ${deviceId}, cell ${cellNumber}`);
+        
+        // Генеруємо унікальний cmd_id
+        const cmd_id = `ADMIN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        await gateway.openCell(deviceId, cellNumber, cmd_id);
+      } else {
+        console.log('⚠️ Device offline, skipping WebSocket command');
+      }
+    }
+
     return {
       success: true,
-      message: `Cell ${cellNumber} opened for refill`,
+      message: action === 'cleared' 
+        ? `Cell ${cellNumber} cleared and opened` 
+        : `Cell ${cellNumber} opened for refill`,
       cellNumber,
       product: cell.product,
-      action: 'opened', // Комірка відкрита для заповнення
-      note: 'Please place the product inside and close the cell',
+      action,
+      note: action === 'cleared'
+        ? 'Cell is now empty (blue) but product is still assigned'
+        : 'Please place the product inside and close the cell',
     };
   }
 
