@@ -251,11 +251,22 @@ export default function AdminLogsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(log.createdAt)}
                     </td>
+                    
+                    {/* КАТЕГОРІЯ */}
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <span className="inline-flex items-center text-gray-700">
+                        {getCategoryIcon(log.category)} {log.category}
+                      </span>
+                    </td>
+                    
+                    {/* ВАЖЛИВІСТЬ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSeverityColor(log.severity)}`}>
                         {getSeverityIcon(log.severity)} {log.severity}
                       </span>
                     </td>
+                    
+                    {/* ПОВІДОМЛЕННЯ */}
                     <td className="px-6 py-4 text-sm text-gray-900">
                       <div className="max-w-md">
                         <p className="font-medium">{log.message}</p>
@@ -271,6 +282,8 @@ export default function AdminLogsPage() {
                         )}
                       </div>
                     </td>
+                    
+                    {/* КОРИСТУВАЧ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {log.user ? (
                         <div>
@@ -283,6 +296,8 @@ export default function AdminLogsPage() {
                         <span className="text-gray-400">—</span>
                       )}
                     </td>
+                    
+                    {/* ОРТОМАТ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {log.ortomat ? (
                         <div>
