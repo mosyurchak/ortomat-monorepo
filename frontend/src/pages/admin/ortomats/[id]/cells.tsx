@@ -170,7 +170,7 @@ export default function AdminCellsManagementPage() {
   // ЗЕЛЕНА → СИНЯ: очистити заповнену комірку
   const handleClearFilledCell = () => {
     if (!selectedCell || !user) return;
-    if (confirm('Очистити комірку? Вона стане порожньою (синьою) але товар залишиться призначений.')) {
+    if (confirm('Відкрити комірку? Вона стане порожньою (синьою) але товар залишиться призначений.')) {
       setIsOpening(true);
       clearFilledCellMutation.mutate({
         cellNumber: selectedCell.number,
@@ -319,7 +319,7 @@ export default function AdminCellsManagementPage() {
                       Очищення...
                     </>
                   ) : (
-                    '🔓 Очистити комірку (ЗЕЛЕНА → СИНЯ)'
+                    '🔓 Відкрити комірку'
                   )}
                 </button>
                 <p className="text-xs text-gray-500 mb-3 text-center">
@@ -379,7 +379,7 @@ export default function AdminCellsManagementPage() {
                       Заповнення...
                     </>
                   ) : (
-                    '✅ Заповнити комірку (СИНЯ → ЗЕЛЕНА)'
+                    '✅ Відкрити комірку'
                   )}
                 </button>
                 <p className="text-xs text-gray-500 mb-3 text-center">
