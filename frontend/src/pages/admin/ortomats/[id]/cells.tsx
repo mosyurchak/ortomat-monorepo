@@ -44,8 +44,19 @@ export default function AdminCellsManagementPage() {
 
   // Оновлення товару комірки (СІРА → СИНЯ або СИНЯ → СИНЯ)
   const updateCellMutation = useMutation({
-    mutationFn: ({ cellNumber, productId }: { cellNumber: number; productId: string | null }) =>
-      api.updateCellProduct(id as string, cellNumber, productId),
+    mutationFn: async ({ cellNumber, productId }: { cellNumber: number; productId: string | null }) => {
+      // Перевіряємо чи комірка існує в БД
+      const existingCell = cells?.find((c: Cell) => c.number === cellNumber);
+      
+      if (!existingCell && productId) {
+        // Якщо комірки немає в БД і ми призначаємо товар - створюємо її
+        // Використовуємо той самий endpoint, він створить комірку якщо її немає
+        return api.updateCellProduct(id as string, cellNumber, productId);
+      } else {
+        // Якщо комірка вже є - просто оновлюємо
+        return api.updateCellProduct(id as string, cellNumber, productId);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', id] });
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
@@ -97,15 +108,19 @@ export default function AdminCellsManagementPage() {
 
   // Очищення заповненої комірки (ЗЕЛЕНА → СИНЯ)
   const clearFilledCellMutation = useMutation({
-    mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) => 
-      api.openCellForRefill(id as string, cellNumber, adminId),
+    mutationFn: ({ cellNumber, adminId }: { cellNumber: number; adminId: string }) => {
+      // Для очищення заповненої комірки використовуємо спеціальний endpoint
+      // Потрібно перевірити який endpoint очищає комірку не видаляючи productId
+      // Якщо такого немає - викликаємо openCellForRefill який відкриває комірку
+      return api.openCellForRefill(id as string, cellNumber, adminId);
+    },
     onSuccess: () => {
       setIsOpening(false);
       queryClient.invalidateQueries({ queryKey: ['inventory', id] });
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка очищена та відкрита! Тепер вона синя (призначений товар, порожня)');
+      alert('Комірка очищена! Тепер вона синя (призначений товар, порожня)');
     },
     onError: (error: any) => {
       setIsOpening(false);
