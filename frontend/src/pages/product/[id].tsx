@@ -67,7 +67,7 @@ export default function ProductPage() {
       router.push(`/payment?orderId=${order.id}`);
     } catch (error: any) {
       console.error('❌ Order creation failed:', error);
-      alert(t('errors.orderCreationFailed') || 'Помилка при створенні замовлення');
+      alert('Помилка при створенні замовлення. Спробуйте ще раз.');
       setIsOrdering(false);
     }
   };
