@@ -43,7 +43,7 @@ export default function ProductPage() {
     }
 
     if (!acceptedTerms) {
-      alert(t('checkout.acceptTermsError'));
+      alert(t('product.acceptTermsError'));
       return;
     }
 
@@ -336,7 +336,7 @@ export default function ProductPage() {
                       className="mt-1 mr-3 w-4 h-4"
                     />
                     <span className="text-sm text-gray-600">
-                      {t('checkout.acceptTerms')}{' '}
+                      {t('product.acceptTerms')}{' '}
                       {product.termsAndConditions && (
                         <button
                           type="button"
