@@ -50,7 +50,6 @@ export default function ProductPage() {
     setIsOrdering(true);
 
     try {
-      // Створюємо замовлення
       const orderData = {
         productId: id as string,
         ortomatId: ortomatId as string,
@@ -58,18 +57,34 @@ export default function ProductPage() {
       };
 
       console.log('🛒 Creating order:', orderData);
-
       const order = await api.createOrder(orderData);
-
       console.log('✅ Order created:', order);
 
-      // Одразу переходимо на оплату
       router.push(`/payment?orderId=${order.id}`);
     } catch (error: any) {
       console.error('❌ Order creation failed:', error);
       alert('Помилка при створенні замовлення. Спробуйте ще раз.');
       setIsOrdering(false);
     }
+  };
+
+  // ✅ Функція для автоматичної конвертації відео
+  const getEmbedUrl = (url: string) => {
+    if (!url) return url;
+    
+    // YouTube
+    if (url.includes('youtube.com/watch')) {
+      const videoId = new URL(url).searchParams.get('v');
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    
+    if (url.includes('youtu.be/')) {
+      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+      return `https://www.youtube.com/embed/${videoId}`;
+    }
+    
+    // Для прямих відео (.mp4, .webm) залишаємо як є
+    return url;
   };
 
   if (isLoading) {
@@ -140,13 +155,14 @@ export default function ProductPage() {
                         alt={product.name}
                         className="w-full h-96 object-cover"
                       />
-                      
                       {images.length > 1 && (
                         <>
                           <button
-                            onClick={() => setCurrentImageIndex((prev) => 
-                              prev === 0 ? images.length - 1 : prev - 1
-                            )}
+                            onClick={() =>
+                              setCurrentImageIndex((prev) =>
+                                prev === 0 ? images.length - 1 : prev - 1
+                              )
+                            }
                             className="absolute left-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
                           >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -154,9 +170,11 @@ export default function ProductPage() {
                             </svg>
                           </button>
                           <button
-                            onClick={() => setCurrentImageIndex((prev) => 
-                              prev === images.length - 1 ? 0 : prev + 1
-                            )}
+                            onClick={() =>
+                              setCurrentImageIndex((prev) =>
+                                prev === images.length - 1 ? 0 : prev + 1
+                              )
+                            }
                             className="absolute right-2 top-1/2 -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70"
                           >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,8 +188,8 @@ export default function ProductPage() {
                                 key={index}
                                 onClick={() => setCurrentImageIndex(index)}
                                 className={`w-2 h-2 rounded-full transition-all ${
-                                  index === currentImageIndex 
-                                    ? 'bg-white w-8' 
+                                  index === currentImageIndex
+                                    ? 'bg-white w-8'
                                     : 'bg-white bg-opacity-50'
                                 }`}
                               />
@@ -188,113 +206,16 @@ export default function ProductPage() {
                     </div>
                   )}
                 </div>
-
-                {images.length > 1 && (
-                  <div className="flex gap-2 p-4 overflow-x-auto">
-                    {images.map((img, index) => (
-                      <button
-                        key={index}
-                        onClick={() => setCurrentImageIndex(index)}
-                        className={`flex-shrink-0 w-20 h-20 rounded border-2 overflow-hidden ${
-                          index === currentImageIndex 
-                            ? 'border-blue-600' 
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <img
-                          src={img}
-                          alt={`${product.name} ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
               {/* Інформація про товар */}
               <div className="md:w-1/2 p-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                  {product.name}
-                </h1>
-
+                <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.name}</h1>
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-blue-600">
                     {product.price} {t('common.currency')}
                   </span>
                 </div>
-
-                {/* Accordion: Опис */}
-                {product.description && (
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={() => toggleSection('description')}
-                      className="w-full flex items-center justify-between py-3 text-left"
-                    >
-                      <span className="text-lg font-semibold text-gray-900">
-                        {t('product.description')}
-                      </span>
-                      {openSections.description ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500" />
-                      )}
-                    </button>
-                    {openSections.description && (
-                      <div 
-                        className="pb-4 text-gray-600 prose prose-sm"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
-                      />
-                    )}
-                  </div>
-                )}
-
-                {/* Accordion: Характеристики */}
-                {hasCharacteristics && (
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={() => toggleSection('characteristics')}
-                      className="w-full flex items-center justify-between py-3 text-left"
-                    >
-                      <span className="text-lg font-semibold text-gray-900">
-                        {t('product.characteristics')}
-                      </span>
-                      {openSections.characteristics ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500" />
-                      )}
-                    </button>
-                    {openSections.characteristics && (
-                      <div className="pb-4 space-y-2">
-                        {product.color && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.color')}:</span>
-                            <span className="font-medium">{product.color}</span>
-                          </div>
-                        )}
-                        {product.size && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('common.size')}:</span>
-                            <span className="font-medium">{product.size}</span>
-                          </div>
-                        )}
-                        {product.material && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.material')}:</span>
-                            <span className="font-medium">{product.material}</span>
-                          </div>
-                        )}
-                        {product.manufacturer && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.manufacturer')}:</span>
-                            <span className="font-medium">{product.manufacturer}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
 
                 {/* Accordion: Відео */}
                 {product.videoUrl && (
@@ -314,13 +235,25 @@ export default function ProductPage() {
                     </button>
                     {openSections.video && (
                       <div className="pb-4">
-                        <video 
-                          src={product.videoUrl} 
-                          controls 
-                          className="w-full rounded"
-                        >
-                          Ваш браузер не підтримує відео
-                        </video>
+                        {product.videoUrl.includes('youtube') || product.videoUrl.includes('youtu.be') ? (
+                          <div className="aspect-video">
+                            <iframe
+                              src={getEmbedUrl(product.videoUrl)}
+                              className="w-full h-full rounded"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Product video"
+                            />
+                          </div>
+                        ) : (
+                          <video 
+                            src={product.videoUrl} 
+                            controls 
+                            className="w-full rounded"
+                          >
+                            Ваш браузер не підтримує відео
+                          </video>
+                        )}
                       </div>
                     )}
                   </div>
@@ -358,24 +291,17 @@ export default function ProductPage() {
                 >
                   {isOrdering ? t('product.processing') : t('product.buyNow')}
                 </button>
-
-                <p className="mt-4 text-sm text-gray-500 text-center">
-                  {t('product.securePayment')}
-                </p>
               </div>
             </div>
           </div>
         </main>
       </div>
 
-      {/* Modal з умовами покупки */}
       {showTermsModal && product.termsAndConditions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">{t('product.terms')}</h2>
-            <div className="text-gray-700 whitespace-pre-wrap">
-              {product.termsAndConditions}
-            </div>
+            <div className="text-gray-700 whitespace-pre-wrap">{product.termsAndConditions}</div>
             <button
               onClick={() => setShowTermsModal(false)}
               className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
@@ -390,7 +316,5 @@ export default function ProductPage() {
 }
 
 export async function getServerSideProps() {
-  return {
-    props: {},
-  };
+  return { props: {} };
 }
