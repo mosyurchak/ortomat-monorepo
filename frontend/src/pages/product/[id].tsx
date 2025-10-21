@@ -17,7 +17,6 @@ export default function ProductPage() {
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   
-  // Accordion стани
   const [openSections, setOpenSections] = useState({
     description: true,
     characteristics: false,
@@ -37,7 +36,7 @@ export default function ProductPage() {
     }));
   };
 
-  const handleBuy = () => {
+  const handleBuy = async () => {
     if (!ortomatId) {
       alert(t('product.ortomatMissing'));
       return;
@@ -49,17 +48,28 @@ export default function ProductPage() {
     }
 
     setIsOrdering(true);
-    
-    const params = new URLSearchParams({
-      productId: id as string,
-      ortomatId: ortomatId as string,
-    });
-    
-    if (ref) {
-      params.append('ref', ref as string);
-    }
 
-    router.push(`/checkout?${params.toString()}`);
+    try {
+      // Створюємо замовлення
+      const orderData = {
+        productId: id as string,
+        ortomatId: ortomatId as string,
+        referralCode: ref as string | undefined,
+      };
+
+      console.log('🛒 Creating order:', orderData);
+
+      const order = await api.createOrder(orderData);
+
+      console.log('✅ Order created:', order);
+
+      // Одразу переходимо на оплату
+      router.push(`/payment?orderId=${order.id}`);
+    } catch (error: any) {
+      console.error('❌ Order creation failed:', error);
+      alert(t('errors.orderCreationFailed') || 'Помилка при створенні замовлення');
+      setIsOrdering(false);
+    }
   };
 
   if (isLoading) {
@@ -86,10 +96,9 @@ export default function ProductPage() {
     );
   }
 
-  // Формуємо масив зображень
   const images = [
-  ...(product.mainImage ? [product.mainImage] : []),
-  ...(product.images || [])
+    ...(product.mainImage ? [product.mainImage] : []),
+    ...(product.images || [])
   ].filter(img => img);
 
   const hasCharacteristics = !!(product.color || product.size || product.material || product.manufacturer);
@@ -134,7 +143,6 @@ export default function ProductPage() {
                       
                       {images.length > 1 && (
                         <>
-                          {/* Кнопки навігації */}
                           <button
                             onClick={() => setCurrentImageIndex((prev) => 
                               prev === 0 ? images.length - 1 : prev - 1
@@ -156,7 +164,6 @@ export default function ProductPage() {
                             </svg>
                           </button>
 
-                          {/* Індикатори */}
                           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex space-x-2">
                             {images.map((_, index) => (
                               <button
@@ -182,7 +189,6 @@ export default function ProductPage() {
                   )}
                 </div>
 
-                {/* Мініатюри */}
                 {images.length > 1 && (
                   <div className="flex gap-2 p-4 overflow-x-auto">
                     {images.map((img, index) => (
@@ -308,14 +314,13 @@ export default function ProductPage() {
                     </button>
                     {openSections.video && (
                       <div className="pb-4">
-                        <div className="aspect-video">
-                          <iframe
-                            src={product.videoUrl}
-                            className="w-full h-full rounded"
-                            allowFullScreen
-                            title="Product video"
-                          />
-                        </div>
+                        <video 
+                          src={product.videoUrl} 
+                          controls 
+                          className="w-full rounded"
+                        >
+                          Ваш браузер не підтримує відео
+                        </video>
                       </div>
                     )}
                   </div>
