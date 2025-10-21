@@ -7,6 +7,12 @@ CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PROCESSING', 'SUCCESS', 'FAILED
 -- CreateEnum
 CREATE TYPE "OrderStatus" AS ENUM ('CREATED', 'PAYMENT_PENDING', 'PAYMENT_PROCESSING', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'CELL_OPENING', 'COMPLETED', 'CANCELLED');
 
+-- CreateEnum
+CREATE TYPE "LogType" AS ENUM ('CELL_OPENED', 'CELL_FILLED', 'CELL_CLEARED', 'CELL_PRODUCT_ASSIGNED', 'CELL_ERROR', 'ORDER_CREATED', 'PAYMENT_SUCCESS', 'PAYMENT_FAILED', 'ORDER_COMPLETED', 'ORDER_CANCELLED', 'COURIER_CHECKIN', 'COURIER_REFILL', 'DEVICE_ONLINE', 'DEVICE_OFFLINE', 'API_ERROR', 'WEBSOCKET_COMMAND', 'LOGIN_SUCCESS', 'LOGIN_FAILED', 'UNAUTHORIZED_ACCESS');
+
+-- CreateEnum
+CREATE TYPE "Severity" AS ENUM ('INFO', 'WARNING', 'ERROR', 'CRITICAL');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -29,6 +35,7 @@ CREATE TABLE "ortomats" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "address" TEXT NOT NULL,
+    "city" TEXT,
     "totalCells" INTEGER NOT NULL DEFAULT 37,
     "status" TEXT NOT NULL DEFAULT 'active',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -56,12 +63,18 @@ CREATE TABLE "cells" (
 CREATE TABLE "products" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
+    "sku" TEXT NOT NULL,
     "description" TEXT,
-    "category" TEXT NOT NULL,
-    "size" TEXT,
+    "size" TEXT NOT NULL DEFAULT 'Uni',
     "price" DOUBLE PRECISION NOT NULL,
+    "mainImage" TEXT,
+    "images" TEXT[] DEFAULT ARRAY[]::TEXT[],
     "imageUrl" TEXT,
+    "color" TEXT,
+    "material" TEXT,
+    "manufacturer" TEXT,
     "videoUrl" TEXT,
+    "termsAndConditions" TEXT,
     "attributes" JSONB,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -116,11 +129,30 @@ CREATE TABLE "sales" (
     CONSTRAINT "sales_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "activity_logs" (
+    "id" TEXT NOT NULL,
+    "type" "LogType" NOT NULL,
+    "category" TEXT NOT NULL,
+    "message" TEXT NOT NULL,
+    "metadata" JSONB,
+    "userId" TEXT,
+    "ortomatId" TEXT,
+    "cellNumber" INTEGER,
+    "severity" "Severity" NOT NULL DEFAULT 'INFO',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "activity_logs_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "cells_ortomatId_number_key" ON "cells"("ortomatId", "number");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "products_sku_key" ON "products"("sku");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "doctor_ortomats_referralCode_key" ON "doctor_ortomats"("referralCode");
@@ -133,6 +165,21 @@ CREATE UNIQUE INDEX "courier_ortomats_courierId_ortomatId_key" ON "courier_ortom
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sales_orderNumber_key" ON "sales"("orderNumber");
+
+-- CreateIndex
+CREATE INDEX "activity_logs_type_idx" ON "activity_logs"("type");
+
+-- CreateIndex
+CREATE INDEX "activity_logs_category_idx" ON "activity_logs"("category");
+
+-- CreateIndex
+CREATE INDEX "activity_logs_severity_idx" ON "activity_logs"("severity");
+
+-- CreateIndex
+CREATE INDEX "activity_logs_createdAt_idx" ON "activity_logs"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "activity_logs_ortomatId_idx" ON "activity_logs"("ortomatId");
 
 -- AddForeignKey
 ALTER TABLE "cells" ADD CONSTRAINT "cells_ortomatId_fkey" FOREIGN KEY ("ortomatId") REFERENCES "ortomats"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -163,3 +210,9 @@ ALTER TABLE "sales" ADD CONSTRAINT "sales_ortomatId_fkey" FOREIGN KEY ("ortomatI
 
 -- AddForeignKey
 ALTER TABLE "sales" ADD CONSTRAINT "sales_doctorOrtomatId_fkey" FOREIGN KEY ("doctorOrtomatId") REFERENCES "doctor_ortomats"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "activity_logs" ADD CONSTRAINT "activity_logs_ortomatId_fkey" FOREIGN KEY ("ortomatId") REFERENCES "ortomats"("id") ON DELETE SET NULL ON UPDATE CASCADE;

@@ -132,21 +132,22 @@ model Cell {
 model Product {
   id          String  @id @default(uuid())
   name        String
+  sku         String  @unique
   description String? @db.Text
-  category    String
-  size        String?
+  size        String  @default("Uni")
   price       Float
   
+  mainImage   String?
   images      String[] @default([])
+  
+  imageUrl    String?
   color       String?
   material    String?
   manufacturer String?
   videoUrl    String?
   termsAndConditions String? @db.Text
-  
-  imageUrl    String?
-  
   attributes  Json?
+  
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

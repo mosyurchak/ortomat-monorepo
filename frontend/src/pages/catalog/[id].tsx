@@ -124,9 +124,10 @@ export default function CatalogPage() {
                     </h3>
                     
                     {product.description && (
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                        {product.description}
-                      </p>
+                      <div 
+                        className="text-gray-600 text-sm line-clamp-2"
+                        dangerouslySetInnerHTML={{ __html: product.description }}
+                      />
                     )}
 
                     <div className="flex items-center justify-between mb-4">

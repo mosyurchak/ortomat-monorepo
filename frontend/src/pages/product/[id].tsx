@@ -87,11 +87,10 @@ export default function ProductPage() {
   }
 
   // Формуємо масив зображень
-  const images = product.images && product.images.length > 0 
-    ? product.images 
-    : product.imageUrl 
-    ? [product.imageUrl] 
-    : [];
+  const images = [
+  ...(product.mainImage ? [product.mainImage] : []),
+  ...(product.images || [])
+  ].filter(img => img);
 
   const hasCharacteristics = !!(product.color || product.size || product.material || product.manufacturer);
 
@@ -236,9 +235,10 @@ export default function ProductPage() {
                       )}
                     </button>
                     {openSections.description && (
-                      <div className="pb-4 text-gray-600">
-                        {product.description}
-                      </div>
+                      <div 
+                        className="pb-4 text-gray-600 prose prose-sm"
+                        dangerouslySetInnerHTML={{ __html: product.description }}
+                      />
                     )}
                   </div>
                 )}

@@ -92,7 +92,10 @@ export default function CheckoutPage() {
                 {product.name}
               </h3>
               {product.description && (
-                <p className="text-gray-600 text-sm mb-2">{product.description}</p>
+                <div 
+                  className="text-gray-600 text-sm mb-2 line-clamp-2"
+                  dangerouslySetInnerHTML={{ __html: product.description }}
+                />
               )}
               <div className="flex items-center space-x-4 text-sm text-gray-500">
                 <span>{t('common.category')}: {product.category}</span>

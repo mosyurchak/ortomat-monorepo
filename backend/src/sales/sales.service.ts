@@ -88,7 +88,7 @@ export class SalesService {
       .map((product) => ({
         id: product.id,
         name: product.name,
-        category: product.category,
+        sku: product.sku,
         salesCount: product._count.sales,
         revenue: product.sales.reduce((sum, sale) => sum + sale.amount, 0),
       }))
