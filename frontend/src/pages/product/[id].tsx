@@ -36,6 +36,35 @@ export default function ProductPage() {
     }));
   };
 
+  // Функція для конвертації YouTube URL в embed формат
+  const getEmbedUrl = (url: string) => {
+    if (!url) return url;
+    
+    // YouTube: https://www.youtube.com/watch?v=VIDEO_ID
+    if (url.includes('youtube.com/watch')) {
+      const videoId = new URL(url).searchParams.get('v');
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+    
+    // YouTube short: https://youtu.be/VIDEO_ID
+    if (url.includes('youtu.be/')) {
+      const videoId = url.split('youtu.be/')[1]?.split('?')[0];
+      if (videoId) {
+        return `https://www.youtube.com/embed/${videoId}`;
+      }
+    }
+    
+    // Для прямих відео (.mp4, .webm) залишаємо як є
+    return url;
+  };
+
+  // Перевірка чи це YouTube відео
+  const isYouTubeVideo = (url: string) => {
+    return url?.includes('youtube.com') || url?.includes('youtu.be');
+  };
+
   const handleBuy = async () => {
     if (!ortomatId) {
       alert(t('product.ortomatMissing'));
@@ -43,7 +72,7 @@ export default function ProductPage() {
     }
 
     if (!acceptedTerms) {
-      alert(t('product.acceptTermsError'));
+      alert('Будь ласка, прийміть умови покупки');
       return;
     }
 
@@ -314,13 +343,25 @@ export default function ProductPage() {
                     </button>
                     {openSections.video && (
                       <div className="pb-4">
-                        <video 
-                          src={product.videoUrl} 
-                          controls 
-                          className="w-full rounded"
-                        >
-                          Ваш браузер не підтримує відео
-                        </video>
+                        {isYouTubeVideo(product.videoUrl) ? (
+                          <div className="aspect-video">
+                            <iframe
+                              src={getEmbedUrl(product.videoUrl)}
+                              className="w-full h-full rounded"
+                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                              allowFullScreen
+                              title="Product video"
+                            />
+                          </div>
+                        ) : (
+                          <video 
+                            src={product.videoUrl} 
+                            controls 
+                            className="w-full rounded"
+                          >
+                            Ваш браузер не підтримує відео
+                          </video>
+                        )}
                       </div>
                     )}
                   </div>
@@ -336,7 +377,7 @@ export default function ProductPage() {
                       className="mt-1 mr-3 w-4 h-4"
                     />
                     <span className="text-sm text-gray-600">
-                      {t('product.acceptTerms')}{' '}
+                      Я приймаю умови покупки{' '}
                       {product.termsAndConditions && (
                         <button
                           type="button"
