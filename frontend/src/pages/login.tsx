@@ -139,20 +139,20 @@ export default function Login() {
 
                 <button
                   type="button"
-                  onClick={() => fillCredentials('doctor1@ortomat.ua', 'password123')}
+                  onClick={() => fillCredentials('doctor@ortomat.ua', 'password123')}
                   className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                 >
                   <div className="text-sm font-semibold text-gray-900">👨‍⚕️ Лікар</div>
-                  <div className="text-xs text-gray-600 mt-1">doctor1@ortomat.ua / password123</div>
+                  <div className="text-xs text-gray-600 mt-1">doctor@ortomat.ua / password123</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => fillCredentials('courier1@ortomat.ua', 'password123')}
+                  onClick={() => fillCredentials('courier@ortomat.ua', 'password123')}
                   className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
                 >
                   <div className="text-sm font-semibold text-gray-900">🚚 Кур'єр</div>
-                  <div className="text-xs text-gray-600 mt-1">courier1@ortomat.ua / password123</div>
+                  <div className="text-xs text-gray-600 mt-1">courier@ortomat.ua / password123</div>
                 </button>
               </div>
             </div>
