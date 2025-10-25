@@ -16,25 +16,12 @@ export default function ProductPage() {
   const [isOrdering, setIsOrdering] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
-  
-  const [openSections, setOpenSections] = useState({
-    description: true,
-    characteristics: false,
-    video: false,
-  });
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
     queryFn: () => api.getProduct(id as string),
     enabled: !!id,
   });
-
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections(prev => ({
-      ...prev,
-      [section]: !prev[section],
-    }));
-  };
 
   // Функція для конвертації YouTube URL в embed формат
   const getEmbedUrl = (url: string) => {
@@ -67,7 +54,7 @@ export default function ProductPage() {
 
   const handleBuy = async () => {
     if (!ortomatId) {
-      alert(t('product.ortomatMissing'));
+      alert('Оберіть ортомат');
       return;
     }
 
@@ -253,116 +240,78 @@ export default function ProductPage() {
                   </span>
                 </div>
 
-                {/* Accordion: Опис */}
+                {/* Опис */}
                 {product.description && (
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={() => toggleSection('description')}
-                      className="w-full flex items-center justify-between py-3 text-left"
-                    >
-                      <span className="text-lg font-semibold text-gray-900">
-                        {t('product.description')}
-                      </span>
-                      {openSections.description ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500" />
-                      )}
-                    </button>
-                    {openSections.description && (
-                      <div 
-                        className="pb-4 text-gray-600 prose prose-sm"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
-                      />
-                    )}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                      {t('product.description')}
+                    </h2>
+                    <div 
+                      className="text-gray-600 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
                   </div>
                 )}
 
-                {/* Accordion: Характеристики */}
+                {/* Характеристики */}
                 {hasCharacteristics && (
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={() => toggleSection('characteristics')}
-                      className="w-full flex items-center justify-between py-3 text-left"
-                    >
-                      <span className="text-lg font-semibold text-gray-900">
-                        {t('product.characteristics')}
-                      </span>
-                      {openSections.characteristics ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500" />
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                      {t('product.characteristics')}
+                    </h2>
+                    <div className="space-y-2">
+                      {product.color && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">{t('product.color')}:</span>
+                          <span className="font-medium">{product.color}</span>
+                        </div>
                       )}
-                    </button>
-                    {openSections.characteristics && (
-                      <div className="pb-4 space-y-2">
-                        {product.color && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.color')}:</span>
-                            <span className="font-medium">{product.color}</span>
-                          </div>
-                        )}
-                        {product.size && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('common.size')}:</span>
-                            <span className="font-medium">{product.size}</span>
-                          </div>
-                        )}
-                        {product.material && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.material')}:</span>
-                            <span className="font-medium">{product.material}</span>
-                          </div>
-                        )}
-                        {product.manufacturer && (
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">{t('product.manufacturer')}:</span>
-                            <span className="font-medium">{product.manufacturer}</span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      {product.size && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">{t('common.size')}:</span>
+                          <span className="font-medium">{product.size}</span>
+                        </div>
+                      )}
+                      {product.material && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">{t('product.material')}:</span>
+                          <span className="font-medium">{product.material}</span>
+                        </div>
+                      )}
+                      {product.manufacturer && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">{t('product.manufacturer')}:</span>
+                          <span className="font-medium">{product.manufacturer}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
 
-                {/* Accordion: Відео */}
+                {/* Відео */}
                 {product.videoUrl && (
-                  <div className="mb-4 border-b">
-                    <button
-                      onClick={() => toggleSection('video')}
-                      className="w-full flex items-center justify-between py-3 text-left"
-                    >
-                      <span className="text-lg font-semibold text-gray-900">
-                        {t('product.video')}
-                      </span>
-                      {openSections.video ? (
-                        <ChevronUp className="h-5 w-5 text-gray-500" />
-                      ) : (
-                        <ChevronDown className="h-5 w-5 text-gray-500" />
-                      )}
-                    </button>
-                    {openSections.video && (
-                      <div className="pb-4">
-                        {isYouTubeVideo(product.videoUrl) ? (
-                          <div className="aspect-video">
-                            <iframe
-                              src={getEmbedUrl(product.videoUrl)}
-                              className="w-full h-full rounded"
-                              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                              allowFullScreen
-                              title="Product video"
-                            />
-                          </div>
-                        ) : (
-                          <video 
-                            src={product.videoUrl} 
-                            controls 
-                            className="w-full rounded"
-                          >
-                            Ваш браузер не підтримує відео
-                          </video>
-                        )}
+                  <div className="mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900 mb-3">
+                      {t('product.video')}
+                    </h2>
+                    {isYouTubeVideo(product.videoUrl) ? (
+                      <div className="aspect-video rounded-lg overflow-hidden">
+                        <iframe
+                          src={getEmbedUrl(product.videoUrl)}
+                          className="w-full h-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          title="Product video"
+                        />
                       </div>
+                    ) : (
+                      <video 
+                        src={product.videoUrl} 
+                        controls 
+                        className="w-full rounded-lg"
+                      >
+                        Ваш браузер не підтримує відео
+                      </video>
                     )}
                   </div>
                 )}
