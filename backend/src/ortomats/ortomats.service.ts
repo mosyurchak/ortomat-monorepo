@@ -2,13 +2,13 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { OrtomatsGateway } from './ortomats.gateway';
-import { LogsService } from '../logs/logs.service'; // ✅ ДОДАНО
+import { LogsService } from '../logs/logs.service';
 
 @Injectable()
 export class OrtomatsService {
   constructor(
     private prisma: PrismaService,
-    private logsService: LogsService, // ✅ ДОДАНО
+    private logsService: LogsService,
   ) {}
 
   async create(data: Prisma.OrtomatCreateInput) {
@@ -325,23 +325,25 @@ export class OrtomatsService {
       });
     }
 
-    const deviceId = 'locker-01';
+    // ✅ ВИПРАВЛЕНО: Використовуємо реальний ID ортомату
+    const deviceId = ortomatId;
+    const ortomatName = cell.ortomat.name;
     
     if (gateway) {
       const isOnline = gateway.isDeviceOnline(deviceId);
       
       if (isOnline) {
-        console.log(`📤 Sending WebSocket command to ${deviceId}, cell ${cellNumber}`);
+        console.log(`🔌 Sending WebSocket command to ${ortomatName} (${deviceId}), cell ${cellNumber}`);
         
         const cmd_id = `ADMIN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
         await gateway.openCell(deviceId, cellNumber, cmd_id);
       } else {
-        console.log('⚠️ Device offline, skipping WebSocket command');
+        console.log(`⚠️ Device ${ortomatName} (${deviceId}) offline, skipping WebSocket command`);
       }
     }
 
-    // ✅ ДОДАНО: Логування
+    // ✅ ВИПРАВЛЕНО: Логування з повними деталями
     await this.logsService.logCellOpened({
       cellNumber,
       ortomatId,
@@ -349,7 +351,10 @@ export class OrtomatsService {
       reason: action === 'cleared' ? 'Clearing filled cell' : 'Opening for refill',
       metadata: {
         action,
+        ortomatName,
+        deviceId,
         productId: cell.productId,
+        productName: cell.product?.name,
         deviceOnline: gateway?.isDeviceOnline(deviceId),
       },
     });
@@ -357,11 +362,12 @@ export class OrtomatsService {
     return {
       success: true,
       message: action === 'cleared' 
-        ? `Cell ${cellNumber} cleared and opened` 
-        : `Cell ${cellNumber} opened for refill`,
+        ? `${ortomatName}, комірка ${cellNumber} очищена та відкрита` 
+        : `${ortomatName}, комірка ${cellNumber} відкрита для заповнення`,
       cellNumber,
       product: cell.product,
       action,
+      ortomatName,
       note: action === 'cleared'
         ? 'Cell is now empty (blue) but product is still assigned'
         : 'Please place the product inside and close the cell',
@@ -396,7 +402,7 @@ export class OrtomatsService {
       },
     });
 
-    // ✅ ДОДАНО: Логування
+    // ✅ Логування заповнення комірки
     await this.logsService.logCourierRefill({
       cellNumber,
       ortomatId,

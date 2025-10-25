@@ -172,14 +172,27 @@ export class LogsService {
     reason: string;
     metadata?: any;
   }) {
+    // Отримуємо назву ортомату для читабельного логу
+    const ortomat = await this.prisma.ortomat.findUnique({
+      where: { id: data.ortomatId },
+      select: { name: true },
+    });
+
+    const ortomatName = ortomat?.name || data.ortomatId;
+    const productName = data.metadata?.productName || 'товар';
+
     return this.createLog({
       type: 'CELL_OPENED',
       category: 'cells',
-      message: `Cell #${data.cellNumber} opened: ${data.reason}`,
+      message: `${ortomatName}, комірка #${data.cellNumber} відкрита: ${productName}`,
       cellNumber: data.cellNumber,
       ortomatId: data.ortomatId,
       userId: data.userId,
-      metadata: data.metadata,
+      metadata: {
+        ...data.metadata,
+        ortomatName,
+        reason: data.reason,
+      },
       severity: 'INFO',
     });
   }
@@ -250,15 +263,34 @@ export class LogsService {
     courierId: string;
     productId: string;
   }) {
+    // Отримуємо деталі для читабельного логу
+    const [ortomat, product] = await Promise.all([
+      this.prisma.ortomat.findUnique({
+        where: { id: data.ortomatId },
+        select: { name: true },
+      }),
+      this.prisma.product.findUnique({
+        where: { id: data.productId },
+        select: { name: true, sku: true },
+      }),
+    ]);
+
+    const ortomatName = ortomat?.name || data.ortomatId;
+    const productName = product?.name || 'товар';
+    const productSku = product?.sku || '';
+
     return this.createLog({
       type: 'COURIER_REFILL',
       category: 'couriers',
-      message: `Courier refilled cell #${data.cellNumber}`,
+      message: `${ortomatName}, комірка #${data.cellNumber} заповнена: ${productName} (${productSku})`,
       cellNumber: data.cellNumber,
       ortomatId: data.ortomatId,
       userId: data.courierId,
       metadata: {
         productId: data.productId,
+        productName,
+        productSku,
+        ortomatName,
       },
       severity: 'INFO',
     });
