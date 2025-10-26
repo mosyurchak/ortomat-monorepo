@@ -13,9 +13,9 @@ export default function VerifyEmailPage() {
 
     const verifyEmail = async () => {
       try {
-        const response = await api.get(`/auth/verify-email?token=${token}`);
+        const response = await api.request('GET', `/auth/verify-email?token=${token}`);
         setStatus('success');
-        setMessage(response.data.message || 'Email успішно підтверджено!');
+        setMessage(response.message || 'Email успішно підтверджено!');
         
         // Редірект на логін через 3 секунди
         setTimeout(() => {
@@ -23,7 +23,7 @@ export default function VerifyEmailPage() {
         }, 3000);
       } catch (error: any) {
         setStatus('error');
-        setMessage(error.response?.data?.message || 'Помилка підтвердження email');
+        setMessage(error.message || 'Помилка підтвердження email');
       }
     };
 
