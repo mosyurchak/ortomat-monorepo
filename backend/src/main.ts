@@ -10,14 +10,7 @@ async function bootstrap() {
   
   // ✅ СПРОЩЕНА CORS конфігурація (без callback функції)
   app.enableCors({
-    origin: [
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'https://ortomat-monorepo.vercel.app',
-      'https://ortomat.com.ua',
-      'https://www.ortomat.com.ua',
-      /\.vercel\.app$/, // Всі Vercel preview deployments
-    ],
+    origin: '*',
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
