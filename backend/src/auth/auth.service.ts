@@ -10,7 +10,7 @@ export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
-    private emailService: EmailService, // ✅ ДОДАНО
+    private emailService: EmailService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -23,11 +23,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // ✅ ДОДАНО: Перевірка верифікації email
-    if (!user.isVerified) {
-      console.log('❌ Email not verified');
-      throw new UnauthorizedException('Please verify your email first');
-    }
+    // Перевірка верифікації email (тимчасово вимкнено)
+    // if (!user.isVerified) {
+    //   console.log('❌ Email not verified');
+    //   throw new UnauthorizedException('Please verify your email first');
+    // }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
@@ -70,7 +70,7 @@ export class AuthService {
   }
 
   /**
-   * ✅ ОНОВЛЕНО: Реєстрація тільки для лікарів
+   * Реєстрація тільки для лікарів
    */
   async register(registerDto: RegisterDto) {
     console.log('📝 Registering new doctor:', registerDto.email);
@@ -83,32 +83,45 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
 
-    // ✅ ЗМІНЕНО: Завжди роль DOCTOR
+    // Створюємо користувача з ТІЛЬКИ валідними полями
     const user = await this.usersService.create({
-      ...registerDto,
+      email: registerDto.email,
       password: hashedPassword,
-      role: 'DOCTOR', // Фіксована роль
-      isVerified: false, // Email не підтверджено
+      role: 'DOCTOR', // Завжди DOCTOR для реєстрації
+      firstName: registerDto.firstName,
+      lastName: registerDto.lastName,
+      middleName: registerDto.middleName || null,
+      phone: registerDto.phone,
+      isVerified: true, // ✅ Тимчасово true для тестування без email
     });
 
     console.log('✅ Doctor registered:', user.email);
 
-    // ✅ ДОДАНО: Відправляємо email верифікації
-    await this.emailService.sendVerificationEmail(
-      user.id,
-      user.email,
-      user.firstName,
-    );
+    // ⚠️ ТИМЧАСОВО ВИМКНЕНО - email відправка
+    // Розкоментуйте коли налаштуєте SMTP правильно
+    /*
+    try {
+      await this.emailService.sendVerificationEmail(
+        user.id,
+        user.email,
+        user.firstName,
+      );
+      console.log('✅ Verification email sent');
+    } catch (error) {
+      console.error('❌ Email sending failed:', error.message);
+      // Не кидаємо помилку, щоб реєстрація пройшла успішно
+    }
+    */
 
     return {
-      message: 'Registration successful. Please check your email to verify your account.',
+      message: 'Registration successful. You can now login.',
       userId: user.id,
       email: user.email,
     };
   }
 
   /**
-   * ✅ НОВИЙ МЕТОД: Верифікація email
+   * Верифікація email
    */
   async verifyEmail(token: string) {
     console.log('✉️ Verifying email with token:', token);
@@ -124,7 +137,7 @@ export class AuthService {
   }
 
   /**
-   * ✅ НОВИЙ МЕТОД: Запит на відновлення паролю
+   * Запит на відновлення паролю
    */
   async forgotPassword(email: string) {
     console.log('🔑 Password reset requested for:', email);
@@ -132,19 +145,22 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      // ⚠️ Не розкриваємо чи існує користувач
+      // Не розкриваємо чи існує користувач
       return {
         message: 'If this email exists, you will receive a password reset link',
       };
     }
 
-    await this.emailService.sendPasswordResetEmail(
-      user.id,
-      user.email,
-      user.firstName,
-    );
-
-    console.log('✅ Password reset email sent to:', email);
+    try {
+      await this.emailService.sendPasswordResetEmail(
+        user.id,
+        user.email,
+        user.firstName,
+      );
+      console.log('✅ Password reset email sent to:', email);
+    } catch (error) {
+      console.error('❌ Email sending failed:', error.message);
+    }
 
     return {
       message: 'If this email exists, you will receive a password reset link',
@@ -152,7 +168,7 @@ export class AuthService {
   }
 
   /**
-   * ✅ НОВИЙ МЕТОД: Скидання паролю
+   * Скидання паролю
    */
   async resetPassword(token: string, newPassword: string) {
     console.log('🔐 Resetting password with token');
@@ -179,7 +195,7 @@ export class AuthService {
   }
 
   /**
-   * ✅ НОВИЙ МЕТОД: Повторна відправка email верифікації
+   * Повторна відправка email верифікації
    */
   async resendVerificationEmail(email: string) {
     console.log('📧 Resending verification email to:', email);
@@ -194,13 +210,17 @@ export class AuthService {
       throw new BadRequestException('Email already verified');
     }
 
-    await this.emailService.sendVerificationEmail(
-      user.id,
-      user.email,
-      user.firstName,
-    );
-
-    console.log('✅ Verification email resent to:', email);
+    try {
+      await this.emailService.sendVerificationEmail(
+        user.id,
+        user.email,
+        user.firstName,
+      );
+      console.log('✅ Verification email resent to:', email);
+    } catch (error) {
+      console.error('❌ Email sending failed:', error.message);
+      throw new BadRequestException('Failed to send verification email');
+    }
 
     return {
       message: 'Verification email sent. Please check your inbox.',
