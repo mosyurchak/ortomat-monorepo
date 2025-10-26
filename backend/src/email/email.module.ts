@@ -7,28 +7,26 @@ import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
   imports: [
-    MailerModule.forRootAsync({
-      useFactory: () => ({
-        transport: {
-          host: process.env.SMTP_HOST || 'smtp.gmail.com',
-          port: parseInt(process.env.SMTP_PORT) || 587,
-          secure: false, // true for 465, false for other ports
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
+    MailerModule.forRoot({
+      transport: {
+        host: 'smtp.sendgrid.net',
+        port: 587,
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: 'apikey', // ✅ Завжди 'apikey' для SendGrid
+          pass: process.env.SENDGRID_API_KEY, // ✅ Ваш SendGrid API Key
         },
-        defaults: {
-          from: `"Ортомат" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
+      },
+      defaults: {
+        from: process.env.SMTP_FROM || 'noreply@ortomat.com.ua',
+      },
+      template: {
+        dir: join(__dirname, 'templates'),
+        adapter: new HandlebarsAdapter(),
+        options: {
+          strict: true,
         },
-        template: {
-          dir: join(__dirname, 'templates'),
-          adapter: new HandlebarsAdapter(),
-          options: {
-            strict: true,
-          },
-        },
-      }),
+      },
     }),
     PrismaModule,
   ],
