@@ -1,285 +1,238 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { MailerService } from '@nestjs-modules/mailer';
 import { PrismaService } from '../prisma/prisma.service';
-import { v4 as uuidv4 } from 'uuid';
+import * as sgMail from '@sendgrid/mail';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import * as Handlebars from 'handlebars';
 
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
 
-  constructor(
-    private mailerService: MailerService,
-    private prisma: PrismaService,
-  ) {}
+  constructor(private prisma: PrismaService) {
+    // Ініціалізуємо SendGrid
+    const apiKey = process.env.SENDGRID_API_KEY;
+    if (apiKey) {
+      sgMail.setApiKey(apiKey);
+      this.logger.log('✅ SendGrid initialized');
+    } else {
+      this.logger.warn('⚠️ SENDGRID_API_KEY not set');
+    }
+  }
 
   /**
-   * 📧 Верифікація email при реєстрації
+   * Компілює Handlebars шаблон
    */
-  async sendVerificationEmail(userId: string, email: string, firstName: string) {
+  private compileTemplate(templateName: string, data: any): string {
+    const templatePath = join(__dirname, 'templates', `${templateName}.hbs`);
+    const templateContent = readFileSync(templatePath, 'utf-8');
+    const template = Handlebars.compile(templateContent);
+    return template(data);
+  }
+
+  /**
+   * Відправляє email через SendGrid API
+   */
+  private async sendEmail(to: string, subject: string, html: string): Promise<void> {
+    const msg = {
+      to,
+      from: process.env.SMTP_FROM || 'noreply@ortomat.com.ua',
+      subject,
+      html,
+    };
+
+    try {
+      await sgMail.send(msg);
+      this.logger.log(`✅ Email sent to ${to}`);
+    } catch (error) {
+      this.logger.error(`❌ Failed to send email to ${to}:`, error.response?.body || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Відправка email верифікації
+   */
+  async sendVerificationEmail(
+    userId: string,
+    email: string,
+    firstName: string,
+  ): Promise<void> {
+    this.logger.log(`📧 Sending verification email to ${email}`);
+
     try {
       // Генеруємо токен
-      const token = uuidv4();
-      const expires = new Date();
-      expires.setHours(expires.getHours() + 24); // Токен діє 24 години
+      const token = this.generateToken();
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 години
 
       // Зберігаємо токен в БД
       await this.prisma.user.update({
         where: { id: userId },
         data: {
           emailVerificationToken: token,
-          emailVerificationExpires: expires,
+          emailVerificationExpires: expiresAt,
         },
       });
 
+      // Генеруємо лінк
       const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
 
-      await this.mailerService.sendMail({
-        to: email,
-        subject: 'Підтвердіть ваш email - Ортомат',
-        template: 'verify-email',
-        context: {
-          firstName,
-          verificationUrl,
-          expiresIn: '24 години',
+      // Компілюємо шаблон
+      const html = this.compileTemplate('verify-email', {
+        firstName,
+        verificationUrl,
+        year: new Date().getFullYear(),
+      });
+
+      // Відправляємо email
+      await this.sendEmail(
+        email,
+        'Підтвердіть ваш email - Ортомат',
+        html,
+      );
+
+      // Логуємо в БД
+      await this.prisma.emailLog.create({
+        data: {
+          userId,
+          type: 'VERIFICATION',
+          recipient: email,
+          subject: 'Підтвердіть ваш email - Ортомат',
+          status: 'SENT',
+          sentAt: new Date(),
         },
       });
 
-      // Логуємо в БД
-      await this.logEmail(userId, email, 'VERIFICATION', 'Підтвердження email', 'SENT');
-
       this.logger.log(`✅ Verification email sent to ${email}`);
-      return { success: true };
     } catch (error) {
       this.logger.error(`❌ Failed to send verification email to ${email}:`, error);
-      await this.logEmail(userId, email, 'VERIFICATION', 'Підтвердження email', 'FAILED', error.message);
+
+      // Логуємо помилку в БД
+      await this.prisma.emailLog.create({
+        data: {
+          userId,
+          type: 'VERIFICATION',
+          recipient: email,
+          subject: 'Підтвердіть ваш email - Ортомат',
+          status: 'FAILED',
+          error: error.message,
+        },
+      });
+
       throw error;
     }
   }
 
   /**
-   * 🎉 Вітальний лист після верифікації
+   * Відправка welcome email після верифікації
    */
-  async sendWelcomeEmail(userId: string, email: string, firstName: string, role: string) {
-    try {
-      const dashboardUrl = 
-        role === 'DOCTOR' ? `${process.env.FRONTEND_URL}/doctor` :
-        role === 'COURIER' ? `${process.env.FRONTEND_URL}/courier` :
-        `${process.env.FRONTEND_URL}/dashboard`;
+  async sendWelcomeEmail(
+    userId: string,
+    email: string,
+    firstName: string,
+  ): Promise<void> {
+    this.logger.log(`📧 Sending welcome email to ${email}`);
 
-      await this.mailerService.sendMail({
-        to: email,
-        subject: 'Ласкаво просимо в Ортомат!',
-        template: 'welcome',
-        context: {
-          firstName,
-          role: role === 'DOCTOR' ? 'Лікар' : 'Кур\'єр',
-          dashboardUrl,
-        },
+    try {
+      const html = this.compileTemplate('welcome', {
+        firstName,
+        dashboardUrl: `${process.env.FRONTEND_URL}/doctor`,
+        year: new Date().getFullYear(),
       });
 
-      await this.logEmail(userId, email, 'WELCOME', 'Вітальний лист', 'SENT');
+      await this.sendEmail(
+        email,
+        'Вітаємо в Ортомат! 🎉',
+        html,
+      );
+
+      await this.prisma.emailLog.create({
+        data: {
+          userId,
+          type: 'WELCOME',
+          recipient: email,
+          subject: 'Вітаємо в Ортомат! 🎉',
+          status: 'SENT',
+          sentAt: new Date(),
+        },
+      });
 
       this.logger.log(`✅ Welcome email sent to ${email}`);
     } catch (error) {
       this.logger.error(`❌ Failed to send welcome email to ${email}:`, error);
-      await this.logEmail(userId, email, 'WELCOME', 'Вітальний лист', 'FAILED', error.message);
+      // Не кидаємо помилку, бо welcome email не критичний
     }
   }
 
   /**
-   * 🔑 Відновлення паролю
+   * Відправка email для скидання паролю
    */
-  async sendPasswordResetEmail(userId: string, email: string, firstName: string) {
+  async sendPasswordResetEmail(
+    userId: string,
+    email: string,
+    firstName: string,
+  ): Promise<void> {
+    this.logger.log(`📧 Sending password reset email to ${email}`);
+
     try {
-      const token = uuidv4();
-      const expires = new Date();
-      expires.setHours(expires.getHours() + 1); // Токен діє 1 годину
+      const token = this.generateToken();
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 година
 
       await this.prisma.user.update({
         where: { id: userId },
         data: {
           resetPasswordToken: token,
-          resetPasswordExpires: expires,
+          resetPasswordExpires: expiresAt,
         },
       });
 
       const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
 
-      await this.mailerService.sendMail({
-        to: email,
-        subject: 'Відновлення паролю - Ортомат',
-        template: 'reset-password',
-        context: {
-          firstName,
-          resetUrl,
-          expiresIn: '1 година',
+      const html = this.compileTemplate('reset-password', {
+        firstName,
+        resetUrl,
+        year: new Date().getFullYear(),
+      });
+
+      await this.sendEmail(
+        email,
+        'Скидання паролю - Ортомат',
+        html,
+      );
+
+      await this.prisma.emailLog.create({
+        data: {
+          userId,
+          type: 'PASSWORD_RESET',
+          recipient: email,
+          subject: 'Скидання паролю - Ортомат',
+          status: 'SENT',
+          sentAt: new Date(),
         },
       });
 
-      await this.logEmail(userId, email, 'PASSWORD_RESET', 'Відновлення паролю', 'SENT');
-
       this.logger.log(`✅ Password reset email sent to ${email}`);
-      return { success: true };
     } catch (error) {
       this.logger.error(`❌ Failed to send password reset email to ${email}:`, error);
-      await this.logEmail(userId, email, 'PASSWORD_RESET', 'Відновлення паролю', 'FAILED', error.message);
       throw error;
     }
   }
 
   /**
-   * 💰 Повідомлення лікарю про продаж
+   * Верифікація email токену
    */
-  async sendSaleNotification(
-    doctorId: string,
-    saleData: {
-      productName: string;
-      amount: number;
-      commission: number;
-      ortomatName: string;
-      saleId: string;
-    },
-  ) {
-    try {
-      const doctor = await this.prisma.user.findUnique({
-        where: { id: doctorId },
-        select: {
-          email: true,
-          firstName: true,
-          emailNotifications: true,
-        },
-      });
-
-      if (!doctor || !doctor.emailNotifications) {
-        this.logger.log(`⏭️ Skipping sale notification for doctor ${doctorId} (notifications disabled)`);
-        return;
-      }
-
-      const statsUrl = `${process.env.FRONTEND_URL}/doctor/statistics`;
-
-      await this.mailerService.sendMail({
-        to: doctor.email,
-        subject: '💰 Нова комісія від продажу!',
-        template: 'sale-notification',
-        context: {
-          firstName: doctor.firstName,
-          productName: saleData.productName,
-          amount: saleData.amount.toFixed(2),
-          commission: saleData.commission.toFixed(2),
-          ortomatName: saleData.ortomatName,
-          statsUrl,
-        },
-      });
-
-      await this.logEmail(doctorId, doctor.email, 'SALE_NOTIFICATION', 'Повідомлення про продаж', 'SENT');
-
-      // Оновлюємо час останнього повідомлення
-      await this.prisma.user.update({
-        where: { id: doctorId },
-        data: { lastNotificationSent: new Date() },
-      });
-
-      this.logger.log(`✅ Sale notification sent to doctor ${doctor.email}`);
-    } catch (error) {
-      this.logger.error(`❌ Failed to send sale notification:`, error);
-    }
-  }
-
-  /**
-   * 📦 Нагадування кур'єру про поповнення
-   */
-  async sendRefillReminder(
-    courierId: string,
-    ortomatsData: Array<{
-      ortomatName: string;
-      emptyCells: number;
-      lowStockCells: number;
-    }>,
-  ) {
-    try {
-      const courier = await this.prisma.user.findUnique({
-        where: { id: courierId },
-        select: {
-          email: true,
-          firstName: true,
-          emailNotifications: true,
-        },
-      });
-
-      if (!courier || !courier.emailNotifications) {
-        this.logger.log(`⏭️ Skipping refill reminder for courier ${courierId} (notifications disabled)`);
-        return;
-      }
-
-      const refillUrl = `${process.env.FRONTEND_URL}/courier/refill`;
-
-      await this.mailerService.sendMail({
-        to: courier.email,
-        subject: '📦 Необхідне поповнення ортоматів',
-        template: 'refill-reminder',
-        context: {
-          firstName: courier.firstName,
-          ortomats: ortomatsData,
-          totalOrtomats: ortomatsData.length,
-          refillUrl,
-        },
-      });
-
-      await this.logEmail(courierId, courier.email, 'REFILL_REMINDER', 'Нагадування про поповнення', 'SENT');
-
-      await this.prisma.user.update({
-        where: { id: courierId },
-        data: { lastNotificationSent: new Date() },
-      });
-
-      this.logger.log(`✅ Refill reminder sent to courier ${courier.email}`);
-    } catch (error) {
-      this.logger.error(`❌ Failed to send refill reminder:`, error);
-    }
-  }
-
-  /**
-   * 📊 Логування email в БД
-   */
-  private async logEmail(
-    userId: string | null,
-    email: string,
-    type: any,
-    subject: string,
-    status: any,
-    error?: string,
-  ) {
-    try {
-      await this.prisma.emailLog.create({
-        data: {
-          userId,
-          email,
-          type,
-          subject,
-          status,
-          error,
-        },
-      });
-    } catch (err) {
-      this.logger.error('Failed to log email:', err);
-    }
-  }
-
-  /**
-   * ✅ Верифікація токена
-   */
-  async verifyEmailToken(token: string) {
+  async verifyEmailToken(token: string): Promise<{ userId: string; email: string }> {
     const user = await this.prisma.user.findFirst({
       where: {
         emailVerificationToken: token,
         emailVerificationExpires: {
-          gt: new Date(),
+          gte: new Date(),
         },
       },
     });
 
     if (!user) {
-      throw new Error('Невірний або прострочений токен');
+      throw new Error('Invalid or expired verification token');
     }
 
     await this.prisma.user.update({
@@ -291,47 +244,63 @@ export class EmailService {
       },
     });
 
-    // Відправляємо вітальний лист
-    await this.sendWelcomeEmail(user.id, user.email, user.firstName, user.role);
-
-    return { success: true, email: user.email };
-  }
-
-  /**
-   * 🔑 Верифікація токена скидання паролю
-   */
-  async verifyResetToken(token: string) {
-    const user = await this.prisma.user.findFirst({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: {
-          gt: new Date(),
-        },
-      },
-    });
-
-    if (!user) {
-      throw new Error('Невірний або прострочений токен');
-    }
+    // Відправляємо welcome email
+    await this.sendWelcomeEmail(user.id, user.email, user.firstName);
 
     return { userId: user.id, email: user.email };
   }
 
   /**
-   * 🔐 Оновлення паролю після скидання
+   * Верифікація токену скидання паролю
    */
-  async resetPassword(token: string, newPassword: string) {
-    const user = await this.verifyResetToken(token);
+  async verifyResetToken(token: string): Promise<{ userId: string }> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gte: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
+
+    return { userId: user.id };
+  }
+
+  /**
+   * Скидання паролю
+   */
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gte: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      throw new Error('Invalid or expired reset token');
+    }
 
     await this.prisma.user.update({
-      where: { id: user.userId },
+      where: { id: user.id },
       data: {
-        password: newPassword, // Має бути захешовано в auth.service
+        password: newPassword,
         resetPasswordToken: null,
         resetPasswordExpires: null,
       },
     });
+  }
 
-    return { success: true };
+  /**
+   * Генерація випадкового токену
+   */
+  private generateToken(): string {
+    return require('crypto').randomBytes(32).toString('hex');
   }
 }

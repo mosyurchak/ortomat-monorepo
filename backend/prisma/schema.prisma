@@ -264,6 +264,7 @@ model EmailLog {
   userId    String?
   email     String
   type      EmailType
+  recipient String?
   subject   String
   status    EmailStatus @default(PENDING)
   error     String?     @db.Text
