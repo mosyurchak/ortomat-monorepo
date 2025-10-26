@@ -97,27 +97,26 @@ export class AuthService {
       lastName: registerDto.lastName,
       middleName: registerDto.middleName || null,
       phone: registerDto.phone,
-      isVerified: false, // ✅ Тимчасово true для тестування без email
+      isVerified: false, // Потребує email верифікації
     });
 
     console.log('✅ Doctor registered successfully:', user.email);
 
-    // ⚠️ ТИМЧАСОВО ВИМКНЕНО - email відправка
-    // Розкоментуйте коли налаштуєте SMTP правильно
-      try {
+    // 📧 Відправляємо email верифікації
+    try {
       await this.emailService.sendVerificationEmail(
         user.id,
         user.email,
         user.firstName,
       );
-      console.log('✅ Verification email sent');
+      console.log('✅ Verification email sent to:', user.email);
     } catch (error) {
       console.error('❌ Email sending failed:', error.message);
       // Не кидаємо помилку, щоб реєстрація пройшла успішно
     }
 
     return {
-      message: 'Registration successful. You can now login.',
+      message: 'Registration successful. Please check your email to verify your account.',
       userId: user.id,
       email: user.email,
     };
@@ -231,27 +230,6 @@ export class AuthService {
 
     return {
       message: 'Verification email sent. Please check your inbox.',
-    };
-  }
-
-  /**
-   * 🧪 DEBUG: Тестовий метод для перевірки bcrypt
-   */
-  async testPasswordHash(password: string): Promise<any> {
-    console.log('🧪 Testing password hashing...');
-    console.log('Input password:', password);
-    
-    const hash = await bcrypt.hash(password, 10);
-    console.log('Generated hash:', hash);
-    
-    const isValid = await bcrypt.compare(password, hash);
-    console.log('Comparison result:', isValid);
-    
-    return {
-      password,
-      hash,
-      isValid,
-      bcryptVersion: require('bcryptjs/package.json').version,
     };
   }
 }
