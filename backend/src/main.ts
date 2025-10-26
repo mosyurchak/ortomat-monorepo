@@ -8,43 +8,22 @@ async function bootstrap() {
   // ✅ WebSocket adapter для ESP32
   app.useWebSocketAdapter(new WsAdapter(app));
   
-  // CORS - підтримка множинних доменів
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'https://ortomat-monorepo.vercel.app',
-    'https://ortomat.com.ua',
-    'https://www.ortomat.com.ua', // ✅ З www
-  ];
-
-  // Додаємо FRONTEND_URL з environment якщо є
-  if (process.env.FRONTEND_URL) {
-    const envOrigins = process.env.FRONTEND_URL.split(',').map(url => url.trim());
-    allowedOrigins.push(...envOrigins);
-  }
-
+  // ✅ СПРОЩЕНА CORS конфігурація (без callback функції)
   app.enableCors({
-    origin: (origin, callback) => {
-      // Дозволяємо запити без origin (Postman, curl, ESP32, mobile apps, etc)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-
-      // Перевіряємо чи origin в списку дозволених
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else if (origin.endsWith('.vercel.app')) {
-        // Дозволяємо всі Vercel preview deployments
-        callback(null, true);
-      } else {
-        console.log('❌ CORS blocked origin:', origin);
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: [
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'https://ortomat-monorepo.vercel.app',
+      'https://ortomat.com.ua',
+      'https://www.ortomat.com.ua',
+      /\.vercel\.app$/, // Всі Vercel preview deployments
+    ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    exposedHeaders: ['Authorization'],
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
   
   // Global prefix
@@ -58,7 +37,13 @@ async function bootstrap() {
   
   console.log(`🚀 Backend running on port ${port}`);
   console.log(`🔌 WebSocket server on ws://0.0.0.0:${port}/ws`);
-  console.log('✅ Allowed CORS origins:', allowedOrigins);
+  console.log(`✅ Allowed CORS origins: [
+  'http://localhost:3000',
+  'https://ortomat-monorepo.vercel.app',
+  'https://ortomat.com.ua',
+  'https://www.ortomat.com.ua',
+  '*.vercel.app'
+]`);
 }
 
 bootstrap();
