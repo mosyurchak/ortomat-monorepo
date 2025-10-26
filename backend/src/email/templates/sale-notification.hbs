@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Нова комісія!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            color: #10B981;
+            margin: 0;
+            font-size: 32px;
+        }
+        .earnings {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .earnings .amount {
+            font-size: 48px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .sale-details {
+            background-color: #F3F4F6;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .sale-details table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .sale-details td {
+            padding: 12px;
+            border-bottom: 1px solid #E5E7EB;
+        }
+        .sale-details td:first-child {
+            color: #6B7280;
+            width: 40%;
+        }
+        .sale-details td:last-child {
+            font-weight: 600;
+            text-align: right;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: #10B981;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>💰 Нова комісія!</h1>
+        </div>
+        
+        <p>Привіт, <strong>{{firstName}}</strong>!</p>
+        
+        <p>Чудові новини! Щойно відбувся продаж товару, який ви рекомендували.</p>
+        
+        <div class="earnings">
+            <div>Ваша комісія:</div>
+            <div class="amount">₴{{commission}}</div>
+        </div>
+        
+        <div class="sale-details">
+            <table>
+                <tr>
+                    <td>🎯 Товар:</td>
+                    <td>{{productName}}</td>
+                </tr>
+                <tr>
+                    <td>💵 Сума продажу:</td>
+                    <td>₴{{amount}}</td>
+                </tr>
+                <tr>
+                    <td>📍 Ортомат:</td>
+                    <td>{{ortomatName}}</td>
+                </tr>
+                <tr>
+                    <td>⏰ Дата:</td>
+                    <td>{{saleDate}}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <p>Продовжуйте в тому ж дусі! Кожна ваша рекомендація допомагає пацієнтам отримати якісні ортопедичні вироби.</p>
+        
+        <div style="text-align: center;">
+            <a href="{{statsUrl}}" class="button">
+                📊 Переглянути статистику
+            </a>
+        </div>
+        
+        <div class="footer">
+            <p>💡 <strong>Порада:</strong> Поділіться вашим QR-кодом з більшою кількістю пацієнтів для збільшення доходу.</p>
+            <p style="margin-top: 20px;">© 2025 Ортомат. Всі права захищено.</p>
+        </div>
+    </div>
+</body>
+</html>

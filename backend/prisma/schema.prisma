@@ -32,33 +32,23 @@ enum OrderStatus {
   CANCELLED
 }
 
-// ✅ ДОДАНО: Нові enum для логування
 enum LogType {
-  // Cells
   CELL_OPENED
   CELL_FILLED
   CELL_CLEARED
   CELL_PRODUCT_ASSIGNED
   CELL_ERROR
-  
-  // Orders
   ORDER_CREATED
   PAYMENT_SUCCESS
   PAYMENT_FAILED
   ORDER_COMPLETED
   ORDER_CANCELLED
-  
-  // Couriers
   COURIER_CHECKIN
   COURIER_REFILL
-  
-  // System
   DEVICE_ONLINE
   DEVICE_OFFLINE
   API_ERROR
   WEBSOCKET_COMMAND
-  
-  // Security
   LOGIN_SUCCESS
   LOGIN_FAILED
   UNAUTHORIZED_ACCESS
@@ -69,6 +59,24 @@ enum Severity {
   WARNING
   ERROR
   CRITICAL
+}
+
+// ✅ НОВИЙ ENUM
+enum EmailType {
+  VERIFICATION
+  WELCOME
+  PASSWORD_RESET
+  SALE_NOTIFICATION
+  REFILL_REMINDER
+  SYSTEM_ALERT
+}
+
+// ✅ НОВИЙ ENUM
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+  BOUNCED
 }
 
 model User {
@@ -84,10 +92,21 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // ✅ НОВІ ПОЛЯ для email функціоналу
+  emailVerificationToken String?   @unique
+  emailVerificationExpires DateTime?
+  
+  resetPasswordToken String?       @unique
+  resetPasswordExpires DateTime?
+  
+  emailNotifications Boolean @default(true)
+  lastNotificationSent DateTime?
+
   doctorOrtomats DoctorOrtomat[]
   courierOrtomats CourierOrtomat[]
   sales Sale[]
-  activityLogs ActivityLog[] // ✅ ДОДАНО
+  activityLogs ActivityLog[]
+  emailLogs EmailLog[] // ✅ ДОДАНО
 
   @@map("users")
 }
@@ -106,7 +125,7 @@ model Ortomat {
   doctors DoctorOrtomat[]
   couriers CourierOrtomat[]
   sales Sale[]
-  activityLogs ActivityLog[] // ✅ ДОДАНО
+  activityLogs ActivityLog[]
 
   @@map("ortomats")
 }
@@ -216,7 +235,6 @@ model Sale {
   @@map("sales")
 }
 
-// ✅ ДОДАНО: Нова модель для логування
 model ActivityLog {
   id          String   @id @default(uuid())
   type        LogType
@@ -238,4 +256,29 @@ model ActivityLog {
   @@index([createdAt])
   @@index([ortomatId])
   @@map("activity_logs")
+}
+
+// ✅ НОВА ТАБЛИЦЯ для email логів
+model EmailLog {
+  id        String      @id @default(uuid())
+  userId    String?
+  email     String
+  type      EmailType
+  subject   String
+  status    EmailStatus @default(PENDING)
+  error     String?     @db.Text
+  sentAt    DateTime    @default(now())
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  
+  metadata  Json?
+  
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([email])
+  @@index([type])
+  @@index([status])
+  @@index([sentAt])
+  @@map("email_logs")
 }

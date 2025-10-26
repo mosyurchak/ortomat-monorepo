@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Підтвердіть email</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo h1 {
+            color: #4F46E5;
+            margin: 0;
+            font-size: 32px;
+        }
+        .button {
+            display: inline-block;
+            padding: 15px 40px;
+            background-color: #4F46E5;
+            color: #ffffff !important;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .button:hover {
+            background-color: #4338CA;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 14px;
+            color: #666;
+            text-align: center;
+        }
+        .warning {
+            background-color: #FEF3C7;
+            border-left: 4px solid #F59E0B;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🏥 Ортомат</h1>
+        </div>
+        
+        <h2>Вітаємо, {{firstName}}!</h2>
+        
+        <p>Дякуємо за реєстрацію в системі Ортомат. Для завершення реєстрації, будь ласка, підтвердіть вашу email адресу.</p>
+        
+        <div style="text-align: center;">
+            <a href="{{verificationUrl}}" class="button">
+                ✉️ Підтвердити email
+            </a>
+        </div>
+        
+        <p>Або скопіюйте це посилання в браузер:</p>
+        <p style="word-break: break-all; color: #4F46E5;">{{verificationUrl}}</p>
+        
+        <div class="warning">
+            <strong>⚠️ Увага!</strong> Це посилання діятиме протягом <strong>{{expiresIn}}</strong>.
+        </div>
+        
+        <div class="footer">
+            <p>Якщо ви не реєструвалися в Ортомат, просто проігноруйте цей лист.</p>
+            <p>© 2025 Ортомат. Всі права захищено.</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -8,7 +8,8 @@ import { SalesModule } from './sales/sales.module';
 import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { QrCodeModule } from './qr-code/qr-code.module';
-import { LogsModule } from './logs/logs.module'; // ✅ ДОДАНО
+import { LogsModule } from './logs/logs.module';
+import { EmailModule } from './email/email.module';
 
 @Module({
   imports: [
@@ -23,7 +24,8 @@ import { LogsModule } from './logs/logs.module'; // ✅ ДОДАНО
     SalesModule,
     OrdersModule,
     QrCodeModule,
-    LogsModule, // ✅ ДОДАНО
+    LogsModule,
+    EmailModule,
   ],
 })
 export class AppModule {}
