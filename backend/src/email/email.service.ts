@@ -91,34 +91,9 @@ export class EmailService {
         html,
       );
 
-      // Логуємо в БД
-      await this.prisma.emailLog.create({
-        data: {
-          userId,
-          type: 'VERIFICATION',
-          recipient: email,
-          subject: 'Підтвердіть ваш email - Ортомат',
-          status: 'SENT',
-          sentAt: new Date(),
-        },
-      });
-
       this.logger.log(`✅ Verification email sent to ${email}`);
     } catch (error) {
       this.logger.error(`❌ Failed to send verification email to ${email}:`, error);
-
-      // Логуємо помилку в БД
-      await this.prisma.emailLog.create({
-        data: {
-          userId,
-          type: 'VERIFICATION',
-          recipient: email,
-          subject: 'Підтвердіть ваш email - Ортомат',
-          status: 'FAILED',
-          error: error.message,
-        },
-      });
-
       throw error;
     }
   }
@@ -145,17 +120,6 @@ export class EmailService {
         'Вітаємо в Ортомат! 🎉',
         html,
       );
-
-      await this.prisma.emailLog.create({
-        data: {
-          userId,
-          type: 'WELCOME',
-          recipient: email,
-          subject: 'Вітаємо в Ортомат! 🎉',
-          status: 'SENT',
-          sentAt: new Date(),
-        },
-      });
 
       this.logger.log(`✅ Welcome email sent to ${email}`);
     } catch (error) {
@@ -199,17 +163,6 @@ export class EmailService {
         'Скидання паролю - Ортомат',
         html,
       );
-
-      await this.prisma.emailLog.create({
-        data: {
-          userId,
-          type: 'PASSWORD_RESET',
-          recipient: email,
-          subject: 'Скидання паролю - Ортомат',
-          status: 'SENT',
-          sentAt: new Date(),
-        },
-      });
 
       this.logger.log(`✅ Password reset email sent to ${email}`);
     } catch (error) {
