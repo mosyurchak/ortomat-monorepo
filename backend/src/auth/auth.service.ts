@@ -15,6 +15,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<any> {
     console.log('🔍 Validating user:', email);
+    console.log('🔑 Password from request:', password);
 
     const user = await this.usersService.findByEmail(email);
 
@@ -23,20 +24,19 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Перевірка верифікації email (тимчасово вимкнено)
-    // if (!user.isVerified) {
-    //   console.log('❌ Email not verified');
-    //   throw new UnauthorizedException('Please verify your email first');
-    // }
+    console.log('💾 Stored password hash:', user.password);
+    console.log('🔐 Comparing passwords...');
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
+    console.log('✅ Password valid?', isPasswordValid);
+
     if (!isPasswordValid) {
-      console.log('❌ Invalid password');
+      console.log('❌ Invalid password - bcrypt comparison failed');
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    console.log('✅ User validated:', user.email);
+    console.log('✅ User validated successfully:', user.email);
 
     const { password: _, ...result } = user;
     return result;
@@ -74,14 +74,19 @@ export class AuthService {
    */
   async register(registerDto: RegisterDto) {
     console.log('📝 Registering new doctor:', registerDto.email);
+    console.log('🔑 Password from request:', registerDto.password);
 
     // Перевіряємо чи email не зайнятий
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
+      console.log('❌ Email already registered');
       throw new BadRequestException('Email already registered');
     }
 
+    // Хешуємо пароль
+    console.log('🔐 Hashing password with bcrypt (10 rounds)...');
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
+    console.log('💾 Hashed password generated:', hashedPassword);
 
     // Створюємо користувача з ТІЛЬКИ валідними полями
     const user = await this.usersService.create({
@@ -95,7 +100,7 @@ export class AuthService {
       isVerified: true, // ✅ Тимчасово true для тестування без email
     });
 
-    console.log('✅ Doctor registered:', user.email);
+    console.log('✅ Doctor registered successfully:', user.email);
 
     // ⚠️ ТИМЧАСОВО ВИМКНЕНО - email відправка
     // Розкоментуйте коли налаштуєте SMTP правильно
@@ -146,6 +151,7 @@ export class AuthService {
 
     if (!user) {
       // Не розкриваємо чи існує користувач
+      console.log('⚠️ User not found, but returning success message');
       return {
         message: 'If this email exists, you will receive a password reset link',
       };
@@ -179,6 +185,7 @@ export class AuthService {
 
       // Хешуємо новий пароль
       const hashedPassword = await bcrypt.hash(newPassword, 10);
+      console.log('💾 New hashed password generated');
 
       // Оновлюємо пароль
       await this.emailService.resetPassword(token, hashedPassword);
@@ -203,10 +210,12 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
+      console.log('❌ User not found');
       throw new BadRequestException('User not found');
     }
 
     if (user.isVerified) {
+      console.log('⚠️ Email already verified');
       throw new BadRequestException('Email already verified');
     }
 
@@ -224,6 +233,27 @@ export class AuthService {
 
     return {
       message: 'Verification email sent. Please check your inbox.',
+    };
+  }
+
+  /**
+   * 🧪 DEBUG: Тестовий метод для перевірки bcrypt
+   */
+  async testPasswordHash(password: string): Promise<any> {
+    console.log('🧪 Testing password hashing...');
+    console.log('Input password:', password);
+    
+    const hash = await bcrypt.hash(password, 10);
+    console.log('Generated hash:', hash);
+    
+    const isValid = await bcrypt.compare(password, hash);
+    console.log('Comparison result:', isValid);
+    
+    return {
+      password,
+      hash,
+      isValid,
+      bcryptVersion: require('bcryptjs/package.json').version,
     };
   }
 }
