@@ -11,9 +11,10 @@ async function bootstrap() {
   // CORS - підтримка множинних доменів
   const allowedOrigins = [
     'http://localhost:3000',
+    'http://localhost:3001',
     'https://ortomat-monorepo.vercel.app',
     'https://ortomat.com.ua',
-    'https://www.ortomat.com.ua',
+    'https://www.ortomat.com.ua', // ✅ З www
   ];
 
   // Додаємо FRONTEND_URL з environment якщо є
@@ -24,7 +25,7 @@ async function bootstrap() {
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Дозволяємо запити без origin (Postman, curl, ESP32, etc)
+      // Дозволяємо запити без origin (Postman, curl, ESP32, mobile apps, etc)
       if (!origin) {
         callback(null, true);
         return;
@@ -33,12 +34,17 @@ async function bootstrap() {
       // Перевіряємо чи origin в списку дозволених
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
+      } else if (origin.endsWith('.vercel.app')) {
+        // Дозволяємо всі Vercel preview deployments
+        callback(null, true);
       } else {
         console.log('❌ CORS blocked origin:', origin);
         callback(new Error('Not allowed by CORS'));
       }
     },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
   });
   
   // Global prefix
