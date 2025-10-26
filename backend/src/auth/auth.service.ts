@@ -97,15 +97,14 @@ export class AuthService {
       lastName: registerDto.lastName,
       middleName: registerDto.middleName || null,
       phone: registerDto.phone,
-      isVerified: true, // ✅ Тимчасово true для тестування без email
+      isVerified: false, // ✅ Тимчасово true для тестування без email
     });
 
     console.log('✅ Doctor registered successfully:', user.email);
 
     // ⚠️ ТИМЧАСОВО ВИМКНЕНО - email відправка
     // Розкоментуйте коли налаштуєте SMTP правильно
-    /*
-    try {
+      try {
       await this.emailService.sendVerificationEmail(
         user.id,
         user.email,
@@ -116,7 +115,6 @@ export class AuthService {
       console.error('❌ Email sending failed:', error.message);
       // Не кидаємо помилку, щоб реєстрація пройшла успішно
     }
-    */
 
     return {
       message: 'Registration successful. You can now login.',
