@@ -201,6 +201,10 @@ class ApiClient {
     return this.request('/api/auth/profile');
   }
 
+  async verifyEmail(token: string) {
+  return this.request(`/api/auth/verify-email?token=${token}`);
+  }
+
   // ==================== USERS ====================
   
   async getUsers() {

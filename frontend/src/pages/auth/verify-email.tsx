@@ -9,11 +9,11 @@ export default function VerifyEmailPage() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || typeof token !== 'string') return;
 
     const verifyEmail = async () => {
       try {
-        const response = await api.request('GET', `/auth/verify-email?token=${token}`);
+        const response = await api.verifyEmail(token);
         setStatus('success');
         setMessage(response.message || 'Email успішно підтверджено!');
         
