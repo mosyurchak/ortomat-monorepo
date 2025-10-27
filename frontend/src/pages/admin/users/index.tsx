@@ -41,7 +41,7 @@ export default function AdminUsersPage() {
   // Завантаження кур'єрів
   const { data: couriers, isLoading: couriersLoading } = useQuery({
     queryKey: ['couriers'],
-    queryFn: () => api.getAllCouriers(),
+    queryFn: () => api.getCouriers(),
     enabled: !!user && user.role.toUpperCase() === 'ADMIN',
   });
 

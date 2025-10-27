@@ -327,6 +327,56 @@ class ApiClient {
       method: 'POST',
     });
   }
+
+  // ==================== COURIER ====================
+  
+  async createCourier(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    middleName?: string;
+    phone: string;
+    ortomatIds?: string[];
+  }) {
+    return this.request('/api/courier', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getCouriers() {
+    return this.request('/api/courier');
+  }
+
+  async getCourier(id: string) {
+    return this.request(`/api/courier/${id}`);
+  }
+
+  async updateCourier(id: string, data: {
+    email?: string;
+    password?: string;
+    firstName?: string;
+    lastName?: string;
+    middleName?: string;
+    phone?: string;
+    ortomatIds?: string[];
+  }) {
+    return this.request(`/api/courier/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteCourier(id: string) {
+    return this.request(`/api/courier/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async getAvailableOrtomats() {
+    return this.request('/api/courier/available/ortomats');
+  }
 }
 
 export const api = new ApiClient();
