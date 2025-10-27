@@ -205,6 +205,20 @@ class ApiClient {
     return this.request(`/api/auth/verify-email?token=${token}`);
   }
 
+  async forgotPassword(email: string) {
+    return this.request('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    return this.request('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ token, newPassword }),
+    });
+  }
+
   // ==================== USERS ====================
   
   async getUsers() {
