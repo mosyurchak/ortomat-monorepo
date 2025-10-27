@@ -40,11 +40,11 @@ export default function Register() {
       if (data.valid) {
         setInviteInfo(data);
       } else {
-        setError(t('register.inviteInvalid') || 'Посилання для реєстрації недійсне або застаріле');
+        setError('Посилання для реєстрації недійсне або застаріле');
       }
     } catch (error) {
       console.error('Invite validation failed:', error);
-      setError(t('register.inviteError') || 'Помилка перевірки запрошення');
+      setError('Помилка перевірки запрошення');
     } finally {
       setValidatingInvite(false);
     }
@@ -62,13 +62,13 @@ export default function Register() {
 
     // Валідація
     if (formData.password !== formData.confirmPassword) {
-      setError(t('register.passwordMismatch') || 'Паролі не співпадають');
+      setError('Паролі не співпадають');
       setIsLoading(false);
       return;
     }
 
     if (formData.password.length < 6) {
-      setError(t('register.passwordTooShort') || 'Пароль має бути не менше 6 символів');
+      setError('Пароль має бути не менше 6 символів');
       setIsLoading(false);
       return;
     }
@@ -105,7 +105,7 @@ export default function Register() {
         <div className="min-h-screen flex items-center justify-center bg-gray-50">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">{t('common.loading') || 'Перевірка запрошення...'}</p>
+            <p className="text-gray-600">Перевірка запрошення...</p>
           </div>
         </div>
       </>
@@ -126,7 +126,7 @@ export default function Register() {
             </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {t('register.createAccount') || 'Реєстрація лікаря'}
+            Реєстрація лікаря
           </h2>
           
           {inviteInfo && (
@@ -144,9 +144,9 @@ export default function Register() {
           )}
 
           <p className="mt-2 text-center text-sm text-gray-600">
-            {t('register.or') || 'Або'}{' '}
+            {t('register.or')}{' '}
             <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-              {t('register.loginExisting') || 'увійдіть в існуючий акаунт'}
+              {t('register.loginExisting')}
             </Link>
           </p>
         </div>
@@ -163,7 +163,7 @@ export default function Register() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                    {t('register.lastName') || 'Прізвище'} *
+                    {t('register.lastName')} *
                   </label>
                   <input
                     type="text"
@@ -178,7 +178,7 @@ export default function Register() {
 
                 <div>
                   <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                    {t('register.firstName') || "Ім'я"} *
+                    {t('register.firstName')} *
                   </label>
                   <input
                     type="text"
@@ -194,7 +194,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
-                  {t('register.middleName') || 'По батькові'}
+                  {t('register.middleName')}
                 </label>
                 <input
                   type="text"
@@ -208,7 +208,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  {t('auth.email') || 'Email'} *
+                  {t('auth.email')} *
                 </label>
                 <input
                   type="email"
@@ -223,7 +223,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  {t('auth.phone') || 'Телефон'} *
+                  {t('auth.phone')} *
                 </label>
                 <input
                   type="tel"
@@ -239,7 +239,7 @@ export default function Register() {
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  {t('auth.password') || 'Пароль'} *
+                  {t('auth.password')} *
                 </label>
                 <input
                   type="password"
@@ -252,13 +252,13 @@ export default function Register() {
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
                 <p className="mt-1 text-xs text-gray-500">
-                  {t('register.passwordHint') || 'Мінімум 6 символів'}
+                  {t('register.passwordHint')}
                 </p>
               </div>
 
               <div>
                 <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                  {t('register.confirmPassword') || 'Підтвердіть пароль'} *
+                  Підтвердіть пароль *
                 </label>
                 <input
                   type="password"
@@ -278,7 +278,7 @@ export default function Register() {
                   disabled={isLoading}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
                 >
-                  {isLoading ? (t('register.registering') || 'Реєстрація...') : (t('register.registerButton') || 'Зареєструватись')}
+                  {isLoading ? t('register.registering') : t('register.registerButton')}
                 </button>
               </div>
             </form>
