@@ -7,6 +7,209 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id                       String           @id @default(uuid())
+  email                    String           @unique
+  password                 String
+  role                     UserRole
+  firstName                String
+  lastName                 String
+  middleName               String?
+  phone                    String
+  isVerified               Boolean          @default(false)
+  createdAt                DateTime         @default(now())
+  updatedAt                DateTime         @updatedAt
+  emailNotifications       Boolean          @default(true)
+  emailVerificationExpires DateTime?
+  emailVerificationToken   String?          @unique
+  lastNotificationSent     DateTime?
+  resetPasswordExpires     DateTime?
+  resetPasswordToken       String?          @unique
+  activityLogs             ActivityLog[]
+  courierOrtomats          CourierOrtomat[]
+  doctorOrtomats           DoctorOrtomat[]
+  emailLogs                EmailLog[]
+  sales                    Sale[]
+
+  @@map("users")
+}
+
+model Ortomat {
+  id           String          @id @default(uuid())
+  name         String
+  address      String
+  city         String?
+  totalCells   Int             @default(37)
+  status       String          @default("active")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  activityLogs ActivityLog[]
+  cells        Cell[]
+  couriers     CourierOrtomat?
+  doctors      DoctorOrtomat[]
+  invites      OrtomatInvite[]
+  sales        Sale[]
+
+  @@map("ortomats")
+}
+
+model Cell {
+  id             String    @id @default(uuid())
+  number         Int
+  ortomatId      String
+  productId      String?
+  isAvailable    Boolean   @default(true)
+  lastRefillDate DateTime?
+  courierId      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  ortomat        Ortomat   @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+  product        Product?  @relation(fields: [productId], references: [id])
+
+  @@unique([ortomatId, number])
+  @@map("cells")
+}
+
+model Product {
+  id                 String   @id @default(uuid())
+  name               String
+  sku                String   @unique
+  description        String?
+  size               String   @default("Uni")
+  price              Float
+  mainImage          String?
+  images             String[] @default([])
+  imageUrl           String?
+  color              String?
+  material           String?
+  manufacturer       String?
+  videoUrl           String?
+  termsAndConditions String?
+  attributes         Json?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  cells              Cell[]
+  sales              Sale[]
+
+  @@map("products")
+}
+
+model DoctorOrtomat {
+  id                String   @id @default(uuid())
+  doctorId          String
+  ortomatId         String
+  referralCode      String   @unique
+  qrCode            String?
+  commissionPercent Float    @default(10.0)
+  totalSales        Int      @default(0)
+  totalEarnings     Float    @default(0.0)
+  createdAt         DateTime @default(now())
+  doctor            User     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
+  ortomat           Ortomat  @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+  sales             Sale[]
+
+  @@unique([doctorId, ortomatId])
+  @@map("doctor_ortomats")
+}
+
+model CourierOrtomat {
+  id        String   @id @default(uuid())
+  courierId String
+  ortomatId String   @unique
+  status    String   @default("active")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  courier   User     @relation(fields: [courierId], references: [id], onDelete: Cascade)
+  ortomat   Ortomat  @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, ortomatId])
+  @@map("courier_ortomats")
+}
+
+model Sale {
+  id              String         @id @default(uuid())
+  doctorId        String?
+  productId       String
+  ortomatId       String
+  cellNumber      Int
+  amount          Float
+  commission      Float?
+  referralCode    String?
+  paymentId       String?
+  status          String         @default("pending")
+  createdAt       DateTime       @default(now())
+  orderNumber     String?        @unique
+  customerPhone   String?
+  completedAt     DateTime?
+  doctorOrtomatId String?
+  doctor          User?          @relation(fields: [doctorId], references: [id])
+  doctorOrtomat   DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
+  ortomat         Ortomat        @relation(fields: [ortomatId], references: [id])
+  product         Product        @relation(fields: [productId], references: [id])
+
+  @@map("sales")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  type       LogType
+  category   String
+  message    String
+  metadata   Json?
+  userId     String?
+  ortomatId  String?
+  cellNumber Int?
+  severity   Severity @default(INFO)
+  createdAt  DateTime @default(now())
+  ortomat    Ortomat? @relation(fields: [ortomatId], references: [id])
+  user       User?    @relation(fields: [userId], references: [id])
+
+  @@index([type])
+  @@index([category])
+  @@index([severity])
+  @@index([createdAt])
+  @@index([ortomatId])
+  @@map("activity_logs")
+}
+
+model EmailLog {
+  id          String      @id @default(uuid())
+  userId      String?
+  email       String
+  type        EmailType
+  subject     String
+  status      EmailStatus @default(PENDING)
+  error       String?
+  sentAt      DateTime    @default(now())
+  deliveredAt DateTime?
+  openedAt    DateTime?
+  metadata    Json?
+  recipient   String?
+  user        User?       @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([email])
+  @@index([type])
+  @@index([status])
+  @@index([sentAt])
+  @@map("email_logs")
+}
+
+model OrtomatInvite {
+  id        String    @id @default(uuid())
+  ortomatId String
+  token     String    @unique
+  createdBy String
+  createdAt DateTime  @default(now())
+  expiresAt DateTime
+  usedAt    DateTime?
+  usedBy    String?
+  isActive  Boolean   @default(true)
+  ortomat   Ortomat   @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+
+  @@map("ortomat_invites")
+}
+
 enum UserRole {
   ADMIN
   DOCTOR
@@ -75,224 +278,4 @@ enum EmailStatus {
   SENT
   FAILED
   BOUNCED
-}
-
-model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  role      UserRole
-  firstName String
-  lastName  String
-  middleName String?
-  phone     String
-  isVerified Boolean @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Email функціонал
-  emailVerificationToken String?   @unique
-  emailVerificationExpires DateTime?
-  
-  resetPasswordToken String?       @unique
-  resetPasswordExpires DateTime?
-  
-  emailNotifications Boolean @default(true)
-  lastNotificationSent DateTime?
-
-  doctorOrtomats DoctorOrtomat[]
-  courierOrtomats CourierOrtomat[]
-  sales Sale[]
-  activityLogs ActivityLog[]
-  emailLogs EmailLog[]
-
-  @@map("users")
-}
-
-model Ortomat {
-  id      String @id @default(uuid())
-  name    String
-  address String
-  city    String?
-  totalCells Int @default(37)
-  status String @default("active")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  cells Cell[]
-  doctors DoctorOrtomat[]
-  couriers CourierOrtomat[]
-  sales Sale[]
-  activityLogs ActivityLog[]
-  invites OrtomatInvite[] // ✅ ДОДАНО
-
-  @@map("ortomats")
-}
-
-model Cell {
-  id       String @id @default(uuid())
-  number   Int
-  ortomatId String
-  productId String?
-  isAvailable Boolean @default(true)
-  lastRefillDate DateTime?
-  courierId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
-  product Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
-  
-  @@unique([ortomatId, number])
-  @@map("cells")
-}
-
-model Product {
-  id          String  @id @default(uuid())
-  name        String
-  sku         String  @unique
-  description String? @db.Text
-  size        String  @default("Uni")
-  price       Float
-  
-  mainImage   String?
-  images      String[] @default([])
-  
-  imageUrl    String?
-  color       String?
-  material    String?
-  manufacturer String?
-  videoUrl    String?
-  termsAndConditions String? @db.Text
-  attributes  Json?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  cells Cell[]
-  sales Sale[]
-
-  @@map("products")
-}
-
-model DoctorOrtomat {
-  id        String @id @default(uuid())
-  doctorId  String
-  ortomatId String
-  referralCode String @unique
-  qrCode String?
-  commissionPercent Float @default(10.0)
-  totalSales Int @default(0)
-  totalEarnings Float @default(0.0)
-  createdAt DateTime @default(now())
-
-  doctor  User    @relation(fields: [doctorId], references: [id], onDelete: Cascade)
-  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
-  sales Sale[]
-
-  @@unique([doctorId, ortomatId])
-  @@map("doctor_ortomats")
-}
-
-model CourierOrtomat {
-  id        String @id @default(uuid())
-  courierId String
-  ortomatId String
-  status String @default("active")
-  createdAt DateTime @default(now())
-
-  courier User    @relation(fields: [courierId], references: [id], onDelete: Cascade)
-  ortomat Ortomat @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
-
-  @@unique([courierId, ortomatId])
-  @@map("courier_ortomats")
-}
-
-model Sale {
-  id         String   @id @default(uuid())
-  doctorId   String?
-  productId  String
-  ortomatId  String
-  cellNumber Int
-  amount     Float
-  commission Float?
-  referralCode String?
-  paymentId  String?
-  status     String   @default("pending")
-  createdAt  DateTime @default(now())
-  
-  orderNumber String? @unique
-  customerPhone String?
-  completedAt DateTime?
-  doctorOrtomatId String?
-
-  doctor  User?    @relation(fields: [doctorId], references: [id])
-  product Product @relation(fields: [productId], references: [id])
-  ortomat Ortomat @relation(fields: [ortomatId], references: [id])
-  doctorOrtomat DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
-
-  @@map("sales")
-}
-
-model ActivityLog {
-  id          String   @id @default(uuid())
-  type        LogType
-  category    String
-  message     String   @db.Text
-  metadata    Json?
-  userId      String?
-  ortomatId   String?
-  cellNumber  Int?
-  severity    Severity @default(INFO)
-  createdAt   DateTime @default(now())
-
-  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  ortomat Ortomat? @relation(fields: [ortomatId], references: [id], onDelete: SetNull)
-
-  @@index([type])
-  @@index([category])
-  @@index([severity])
-  @@index([createdAt])
-  @@index([ortomatId])
-  @@map("activity_logs")
-}
-
-model EmailLog {
-  id        String      @id @default(uuid())
-  userId    String?
-  email     String
-  type      EmailType
-  recipient String?
-  subject   String
-  status    EmailStatus @default(PENDING)
-  error     String?     @db.Text
-  sentAt    DateTime    @default(now())
-  deliveredAt DateTime?
-  openedAt    DateTime?
-  
-  metadata  Json?
-  
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
-  @@index([email])
-  @@index([type])
-  @@index([status])
-  @@index([sentAt])
-  @@map("email_logs")
-}
-
-model OrtomatInvite {
-  id           String   @id @default(uuid())
-  ortomatId    String
-  ortomat      Ortomat  @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
-  token        String   @unique
-  createdBy    String
-  createdAt    DateTime @default(now())
-  expiresAt    DateTime
-  usedAt       DateTime?
-  usedBy       String?
-  isActive     Boolean  @default(true)
-
-  @@map("ortomat_invites")
 }
