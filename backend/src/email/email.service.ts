@@ -74,8 +74,8 @@ export class EmailService {
         },
       });
 
-      // Генеруємо лінк
-      const verificationUrl = `${process.env.FRONTEND_URL}/auth/verify-email?token=${token}`;
+      // ✅ ВИПРАВЛЕНО: Прибрано /auth/
+      const verificationUrl = `${process.env.FRONTEND_URL}/verify-email?token=${token}`;
 
       // Компілюємо шаблон
       const html = this.compileTemplate('verify-email', {
@@ -150,7 +150,8 @@ export class EmailService {
         },
       });
 
-      const resetUrl = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`;
+      // ✅ ВИПРАВЛЕНО: Прибрано /auth/
+      const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
 
       const html = this.compileTemplate('reset-password', {
         firstName,
