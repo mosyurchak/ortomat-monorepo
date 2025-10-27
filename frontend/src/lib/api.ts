@@ -1,4 +1,4 @@
-﻿// ✅ БЕЗ /api в кінці
+// ✅ БЕЗ /api в кінці
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 class ApiClient {
@@ -202,7 +202,7 @@ class ApiClient {
   }
 
   async verifyEmail(token: string) {
-  return this.request(`/api/auth/verify-email?token=${token}`);
+    return this.request(`/api/auth/verify-email?token=${token}`);
   }
 
   // ==================== USERS ====================
@@ -305,11 +305,8 @@ class ApiClient {
       method: 'DELETE',
     });
   }
-}
 
-export const api = new ApiClient();
-
-// ==================== INVITE ====================
+  // ==================== INVITE ====================
   
   async createInvite(ortomatId: string) {
     return this.request(`/api/invite/create/${ortomatId}`, {
@@ -330,7 +327,6 @@ export const api = new ApiClient();
       method: 'POST',
     });
   }
+}
 
-  async verifyEmail(token: string) {
-    return this.request(`/api/auth/verify-email?token=${token}`);
-  }
+export const api = new ApiClient();
