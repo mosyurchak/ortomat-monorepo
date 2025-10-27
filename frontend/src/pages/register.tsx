@@ -1,34 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { useTranslation } from '../hooks/useTranslation';
 
 export default function Register() {
   const { t } = useTranslation();
+  const router = useRouter();
+  const { invite } = router.query;
+
   const [formData, setFormData] = useState({
-    role: 'DOCTOR' as 'DOCTOR' | 'COURIER',
     firstName: '',
     lastName: '',
     middleName: '',
     phone: '',
     email: '',
     password: '',
-    ortomatId: '',
+    confirmPassword: '',
   });
+
+  const [inviteInfo, setInviteInfo] = useState<any>(null);
+  const [validatingInvite, setValidatingInvite] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const router = useRouter();
 
-  // Завантаження ортоматів
-  const { data: ortomats } = useQuery({
-    queryKey: ['ortomats'],
-    queryFn: () => api.getOrtomats(),
-  });
+  // Валідація invite токену
+  useEffect(() => {
+    if (invite && typeof invite === 'string') {
+      validateInvite(invite);
+    }
+  }, [invite]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const validateInvite = async (token: string) => {
+    setValidatingInvite(true);
+    try {
+      const data = await api.validateInvite(token);
+      
+      if (data.valid) {
+        setInviteInfo(data);
+      } else {
+        setError(t('register.inviteInvalid') || 'Посилання для реєстрації недійсне або застаріле');
+      }
+    } catch (error) {
+      console.error('Invite validation failed:', error);
+      setError(t('register.inviteError') || 'Помилка перевірки запрошення');
+    } finally {
+      setValidatingInvite(false);
+    }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
@@ -38,10 +60,34 @@ export default function Register() {
     setIsLoading(true);
     setError('');
 
+    // Валідація
+    if (formData.password !== formData.confirmPassword) {
+      setError(t('register.passwordMismatch') || 'Паролі не співпадають');
+      setIsLoading(false);
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError(t('register.passwordTooShort') || 'Пароль має бути не менше 6 символів');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await api.register(formData);
-      alert(t('register.success'));
-      router.push('/login');
+      const registerData = {
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        middleName: formData.middleName || undefined,
+        phone: formData.phone,
+        inviteToken: invite as string | undefined,
+      };
+
+      await api.register(registerData);
+      
+      // Успіх - редірект на success сторінку
+      router.push('/register-success');
     } catch (error: any) {
       console.error('Registration error:', error);
       setError(error.message || t('register.error'));
@@ -49,6 +95,22 @@ export default function Register() {
       setIsLoading(false);
     }
   };
+
+  if (validatingInvite) {
+    return (
+      <>
+        <Head>
+          <title>{t('register.title')} - Ortomat</title>
+        </Head>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">{t('common.loading') || 'Перевірка запрошення...'}</p>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -64,12 +126,27 @@ export default function Register() {
             </svg>
           </div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {t('register.createAccount')}
+            {t('register.createAccount') || 'Реєстрація лікаря'}
           </h2>
+          
+          {inviteInfo && (
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800 text-center">
+                <strong>🏥 {inviteInfo.ortomatName}</strong>
+              </p>
+              <p className="text-sm text-blue-600 text-center mt-1">
+                📍 {inviteInfo.ortomatAddress}
+              </p>
+              <p className="text-xs text-blue-600 text-center mt-2">
+                ✅ Після реєстрації ви будете призначені до цього ортомата
+              </p>
+            </div>
+          )}
+
           <p className="mt-2 text-center text-sm text-gray-600">
-            {t('register.or')}{' '}
+            {t('register.or') || 'Або'}{' '}
             <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-              {t('register.loginExisting')}
+              {t('register.loginExisting') || 'увійдіть в існуючий акаунт'}
             </Link>
           </p>
         </div>
@@ -83,69 +160,41 @@ export default function Register() {
                 </div>
               )}
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  {t('register.role')}
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="role"
-                      value="DOCTOR"
-                      checked={formData.role === 'DOCTOR'}
-                      onChange={handleChange}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">👨‍⚕️ {t('register.doctor')}</span>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
+                    {t('register.lastName') || 'Прізвище'} *
                   </label>
-                  <label className="flex items-center cursor-pointer">
-                    <input
-                      type="radio"
-                      name="role"
-                      value="COURIER"
-                      checked={formData.role === 'COURIER'}
-                      onChange={handleChange}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <span className="ml-2 text-sm text-gray-700">🚚 {t('register.courier')}</span>
+                  <input
+                    type="text"
+                    name="lastName"
+                    id="lastName"
+                    required
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
+                    {t('register.firstName') || "Ім'я"} *
                   </label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    id="firstName"
+                    required
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700">
-                  {t('register.lastName')}
-                </label>
-                <input
-                  type="text"
-                  name="lastName"
-                  id="lastName"
-                  required
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700">
-                  {t('register.firstName')}
-                </label>
-                <input
-                  type="text"
-                  name="firstName"
-                  id="firstName"
-                  required
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
                 <label htmlFor="middleName" className="block text-sm font-medium text-gray-700">
-                  {t('register.middleName')}
+                  {t('register.middleName') || 'По батькові'}
                 </label>
                 <input
                   type="text"
@@ -158,8 +207,23 @@ export default function Register() {
               </div>
 
               <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  {t('auth.email') || 'Email'} *
+                </label>
+                <input
+                  type="email"
+                  name="email"
+                  id="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                />
+              </div>
+
+              <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                  {t('auth.phone')}
+                  {t('auth.phone') || 'Телефон'} *
                 </label>
                 <input
                   type="tel"
@@ -174,23 +238,8 @@ export default function Register() {
               </div>
 
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                  {t('auth.email')}
-                </label>
-                <input
-                  type="email"
-                  name="email"
-                  id="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                />
-              </div>
-
-              <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                  {t('auth.password')}
+                  {t('auth.password') || 'Пароль'} *
                 </label>
                 <input
                   type="password"
@@ -202,28 +251,25 @@ export default function Register() {
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
-                <p className="mt-1 text-xs text-gray-500">{t('register.passwordHint')}</p>
+                <p className="mt-1 text-xs text-gray-500">
+                  {t('register.passwordHint') || 'Мінімум 6 символів'}
+                </p>
               </div>
 
               <div>
-                <label htmlFor="ortomatId" className="block text-sm font-medium text-gray-700">
-                  {t('register.selectOrtomat')}
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
+                  {t('register.confirmPassword') || 'Підтвердіть пароль'} *
                 </label>
-                <select
-                  name="ortomatId"
-                  id="ortomatId"
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  id="confirmPassword"
                   required
-                  value={formData.ortomatId}
+                  minLength={6}
+                  value={formData.confirmPassword}
                   onChange={handleChange}
                   className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                >
-                  <option value="">{t('register.chooseOrtomat')}</option>
-                  {ortomats?.map((ortomat: any) => (
-                    <option key={ortomat.id} value={ortomat.id}>
-                      {ortomat.name} - {ortomat.address}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div>
@@ -232,7 +278,7 @@ export default function Register() {
                   disabled={isLoading}
                   className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400"
                 >
-                  {isLoading ? t('register.registering') : t('register.registerButton')}
+                  {isLoading ? (t('register.registering') || 'Реєстрація...') : (t('register.registerButton') || 'Зареєструватись')}
                 </button>
               </div>
             </form>

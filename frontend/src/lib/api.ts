@@ -308,3 +308,29 @@ class ApiClient {
 }
 
 export const api = new ApiClient();
+
+// ==================== INVITE ====================
+  
+  async createInvite(ortomatId: string) {
+    return this.request(`/api/invite/create/${ortomatId}`, {
+      method: 'POST',
+    });
+  }
+
+  async validateInvite(token: string) {
+    return this.request(`/api/invite/validate?token=${token}`);
+  }
+
+  async getOrtomatInvites(ortomatId: string) {
+    return this.request(`/api/invite/ortomat/${ortomatId}`);
+  }
+
+  async deactivateInvite(token: string) {
+    return this.request(`/api/invite/deactivate/${token}`, {
+      method: 'POST',
+    });
+  }
+
+  async verifyEmail(token: string) {
+    return this.request(`/api/auth/verify-email?token=${token}`);
+  }
