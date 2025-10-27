@@ -215,10 +215,6 @@ class ApiClient {
     return this.request('/api/users/doctors');
   }
 
-  async getCouriers() {
-    return this.request('/api/users/couriers');
-  }
-
   async updateUser(id: string, data: any) {
     return this.request(`/api/users/${id}`, {
       method: 'PATCH',
