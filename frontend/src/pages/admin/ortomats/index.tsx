@@ -16,7 +16,7 @@ export default function AdminOrtomatsPage() {
   const [formData, setFormData] = useState({
     name: '',
     address: '',
-    city: '', // ✅ ДОДАНО
+    city: '',
     totalCells: 37,
     status: 'active',
   });
@@ -81,7 +81,7 @@ export default function AdminOrtomatsPage() {
     setFormData({
       name: '',
       address: '',
-      city: '', // ✅ ДОДАНО
+      city: '',
       totalCells: 37,
       status: 'active',
     });
@@ -102,7 +102,7 @@ export default function AdminOrtomatsPage() {
     setFormData({
       name: ortomat.name,
       address: ortomat.address,
-      city: ortomat.city || '', // ✅ ДОДАНО
+      city: ortomat.city || '',
       totalCells: ortomat.totalCells,
       status: ortomat.status,
     });
@@ -215,6 +215,14 @@ export default function AdminOrtomatsPage() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    {/* ✅ НОВА КНОПКА УПРАВЛІННЯ */}
+                    <button
+                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
+                      className="text-purple-600 hover:text-purple-900 mr-4 font-medium"
+                      title="Управління та QR коди для лікарів"
+                    >
+                      ⚙️ Управління
+                    </button>
                     <button
                       onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
                       className="text-blue-600 hover:text-blue-900 mr-4"
@@ -282,7 +290,6 @@ export default function AdminOrtomatsPage() {
                 />
               </div>
 
-              {/* ✅ ДОДАНО: Поле "Місто" */}
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   {t('admin.city')}
