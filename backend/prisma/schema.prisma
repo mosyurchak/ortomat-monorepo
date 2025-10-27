@@ -61,7 +61,6 @@ enum Severity {
   CRITICAL
 }
 
-// ✅ НОВИЙ ENUM
 enum EmailType {
   VERIFICATION
   WELCOME
@@ -71,7 +70,6 @@ enum EmailType {
   SYSTEM_ALERT
 }
 
-// ✅ НОВИЙ ENUM
 enum EmailStatus {
   PENDING
   SENT
@@ -92,7 +90,7 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // ✅ НОВІ ПОЛЯ для email функціоналу
+  // Email функціонал
   emailVerificationToken String?   @unique
   emailVerificationExpires DateTime?
   
@@ -106,7 +104,7 @@ model User {
   courierOrtomats CourierOrtomat[]
   sales Sale[]
   activityLogs ActivityLog[]
-  emailLogs EmailLog[] // ✅ ДОДАНО
+  emailLogs EmailLog[]
 
   @@map("users")
 }
@@ -126,6 +124,7 @@ model Ortomat {
   couriers CourierOrtomat[]
   sales Sale[]
   activityLogs ActivityLog[]
+  invites OrtomatInvite[] // ✅ ДОДАНО
 
   @@map("ortomats")
 }
@@ -258,7 +257,6 @@ model ActivityLog {
   @@map("activity_logs")
 }
 
-// ✅ НОВА ТАБЛИЦЯ для email логів
 model EmailLog {
   id        String      @id @default(uuid())
   userId    String?
@@ -282,4 +280,19 @@ model EmailLog {
   @@index([status])
   @@index([sentAt])
   @@map("email_logs")
+}
+
+model OrtomatInvite {
+  id           String   @id @default(uuid())
+  ortomatId    String
+  ortomat      Ortomat  @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
+  token        String   @unique
+  createdBy    String
+  createdAt    DateTime @default(now())
+  expiresAt    DateTime
+  usedAt       DateTime?
+  usedBy       String?
+  isActive     Boolean  @default(true)
+
+  @@map("ortomat_invites")
 }

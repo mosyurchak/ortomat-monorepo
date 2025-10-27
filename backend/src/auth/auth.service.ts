@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
+import { InviteService } from '../invite/invite.service';
 import { RegisterDto } from './dto/register.dto';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class AuthService {
     private usersService: UsersService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private inviteService: InviteService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -70,11 +72,23 @@ export class AuthService {
   }
 
   /**
-   * Реєстрація тільки для лікарів
+   * Реєстрація лікаря (з можливістю через invite)
    */
-  async register(registerDto: RegisterDto) {
+  async register(registerDto: RegisterDto & { inviteToken?: string }) {
     console.log('📝 Registering new doctor:', registerDto.email);
     console.log('🔑 Password from request:', registerDto.password);
+    
+    // Перевірка invite токену якщо є
+    if (registerDto.inviteToken) {
+      console.log('🎫 Validating invite token:', registerDto.inviteToken);
+      const inviteValidation = await this.inviteService.validateInvite(registerDto.inviteToken);
+      
+      if (!inviteValidation.valid) {
+        throw new BadRequestException('Invalid or expired invite link');
+      }
+      
+      console.log('✅ Invite valid for ortomat:', inviteValidation.ortomatName);
+    }
 
     // Перевіряємо чи email не зайнятий
     const existingUser = await this.usersService.findByEmail(registerDto.email);
@@ -88,21 +102,32 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
     console.log('💾 Hashed password generated:', hashedPassword);
 
-    // Створюємо користувача з ТІЛЬКИ валідними полями
+    // Створюємо користувача
     const user = await this.usersService.create({
       email: registerDto.email,
       password: hashedPassword,
-      role: 'DOCTOR', // Завжди DOCTOR для реєстрації
+      role: 'DOCTOR',
       firstName: registerDto.firstName,
       lastName: registerDto.lastName,
       middleName: registerDto.middleName || null,
       phone: registerDto.phone,
-      isVerified: false, // Потребує email верифікації
+      isVerified: false,
     });
 
     console.log('✅ Doctor registered successfully:', user.email);
 
-    // 📧 Відправляємо email верифікації
+    // Якщо є invite токен - призначаємо до ортомата
+    if (registerDto.inviteToken) {
+      try {
+        await this.inviteService.useInvite(registerDto.inviteToken, user.id);
+        console.log('✅ Doctor assigned to ortomat via invite');
+      } catch (error) {
+        console.error('❌ Failed to use invite:', error.message);
+        // Не кидаємо помилку, лікар вже створений
+      }
+    }
+
+    // Відправляємо email верифікації
     try {
       await this.emailService.sendVerificationEmail(
         user.id,
@@ -111,12 +136,14 @@ export class AuthService {
       );
       console.log('✅ Verification email sent to:', user.email);
     } catch (error) {
-      console.error('❌ Email sending failed:', error.message);
-      // Не кидаємо помилку, щоб реєстрація пройшла успішно
+      console.error('❌ Email sending failed:', error);
+      throw error;
     }
 
     return {
-      message: 'Registration successful. Please check your email to verify your account.',
+      message: registerDto.inviteToken 
+        ? 'Registration successful. You have been assigned to an ortomat. Please check your email to verify your account.'
+        : 'Registration successful. Please check your email to verify your account.',
       userId: user.id,
       email: user.email,
     };
@@ -147,7 +174,6 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      // Не розкриваємо чи існує користувач
       console.log('⚠️ User not found, but returning success message');
       return {
         message: 'If this email exists, you will receive a password reset link',
@@ -177,14 +203,10 @@ export class AuthService {
     console.log('🔐 Resetting password with token');
 
     try {
-      // Перевіряємо токен
       const { userId } = await this.emailService.verifyResetToken(token);
-
-      // Хешуємо новий пароль
       const hashedPassword = await bcrypt.hash(newPassword, 10);
       console.log('💾 New hashed password generated');
 
-      // Оновлюємо пароль
       await this.emailService.resetPassword(token, hashedPassword);
 
       console.log('✅ Password reset successful for user:', userId);

@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QrCodeModule } from './qr-code/qr-code.module';
 import { LogsModule } from './logs/logs.module';
 import { EmailModule } from './email/email.module';
+import { InviteModule } from './invite/invite.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { EmailModule } from './email/email.module';
     QrCodeModule,
     LogsModule,
     EmailModule,
+    InviteModule,
   ],
 })
 export class AppModule {}

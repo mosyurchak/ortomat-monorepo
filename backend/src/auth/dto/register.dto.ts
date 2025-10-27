@@ -1,26 +1,21 @@
-﻿import { IsEmail, IsString, IsEnum, IsOptional, MinLength } from 'class-validator';
-
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  DOCTOR = 'DOCTOR',
-  COURIER = 'COURIER'
-}
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional } from 'class-validator';
 
 export class RegisterDto {
   @IsEmail()
+  @IsNotEmpty()
   email: string;
 
   @IsString()
+  @IsNotEmpty()
   @MinLength(6)
   password: string;
 
-  @IsEnum(UserRole)
-  role: UserRole;
-
   @IsString()
+  @IsNotEmpty()
   firstName: string;
 
   @IsString()
+  @IsNotEmpty()
   lastName: string;
 
   @IsString()
@@ -28,17 +23,10 @@ export class RegisterDto {
   middleName?: string;
 
   @IsString()
+  @IsNotEmpty()
   phone: string;
 
   @IsString()
   @IsOptional()
-  ortomatId?: string;
-}
-
-export class LoginDto {
-  @IsEmail()
-  email: string;
-
-  @IsString()
-  password: string;
+  inviteToken?: string;
 }
