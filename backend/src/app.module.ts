@@ -12,6 +12,7 @@ import { LogsModule } from './logs/logs.module';
 import { EmailModule } from './email/email.module';
 import { InviteModule } from './invite/invite.module';
 import { CourierModule } from './courier/courier.module';
+import { LiqPayModule } from './liqpay/liqpay.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CourierModule } from './courier/courier.module';
     EmailModule,
     InviteModule,
     CourierModule,
+    LiqPayModule,
   ],
 })
 export class AppModule {}

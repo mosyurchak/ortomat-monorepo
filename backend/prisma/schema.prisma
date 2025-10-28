@@ -30,6 +30,8 @@ model User {
   doctorOrtomats           DoctorOrtomat[]
   emailLogs                EmailLog[]
   sales                    Sale[]
+  payments                 Payment[]
+  commissions              Commission[]
 
   @@map("users")
 }
@@ -129,9 +131,9 @@ model CourierOrtomat {
 model Sale {
   id              String         @id @default(uuid())
   doctorId        String?
-  productId       String
-  ortomatId       String
-  cellNumber      Int
+  productId       String?
+  ortomatId       String?
+  cellNumber      Int?
   amount          Float
   commission      Float?
   referralCode    String?
@@ -142,10 +144,13 @@ model Sale {
   customerPhone   String?
   completedAt     DateTime?
   doctorOrtomatId String?
+  
   doctor          User?          @relation(fields: [doctorId], references: [id])
   doctorOrtomat   DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
-  ortomat         Ortomat        @relation(fields: [ortomatId], references: [id])
-  product         Product        @relation(fields: [productId], references: [id])
+  ortomat         Ortomat?       @relation(fields: [ortomatId], references: [id])
+  product         Product?       @relation(fields: [productId], references: [id])
+  payment         Payment?       @relation(fields: [paymentId], references: [id])
+  commissions     Commission[]
 
   @@map("sales")
 }
@@ -208,6 +213,41 @@ model OrtomatInvite {
   ortomat   Ortomat   @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
 
   @@map("ortomat_invites")
+}
+
+// Модель для платежів
+model Payment {
+  id              String   @id @default(uuid())
+  orderId         String   @unique
+  amount          Float
+  status          String   // PENDING, SUCCESS, FAILED
+  transactionId   String?
+  doctorId        String?
+  description     String?
+  paymentDetails  Json?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  doctor          User?    @relation(fields: [doctorId], references: [id])
+  sales           Sale[]
+
+  @@map("payments")
+}
+
+// Модель для комісій
+model Commission {
+  id        String   @id @default(uuid())
+  amount    Float
+  doctorId  String
+  saleId    String
+  isPaid    Boolean  @default(false)
+  paidAt    DateTime?
+  createdAt DateTime @default(now())
+
+  doctor    User     @relation(fields: [doctorId], references: [id])
+  sale      Sale     @relation(fields: [saleId], references: [id])
+
+  @@map("commissions")
 }
 
 enum UserRole {
