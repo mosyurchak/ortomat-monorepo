@@ -27,8 +27,8 @@ export class LiqPayController {
       amount: number;
       description: string;
       doctorId?: string;
-      productId?: string;  // ✅ Додано
-      ortomatId?: string;  // ✅ Додано
+      productId?: string;
+      ortomatId?: string;
     },
   ) {
     try {
@@ -54,8 +54,8 @@ export class LiqPayController {
         body.amount,
         body.description,
         body.doctorId,
-        body.productId,  // ✅ Передаємо productId
-        body.ortomatId,  // ✅ Передаємо ortomatId
+        body.productId,
+        body.ortomatId,
       );
       
       return payment;

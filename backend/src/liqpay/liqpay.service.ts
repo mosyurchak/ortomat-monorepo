@@ -18,7 +18,6 @@ export class LiqPayService {
     this.publicKey = this.configService.get<string>('LIQPAY_PUBLIC_KEY');
     this.privateKey = this.configService.get<string>('LIQPAY_PRIVATE_KEY');
     
-    // Перевірка наявності ключів
     if (!this.publicKey || !this.privateKey) {
       this.logger.error('LiqPay keys are not configured!');
       throw new Error('LiqPay configuration error');
@@ -36,10 +35,9 @@ export class LiqPayService {
     productId?: string,
     ortomatId?: string,
   ) {
-    // Генеруємо унікальний ID замовлення
     const orderReference = `ORDER_${orderId}_${Date.now()}`;
     
-    // ⚠️ ВАЖЛИВО: amount має бути ЧИСЛОМ, а не рядком!
+    // Конвертуємо amount в число
     const numericAmount = parseFloat(amount.toString());
     
     if (isNaN(numericAmount) || numericAmount <= 0) {
@@ -50,7 +48,7 @@ export class LiqPayService {
       public_key: this.publicKey,
       version: '3',
       action: 'pay',
-      amount: numericAmount, // ✅ Число, не рядок!
+      amount: numericAmount,
       currency: 'UAH',
       description: description,
       order_id: orderReference,
@@ -59,7 +57,7 @@ export class LiqPayService {
       language: 'uk',
     };
 
-    // Додаємо додаткову інформацію для callback
+    // Додаємо додаткову інформацію
     if (doctorId || productId || ortomatId) {
       params['info'] = JSON.stringify({ 
         doctorId, 
@@ -73,7 +71,7 @@ export class LiqPayService {
     const data = Buffer.from(JSON.stringify(params)).toString('base64');
     const signature = this.generateSignature(data);
 
-    // Зберігаємо інформацію про платіж в базі
+    // Зберігаємо платіж в БД
     await this.prisma.payment.create({
       data: {
         orderId: orderReference,
@@ -81,7 +79,7 @@ export class LiqPayService {
         status: 'PENDING',
         doctorId: doctorId || null,
         description,
-        metadata: {
+        paymentDetails: {
           productId,
           ortomatId,
         },
@@ -100,9 +98,7 @@ export class LiqPayService {
    */
   private generateSignature(data: string): string {
     const signString = this.privateKey + data + this.privateKey;
-    const hash = crypto.createHash('sha1').update(signString).digest('base64');
-    this.logger.debug(`Generated signature for data length: ${data.length}`);
-    return hash;
+    return crypto.createHash('sha1').update(signString).digest('base64');
   }
 
   /**
@@ -113,9 +109,7 @@ export class LiqPayService {
     const isValid = expectedSignature === signature;
     
     if (!isValid) {
-      this.logger.error('Signature mismatch!');
-      this.logger.debug(`Expected: ${expectedSignature}`);
-      this.logger.debug(`Received: ${signature}`);
+      this.logger.error('Invalid signature from LiqPay!');
     }
     
     return isValid;
@@ -139,7 +133,7 @@ export class LiqPayService {
 
     this.logger.log(`Payment callback: ${paymentData.order_id}, status: ${paymentData.status}`);
 
-    // Знаходимо платіж в базі
+    // Знаходимо платіж
     const payment = await this.prisma.payment.findFirst({
       where: { orderId: paymentData.order_id },
     });
@@ -149,7 +143,7 @@ export class LiqPayService {
       throw new Error('Payment not found');
     }
 
-    // Визначаємо новий статус
+    // Визначаємо статус
     let newStatus = 'PENDING';
     if (paymentData.status === 'success' || paymentData.status === 'sandbox') {
       newStatus = 'SUCCESS';
@@ -157,7 +151,7 @@ export class LiqPayService {
       newStatus = 'FAILED';
     }
 
-    // Оновлюємо статус платежу
+    // Оновлюємо платіж
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
@@ -167,7 +161,7 @@ export class LiqPayService {
       },
     });
 
-    // Якщо платіж успішний - обробляємо продаж
+    // Якщо успішний - обробляємо
     if (newStatus === 'SUCCESS') {
       await this.handleSuccessfulPayment(payment, paymentData);
     }
@@ -180,33 +174,42 @@ export class LiqPayService {
    */
   private async handleSuccessfulPayment(payment: any, paymentData: any) {
     try {
-      // Парсимо додаткову інформацію
-      let info = {};
+      // Парсимо info
+      let info: any = {};
       try {
-        info = JSON.parse(paymentData.info || '{}');
+        if (paymentData.info) {
+          info = JSON.parse(paymentData.info);
+        }
       } catch (e) {
         this.logger.warn('Failed to parse payment info');
       }
 
-      // Створюємо запис про продаж
+      // Отримуємо дані
+      const storedDetails = payment.paymentDetails || {};
+      const productId = storedDetails.productId || info.productId || null;
+      const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
+
+      // Створюємо продаж
       const sale = await this.prisma.sale.create({
         data: {
           amount: payment.amount,
-          doctorId: payment.doctorId || info['doctorId'] || null,
+          doctorId: payment.doctorId || info.doctorId || null,
           paymentId: payment.id,
-          ortomatId: info['ortomatId'] || null,
-          productId: info['productId'] || null,
+          ortomatId: ortomatId,
+          productId: productId,
+          status: 'completed',
+          completedAt: new Date(),
         },
       });
 
       this.logger.log(`Sale created: ${sale.id}`);
 
-      // Якщо є лікар - нараховуємо комісію (10%)
+      // Якщо є лікар - комісія
       if (payment.doctorId) {
         await this.handleDoctorCommission(payment, sale);
       }
 
-      // Відправляємо email покупцю (якщо є email)
+      // Email покупцю
       if (paymentData.sender_email) {
         await this.handlePurchaseEmail(paymentData, payment);
       }
@@ -233,14 +236,14 @@ export class LiqPayService {
         },
       });
 
-      // Відправляємо email лікарю
+      // Email лікарю
       const doctor = await this.prisma.user.findUnique({
         where: { id: payment.doctorId },
       });
 
       if (doctor) {
         try {
-          if (this.emailService.sendSaleNotification) {
+          if (typeof this.emailService.sendSaleNotification === 'function') {
             await this.emailService.sendSaleNotification(
               doctor.email,
               {
@@ -263,7 +266,7 @@ export class LiqPayService {
   }
 
   /**
-   * Відправка email покупцю
+   * Email покупцю
    */
   private async handlePurchaseEmail(paymentData: any, payment: any) {
     try {
@@ -293,7 +296,7 @@ export class LiqPayService {
     const payment = await this.prisma.payment.findFirst({
       where: { orderId },
       include: {
-        sale: true,
+        sales: true,
       },
     });
 

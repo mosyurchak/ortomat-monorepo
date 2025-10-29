@@ -13,8 +13,8 @@ export interface CreatePaymentParams {
   amount: number;
   description: string;
   doctorId?: string;
-  productId?: string;  // ✅ Додано
-  ortomatId?: string;  // ✅ Додано
+  productId?: string;
+  ortomatId?: string;
 }
 
 /**
@@ -40,8 +40,8 @@ export async function createPayment(
       amount: params.amount,
       description: params.description,
       doctorId: params.doctorId,
-      productId: params.productId,   // ✅ Передаємо productId
-      ortomatId: params.ortomatId,   // ✅ Передаємо ortomatId
+      productId: params.productId,
+      ortomatId: params.ortomatId,
     });
     
     console.log('Payment created successfully:', response.data);

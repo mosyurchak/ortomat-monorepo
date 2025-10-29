@@ -10,12 +10,14 @@ interface Product {
   name: string;
   price: number;
   description: string;
+  imageUrl?: string;
 }
 
 interface Ortomat {
   id: string;
   name: string;
   address: string;
+  city?: string;
 }
 
 export default function PaymentPage() {
@@ -37,11 +39,11 @@ export default function PaymentPage() {
     try {
       setLoading(true);
       
-      // Завантажуємо інформацію про товар
+      // Завантажуємо товар
       const productResponse = await api.get(`/products/${productId}`);
       setProduct(productResponse.data);
       
-      // Завантажуємо інформацію про ортомат
+      // Завантажуємо ортомат
       const ortomatResponse = await api.get(`/ortomats/${ortomatId}`);
       setOrtomat(ortomatResponse.data);
       
@@ -65,11 +67,11 @@ export default function PaymentPage() {
       // Генеруємо унікальний ID замовлення
       const orderId = `ORD_${Date.now()}`;
       
-      // ✅ ПРАВИЛЬНО: Передаємо всі необхідні дані
+      // Створюємо платіж з РЕАЛЬНИМИ даними
       const paymentData = await createPayment({
         orderId: orderId,
-        amount: product.price,  // ✅ Реальна ціна товару
-        description: `Товар: ${product.name}, Ортомат: ${ortomat.name}`,  // ✅ Опис з даними
+        amount: product.price,  // ✅ Реальна ціна
+        description: `Товар: ${product.name}, Ортомат: ${ortomat.name}`,  // ✅ Реальний опис
         doctorId: doctorRef as string,
         productId: product.id,   // ✅ ID товару
         ortomatId: ortomat.id,   // ✅ ID ортомату
@@ -131,18 +133,34 @@ export default function PaymentPage() {
 
           {/* Content */}
           <div className="p-8">
+            {/* Зображення товару */}
+            {product.imageUrl && (
+              <div className="mb-6">
+                <img 
+                  src={product.imageUrl} 
+                  alt={product.name}
+                  className="w-full h-64 object-cover rounded-lg"
+                />
+              </div>
+            )}
+
             {/* Товар */}
             <div className="mb-6 pb-6 border-b">
               <h2 className="text-sm text-gray-500 mb-2">Товар</h2>
               <p className="text-xl font-semibold">{product.name}</p>
-              <p className="text-gray-600 mt-1">{product.description}</p>
+              {product.description && (
+                <p className="text-gray-600 mt-1">{product.description}</p>
+              )}
             </div>
 
             {/* Ортомат */}
             <div className="mb-6 pb-6 border-b">
               <h2 className="text-sm text-gray-500 mb-2">Ортомат</h2>
               <p className="text-xl font-semibold">{ortomat.name}</p>
-              <p className="text-gray-600 mt-1">{ortomat.address}</p>
+              <p className="text-gray-600 mt-1">
+                {ortomat.address}
+                {ortomat.city && `, ${ortomat.city}`}
+              </p>
             </div>
 
             {/* Сума */}
