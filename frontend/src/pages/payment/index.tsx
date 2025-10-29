@@ -3,7 +3,9 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createPayment, openLiqPayWidget } from '../../lib/liqpay';
-import api from '../../lib/api';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 interface Product {
   id: string;
@@ -40,11 +42,11 @@ export default function PaymentPage() {
       setLoading(true);
       
       // Завантажуємо товар
-      const productResponse = await api.get(`/products/${productId}`);
+      const productResponse = await axios.get(`${API_URL}/api/products/${productId}`);
       setProduct(productResponse.data);
       
       // Завантажуємо ортомат
-      const ortomatResponse = await api.get(`/ortomats/${ortomatId}`);
+      const ortomatResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}`);
       setOrtomat(ortomatResponse.data);
       
       setLoading(false);
