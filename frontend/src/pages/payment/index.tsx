@@ -1,156 +1,184 @@
-import React, { useState } from 'react';
+// frontend/src/pages/payment/index.tsx
+
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createPayment, generateLiqPayForm } from '../../lib/liqpay';
-import Head from 'next/head';
+import { createPayment, openLiqPayWidget } from '../../lib/liqpay';
+import api from '../../lib/api';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+}
+
+interface Ortomat {
+  id: string;
+  name: string;
+  address: string;
+}
 
 export default function PaymentPage() {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { productId, ortomatId, doctorRef } = router.query;
   
-  // Отримуємо параметри з URL
-  const { productId, amount, ortomatId, doctorRef } = router.query;
+  const [product, setProduct] = useState<Product | null>(null);
+  const [ortomat, setOrtomat] = useState<Ortomat | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  const handlePayment = async () => {
+  useEffect(() => {
+    if (productId && ortomatId) {
+      loadData();
+    }
+  }, [productId, ortomatId]);
+
+  const loadData = async () => {
     try {
       setLoading(true);
-      setError('');
-
-      // Генеруємо унікальний ID замовлення
-      const orderId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Створюємо платіж
-      const paymentData = await createPayment(
-        orderId,
-        Number(amount) || 100, // сума в гривнях
-        `Оплата товару #${productId}`,
-        doctorRef as string, // ID лікаря для комісії
-      );
-
-      // Створюємо та відправляємо форму LiqPay
-      const formHtml = generateLiqPayForm(paymentData);
+      // Завантажуємо інформацію про товар
+      const productResponse = await api.get(`/products/${productId}`);
+      setProduct(productResponse.data);
       
-      // Вставляємо форму в DOM та автоматично відправляємо
-      const div = document.createElement('div');
-      div.innerHTML = formHtml;
-      document.body.appendChild(div);
+      // Завантажуємо інформацію про ортомат
+      const ortomatResponse = await api.get(`/ortomats/${ortomatId}`);
+      setOrtomat(ortomatResponse.data);
       
+      setLoading(false);
     } catch (err) {
-      console.error('Payment error:', err);
-      setError('Помилка при створенні платежу. Спробуйте ще раз.');
+      console.error('Error loading data:', err);
+      setError('Помилка завантаження даних');
       setLoading(false);
     }
   };
 
+  const handlePayment = async () => {
+    if (!product || !ortomat) {
+      setError('Дані про товар або ортомат не завантажені');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      // Генеруємо унікальний ID замовлення
+      const orderId = `ORD_${Date.now()}`;
+      
+      // ✅ ПРАВИЛЬНО: Передаємо всі необхідні дані
+      const paymentData = await createPayment({
+        orderId: orderId,
+        amount: product.price,  // ✅ Реальна ціна товару
+        description: `Товар: ${product.name}, Ортомат: ${ortomat.name}`,  // ✅ Опис з даними
+        doctorId: doctorRef as string,
+        productId: product.id,   // ✅ ID товару
+        ortomatId: ortomat.id,   // ✅ ID ортомату
+      });
+      
+      // Відкриваємо форму оплати LiqPay
+      openLiqPayWidget(paymentData);
+      
+    } catch (err) {
+      console.error('Payment error:', err);
+      setError('Помилка створення платежу. Спробуйте ще раз.');
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Завантаження...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-red-500 text-xl">{error}</p>
+          <button
+            onClick={() => router.back()}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            Повернутися назад
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!product || !ortomat) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-gray-600">Товар або ортомат не знайдено</p>
+      </div>
+    );
+  }
+
   return (
-    <>
-      <Head>
-        <title>Оплата - Ортомат</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <h1 className="text-2xl font-bold text-blue-600">🏥 Ортомат</h1>
-            </div>
+    <div className="min-h-screen bg-gray-50 py-12 px-4">
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+          {/* Header */}
+          <div className="bg-blue-500 text-white py-6 px-8">
+            <h1 className="text-2xl font-bold">Оплата товару</h1>
           </div>
-        </header>
 
-        {/* Main Content */}
-        <div className="py-12">
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8">
-            <h1 className="text-2xl font-bold text-center mb-6">
-              💳 Оплата товару
-            </h1>
-
-            {error && (
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4 mb-6">
-              <div className="border-b pb-2">
-                <span className="text-gray-600">Товар:</span>
-                <span className="float-right font-semibold">
-                  #{productId || 'N/A'}
-                </span>
-              </div>
-              
-              <div className="border-b pb-2">
-                <span className="text-gray-600">Ортомат:</span>
-                <span className="float-right font-semibold">
-                  #{ortomatId || 'N/A'}
-                </span>
-              </div>
-              
-              <div className="border-b pb-2">
-                <span className="text-gray-600">Сума:</span>
-                <span className="float-right font-bold text-xl text-green-600">
-                  {amount || '100'} ₴
-                </span>
-              </div>
+          {/* Content */}
+          <div className="p-8">
+            {/* Товар */}
+            <div className="mb-6 pb-6 border-b">
+              <h2 className="text-sm text-gray-500 mb-2">Товар</h2>
+              <p className="text-xl font-semibold">{product.name}</p>
+              <p className="text-gray-600 mt-1">{product.description}</p>
             </div>
 
+            {/* Ортомат */}
+            <div className="mb-6 pb-6 border-b">
+              <h2 className="text-sm text-gray-500 mb-2">Ортомат</h2>
+              <p className="text-xl font-semibold">{ortomat.name}</p>
+              <p className="text-gray-600 mt-1">{ortomat.address}</p>
+            </div>
+
+            {/* Сума */}
+            <div className="mb-8">
+              <h2 className="text-sm text-gray-500 mb-2">Сума до сплати</h2>
+              <p className="text-3xl font-bold text-blue-600">
+                {product.price} ₴
+              </p>
+            </div>
+
+            {/* Кнопка оплати */}
             <button
               onClick={handlePayment}
               disabled={loading}
-              className={`w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors ${
-                loading
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-green-600 hover:bg-green-700'
-              }`}
+              className="w-full bg-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {loading ? (
-                <span className="flex items-center justify-center">
-                  <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Обробка...
-                </span>
-              ) : (
-                'Оплатити через LiqPay'
-              )}
+              {loading ? 'Обробка...' : 'Оплатити'}
             </button>
 
-            <div className="mt-6 text-center">
-              <img
-                src="https://www.liqpay.ua/1530264903547469/static/img/logo-liqpay.svg"
-                alt="LiqPay"
-                className="h-8 mx-auto mb-2"
-              />
-              <p className="text-xs text-gray-500">
-                Безпечний платіж через LiqPay
-              </p>
+            {/* Інформація про безпеку */}
+            <div className="mt-6 text-center text-sm text-gray-500">
+              <p>🔒 Захищено платіжною системою LiqPay</p>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="bg-white mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} Ортомат. Всі права захищені.
-            </p>
-          </div>
-        </footer>
+        {/* Кнопка повернення */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => router.back()}
+            className="text-blue-500 hover:text-blue-600 underline"
+          >
+            ← Повернутися до вибору товару
+          </button>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

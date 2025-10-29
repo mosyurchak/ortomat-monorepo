@@ -27,20 +27,42 @@ export class LiqPayController {
       amount: number;
       description: string;
       doctorId?: string;
+      productId?: string;  // ✅ Додано
+      ortomatId?: string;  // ✅ Додано
     },
   ) {
     try {
+      this.logger.log(`Creating payment: ${JSON.stringify(body)}`);
+      
+      // Валідація
+      if (!body.orderId || !body.amount || !body.description) {
+        throw new HttpException(
+          'Missing required fields: orderId, amount, description',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
+      if (body.amount <= 0) {
+        throw new HttpException(
+          'Amount must be greater than 0',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const payment = await this.liqPayService.createPayment(
         body.orderId,
         body.amount,
         body.description,
         body.doctorId,
+        body.productId,  // ✅ Передаємо productId
+        body.ortomatId,  // ✅ Передаємо ortomatId
       );
+      
       return payment;
     } catch (error) {
       this.logger.error('Error creating payment:', error);
       throw new HttpException(
-        'Failed to create payment',
+        error.message || 'Failed to create payment',
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
@@ -54,10 +76,20 @@ export class LiqPayController {
     @Body() body: { data: string; signature: string },
   ) {
     try {
+      this.logger.log('Received LiqPay callback');
+      
+      if (!body.data || !body.signature) {
+        throw new HttpException(
+          'Missing data or signature',
+          HttpStatus.BAD_REQUEST,
+        );
+      }
+
       const result = await this.liqPayService.processCallback(
         body.data,
         body.signature,
       );
+      
       return { success: true, ...result };
     } catch (error) {
       this.logger.error('Error processing callback:', error);
