@@ -53,6 +53,9 @@ export default function ProductPage() {
   };
 
   const handleBuy = async () => {
+    console.log('💳 Buy button clicked!');
+    console.log('Current params:', { id, ortomatId, ref });
+    
     if (!ortomatId) {
       alert('Оберіть ортомат');
       return;
@@ -66,24 +69,25 @@ export default function ProductPage() {
     setIsOrdering(true);
 
     try {
-      // Створюємо замовлення
-      const orderData = {
+      // ✅ ВИПРАВЛЕНО: Переходимо на payment з правильними параметрами
+      const params = new URLSearchParams({
         productId: id as string,
         ortomatId: ortomatId as string,
-        referralCode: ref as string | undefined,
-      };
+      });
 
-      console.log('🛒 Creating order:', orderData);
+      // Додаємо реферальний код якщо є
+      if (ref) {
+        params.append('doctorRef', ref as string);
+      }
 
-      const order = await api.createOrder(orderData);
+      console.log('🚀 Redirecting to payment with params:', params.toString());
 
-      console.log('✅ Order created:', order);
+      // Переходимо на сторінку оплати
+      router.push(`/payment?${params.toString()}`);
 
-      // Одразу переходимо на оплату
-      router.push(`/payment?orderId=${order.id}`);
     } catch (error: any) {
-      console.error('❌ Order creation failed:', error);
-      alert('Помилка при створенні замовлення. Спробуйте ще раз.');
+      console.error('❌ Error:', error);
+      alert('Помилка. Спробуйте ще раз.');
       setIsOrdering(false);
     }
   };
