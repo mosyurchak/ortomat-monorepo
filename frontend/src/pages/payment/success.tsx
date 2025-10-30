@@ -1,37 +1,88 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { checkPaymentStatus } from '../../lib/liqpay';
 import Head from 'next/head';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const [status, setStatus] = useState('checking');
   const [paymentInfo, setPaymentInfo] = useState<any>(null);
+  const [isOpeningCell, setIsOpeningCell] = useState(false);
   
-  const { order_id } = router.query;
+  // ✅ ВИПРАВЛЕНО: LiqPay повертає параметр "order", а не "order_id"
+  const { order } = router.query;
 
   useEffect(() => {
-    if (order_id) {
+    if (order) {
       checkStatus();
     }
-  }, [order_id]);
+  }, [order]);
 
   const checkStatus = async () => {
     try {
-      const result = await checkPaymentStatus(order_id as string);
-      setPaymentInfo(result);
+      console.log('🔍 Checking payment status for:', order);
       
-      if (result.status === 'SUCCESS') {
+      // ✅ ВИПРАВЛЕНО: Викликаємо правильний API endpoint
+      const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
+      console.log('✅ Payment status:', response.data);
+      
+      setPaymentInfo(response.data);
+      
+      if (response.data.status === 'SUCCESS') {
         setStatus('success');
-      } else if (result.status === 'FAILED') {
+      } else if (response.data.status === 'FAILED') {
         setStatus('failed');
-      } else {
+      } else if (response.data.status === 'PENDING') {
         setStatus('pending');
+        // Якщо ще pending - перевіряємо ще раз через 2 секунди
+        setTimeout(checkStatus, 2000);
       }
     } catch (error) {
-      console.error('Error checking status:', error);
+      console.error('❌ Error checking status:', error);
       setStatus('error');
+    }
+  };
+
+  // ✅ ДОДАНО: Функція відкриття комірки
+  const handleOpenCell = async () => {
+    if (!paymentInfo?.sales || paymentInfo.sales.length === 0) {
+      alert('Інформація про продаж відсутня');
+      return;
+    }
+
+    const sale = paymentInfo.sales[0];
+    
+    if (!sale.ortomatId) {
+      alert('Інформація про ортомат відсутня');
+      return;
+    }
+
+    setIsOpeningCell(true);
+
+    try {
+      console.log('🔓 Opening cell for sale:', sale.id);
+
+      // TODO: Замініть на ваш реальний endpoint для відкриття комірки
+      await axios.post(`${API_URL}/api/ortomats/${sale.ortomatId}/open-cell`, {
+        saleId: sale.id,
+        productId: sale.productId,
+      });
+
+      alert('✅ Комірка відкрита! Заберіть ваш товар.');
+      
+      // Перенаправляємо на головну через 3 секунди
+      setTimeout(() => {
+        router.push('/');
+      }, 3000);
+
+    } catch (err: any) {
+      console.error('❌ Error opening cell:', err);
+      alert('Помилка відкриття комірки. Спробуйте ще раз або зверніться до служби підтримки.');
+    } finally {
+      setIsOpeningCell(false);
     }
   };
 
@@ -116,13 +167,46 @@ export default function PaymentSuccessPage() {
 
             {status === 'success' && (
               <div className="space-y-4">
-                <p className="text-gray-600">
+                <p className="text-gray-600 mb-4">
                   Дякуємо за покупку! Ваше замовлення успішно оплачено.
                 </p>
-                <p className="text-sm text-gray-500">
-                  Ви можете забрати товар з ортомату, використовуючи код,
-                  який був відправлений на ваш email.
-                </p>
+
+                {/* ✅ ДОДАНО: Кнопка відкриття комірки */}
+                {paymentInfo?.sales && paymentInfo.sales.length > 0 && paymentInfo.sales[0].ortomatId && (
+                  <div className="mb-6">
+                    <button
+                      onClick={handleOpenCell}
+                      disabled={isOpeningCell}
+                      className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+                    >
+                      {isOpeningCell ? (
+                        <>
+                          <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Відкриваємо комірку...
+                        </>
+                      ) : (
+                        <>
+                          🔓 Відкрити комірку
+                        </>
+                      )}
+                    </button>
+                    <p className="mt-2 text-sm text-gray-500">
+                      Натисніть щоб відкрити комірку та забрати товар
+                    </p>
+                  </div>
+                )}
+
+                <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
+                  <p className="font-semibold mb-2">💡 Що далі?</p>
+                  <ol className="text-left space-y-1">
+                    <li>1. Натисніть кнопку "Відкрити комірку"</li>
+                    <li>2. Підійдіть до ортомату</li>
+                    <li>3. Заберіть ваш товар з комірки</li>
+                  </ol>
+                </div>
               </div>
             )}
 
@@ -137,6 +221,29 @@ export default function PaymentSuccessPage() {
                   className="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700"
                 >
                   Спробувати знову
+                </button>
+              </div>
+            )}
+
+            {status === 'pending' && (
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Платіж обробляється. Будь ласка, зачекайте...
+                </p>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              </div>
+            )}
+
+            {status === 'error' && (
+              <div className="space-y-4">
+                <p className="text-gray-600">
+                  Не вдалося перевірити статус платежу. Спробуйте оновити сторінку.
+                </p>
+                <button
+                  onClick={checkStatus}
+                  className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700"
+                >
+                  Перевірити ще раз
                 </button>
               </div>
             )}
