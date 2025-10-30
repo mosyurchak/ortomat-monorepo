@@ -22,6 +22,12 @@ export class LiqPayService {
       this.logger.error('LiqPay keys are not configured!');
       throw new Error('LiqPay configuration error');
     }
+    
+    // ✅ ДОДАНО: Логуємо конфігурацію при запуску
+    this.logger.log('=== LIQPAY SERVICE INITIALIZED ===');
+    this.logger.log(`Public Key: ${this.publicKey?.substring(0, 20)}...`);
+    this.logger.log(`BACKEND_URL: ${this.configService.get('BACKEND_URL')}`);
+    this.logger.log(`FRONTEND_URL: ${this.configService.get('FRONTEND_URL')}`);
   }
 
   /**
@@ -44,6 +50,26 @@ export class LiqPayService {
       throw new Error(`Invalid amount: ${amount}`);
     }
     
+    // ✅ ДОДАНО: Детальне логування URLs
+    const backendUrl = this.configService.get('BACKEND_URL');
+    const frontendUrl = this.configService.get('FRONTEND_URL');
+    const serverUrl = `${backendUrl}/api/liqpay/callback`;
+    const resultUrl = `${frontendUrl}/payment/success?order=${orderReference}`;
+    
+    this.logger.log('=== CREATING PAYMENT ===');
+    this.logger.log(`Order: ${orderReference}`);
+    this.logger.log(`Amount: ${numericAmount} UAH`);
+    this.logger.log(`Description: ${description}`);
+    this.logger.log(`Doctor ID: ${doctorId || 'none'}`);
+    this.logger.log(`Product ID: ${productId || 'none'}`);
+    this.logger.log(`Ortomat ID: ${ortomatId || 'none'}`);
+    this.logger.log(`---`);
+    this.logger.log(`BACKEND_URL: ${backendUrl}`);
+    this.logger.log(`FRONTEND_URL: ${frontendUrl}`);
+    this.logger.log(`Server URL (callback): ${serverUrl}`);
+    this.logger.log(`Result URL (redirect): ${resultUrl}`);
+    this.logger.log(`Public Key: ${this.publicKey?.substring(0, 20)}...`);
+    
     const params = {
       public_key: this.publicKey,
       version: '3',
@@ -52,8 +78,8 @@ export class LiqPayService {
       currency: 'UAH',
       description: description,
       order_id: orderReference,
-      result_url: `${this.configService.get('FRONTEND_URL')}/payment/success?order=${orderReference}`,
-      server_url: `${this.configService.get('BACKEND_URL')}/api/liqpay/callback`,
+      result_url: resultUrl,
+      server_url: serverUrl,
       language: 'uk',
     };
 
@@ -66,10 +92,15 @@ export class LiqPayService {
       });
     }
 
-    this.logger.log(`Creating payment: ${orderReference}, amount: ${numericAmount} UAH`);
+    // ✅ ДОДАНО: Виводимо params
+    this.logger.log(`LiqPay params: ${JSON.stringify(params, null, 2)}`);
 
     const data = Buffer.from(JSON.stringify(params)).toString('base64');
     const signature = this.generateSignature(data);
+    
+    // ✅ ДОДАНО: Логуємо data і signature
+    this.logger.log(`Data (first 100 chars): ${data.substring(0, 100)}...`);
+    this.logger.log(`Signature: ${signature.substring(0, 30)}...`);
 
     // Зберігаємо платіж в БД
     await this.prisma.payment.create({
@@ -85,6 +116,9 @@ export class LiqPayService {
         },
       },
     });
+    
+    this.logger.log(`Payment saved to DB: ${orderReference}`);
+    this.logger.log('=== END CREATING PAYMENT ===\n');
 
     return {
       data,
@@ -110,6 +144,8 @@ export class LiqPayService {
     
     if (!isValid) {
       this.logger.error('Invalid signature from LiqPay!');
+      this.logger.error(`Expected: ${expectedSignature.substring(0, 30)}...`);
+      this.logger.error(`Received: ${signature.substring(0, 30)}...`);
     }
     
     return isValid;
@@ -119,19 +155,28 @@ export class LiqPayService {
    * Обробка callback від LiqPay
    */
   async processCallback(data: string, signature: string) {
-    this.logger.log('Processing LiqPay callback...');
+    // ✅ ДОДАНО: Детальне логування callback
+    this.logger.log('\n=== CALLBACK RECEIVED FROM LIQPAY ===');
+    this.logger.log(`Timestamp: ${new Date().toISOString()}`);
+    this.logger.log(`Data (first 100 chars): ${data.substring(0, 100)}...`);
+    this.logger.log(`Signature (first 30 chars): ${signature.substring(0, 30)}...`);
     
     // Перевіряємо підпис
     if (!this.verifySignature(data, signature)) {
-      this.logger.error('Invalid signature from LiqPay');
+      this.logger.error('❌ Invalid signature from LiqPay');
       throw new Error('Invalid signature');
     }
+    
+    this.logger.log('✅ Signature valid');
 
     // Розшифровуємо дані
     const decodedData = Buffer.from(data, 'base64').toString('utf-8');
     const paymentData = JSON.parse(decodedData);
 
-    this.logger.log(`Payment callback: ${paymentData.order_id}, status: ${paymentData.status}`);
+    this.logger.log(`Payment Data: ${JSON.stringify(paymentData, null, 2)}`);
+    this.logger.log(`Order ID: ${paymentData.order_id}`);
+    this.logger.log(`Status: ${paymentData.status}`);
+    this.logger.log(`Amount: ${paymentData.amount}`);
 
     // Знаходимо платіж
     const payment = await this.prisma.payment.findFirst({
@@ -139,9 +184,11 @@ export class LiqPayService {
     });
 
     if (!payment) {
-      this.logger.error(`Payment not found: ${paymentData.order_id}`);
+      this.logger.error(`❌ Payment not found: ${paymentData.order_id}`);
       throw new Error('Payment not found');
     }
+    
+    this.logger.log(`✅ Payment found in DB: ${payment.id}`);
 
     // Визначаємо статус
     let newStatus = 'PENDING';
@@ -150,6 +197,8 @@ export class LiqPayService {
     } else if (paymentData.status === 'failure' || paymentData.status === 'error') {
       newStatus = 'FAILED';
     }
+    
+    this.logger.log(`New status: ${newStatus}`);
 
     // Оновлюємо платіж
     await this.prisma.payment.update({
@@ -160,11 +209,16 @@ export class LiqPayService {
         paymentDetails: paymentData,
       },
     });
+    
+    this.logger.log(`✅ Payment updated in DB`);
 
     // Якщо успішний - обробляємо
     if (newStatus === 'SUCCESS') {
+      this.logger.log(`Processing successful payment...`);
       await this.handleSuccessfulPayment(payment, paymentData);
     }
+    
+    this.logger.log('=== END CALLBACK PROCESSING ===\n');
 
     return { status: newStatus };
   }
@@ -174,11 +228,14 @@ export class LiqPayService {
    */
   private async handleSuccessfulPayment(payment: any, paymentData: any) {
     try {
+      this.logger.log('=== HANDLING SUCCESSFUL PAYMENT ===');
+      
       // Парсимо info
       let info: any = {};
       try {
         if (paymentData.info) {
           info = JSON.parse(paymentData.info);
+          this.logger.log(`Info from callback: ${JSON.stringify(info)}`);
         }
       } catch (e) {
         this.logger.warn('Failed to parse payment info');
@@ -188,6 +245,10 @@ export class LiqPayService {
       const storedDetails = payment.paymentDetails || {};
       const productId = storedDetails.productId || info.productId || null;
       const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
+      
+      this.logger.log(`Product ID: ${productId}`);
+      this.logger.log(`Ortomat ID: ${ortomatId}`);
+      this.logger.log(`Doctor ID: ${payment.doctorId || info.doctorId || 'none'}`);
 
       // Створюємо продаж
       const sale = await this.prisma.sale.create({
@@ -202,7 +263,7 @@ export class LiqPayService {
         },
       });
 
-      this.logger.log(`Sale created: ${sale.id}`);
+      this.logger.log(`✅ Sale created: ${sale.id}`);
 
       // Якщо є лікар - комісія
       if (payment.doctorId) {
@@ -214,9 +275,10 @@ export class LiqPayService {
         await this.handlePurchaseEmail(paymentData, payment);
       }
 
-      this.logger.log(`Payment successful: ${payment.orderId}, amount: ${payment.amount} UAH`);
+      this.logger.log(`✅ Payment successful: ${payment.orderId}, amount: ${payment.amount} UAH`);
+      this.logger.log('=== END HANDLING SUCCESSFUL PAYMENT ===\n');
     } catch (error) {
-      this.logger.error('Error handling successful payment:', error);
+      this.logger.error('❌ Error handling successful payment:', error);
       throw error;
     }
   }
@@ -259,7 +321,7 @@ export class LiqPayService {
         }
       }
 
-      this.logger.log(`Commission created: ${commission} UAH for doctor ${payment.doctorId}`);
+      this.logger.log(`✅ Commission created: ${commission} UAH for doctor ${payment.doctorId}`);
     } catch (error) {
       this.logger.error('Error handling doctor commission:', error);
     }
@@ -283,7 +345,7 @@ export class LiqPayService {
         },
       });
       
-      this.logger.log(`Purchase email logged for: ${paymentData.sender_email}`);
+      this.logger.log(`✅ Purchase email logged for: ${paymentData.sender_email}`);
     } catch (error) {
       this.logger.error('Failed to log purchase email:', error);
     }
