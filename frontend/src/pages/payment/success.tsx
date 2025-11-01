@@ -1,275 +1,244 @@
-import React, { useEffect, useState } from 'react';
+// frontend/src/pages/payment/success.tsx
+// Додайте цей код в ваш існуючий файл
+
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import Link from 'next/link';
-import Head from 'next/head';
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
-  const [status, setStatus] = useState('checking');
-  const [paymentInfo, setPaymentInfo] = useState<any>(null);
-  const [isOpeningCell, setIsOpeningCell] = useState(false);
-  
-  // ✅ ВИПРАВЛЕНО: LiqPay повертає параметр "order", а не "order_id"
   const { order } = router.query;
+  const [payment, setPayment] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const [autoRetrying, setAutoRetrying] = useState(false);
 
   useEffect(() => {
-    if (order) {
-      checkStatus();
-    }
-  }, [order]);
+    if (!order) return;
 
-  const checkStatus = async () => {
-    try {
-      console.log('🔍 Checking payment status for:', order);
-      
-      // ✅ ВИПРАВЛЕНО: Викликаємо правильний API endpoint
-      const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
-      console.log('✅ Payment status:', response.data);
-      
-      setPaymentInfo(response.data);
-      
-      if (response.data.status === 'SUCCESS') {
-        setStatus('success');
-      } else if (response.data.status === 'FAILED') {
-        setStatus('failed');
-      } else if (response.data.status === 'PENDING') {
-        setStatus('pending');
-        // Якщо ще pending - перевіряємо ще раз через 2 секунди
-        setTimeout(checkStatus, 2000);
+    const checkPaymentStatus = async () => {
+      try {
+        console.log('🔍 Checking payment status for:', order);
+        const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
+        console.log('✅ Payment status:', response.data);
+        setPayment(response.data);
+
+        // ✅ ДОДАНО: Якщо PENDING і ще не пробували retry - спробуємо автоматично
+        if (response.data.status === 'PENDING' && retryCount === 0 && !autoRetrying) {
+          console.log('⏳ Payment is PENDING, attempting auto-retry...');
+          setAutoRetrying(true);
+          await autoRetryCallback(order as string);
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Error checking payment:', error);
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('❌ Error checking status:', error);
-      setStatus('error');
-    }
-  };
+    };
 
-  // ✅ ДОДАНО: Функція відкриття комірки
-  const handleOpenCell = async () => {
-    if (!paymentInfo?.sales || paymentInfo.sales.length === 0) {
-      alert('Інформація про продаж відсутня');
-      return;
-    }
+    checkPaymentStatus();
 
-    const sale = paymentInfo.sales[0];
-    
-    if (!sale.ortomatId) {
-      alert('Інформація про ортомат відсутня');
-      return;
-    }
+    // Перевіряємо статус кожні 3 секунди (максимум 10 разів)
+    const interval = setInterval(() => {
+      if (retryCount < 10) {
+        checkPaymentStatus();
+        setRetryCount(prev => prev + 1);
+      } else {
+        clearInterval(interval);
+      }
+    }, 3000);
 
-    setIsOpeningCell(true);
+    return () => clearInterval(interval);
+  }, [order, retryCount]);
 
+  // ✅ ДОДАНО: Автоматичний retry callback
+  const autoRetryCallback = async (orderId: string) => {
     try {
-      console.log('🔓 Opening cell for sale:', sale.id);
-
-      // TODO: Замініть на ваш реальний endpoint для відкриття комірки
-      await axios.post(`${API_URL}/api/ortomats/${sale.ortomatId}/open-cell`, {
-        saleId: sale.id,
-        productId: sale.productId,
-      });
-
-      alert('✅ Комірка відкрита! Заберіть ваш товар.');
+      console.log('🔄 Auto-retrying callback for:', orderId);
+      await axios.post(`${API_URL}/api/liqpay/test-callback/${orderId}`);
+      console.log('✅ Auto-retry successful');
       
-      // Перенаправляємо на головну через 3 секунди
-      setTimeout(() => {
-        router.push('/');
-      }, 3000);
-
-    } catch (err: any) {
-      console.error('❌ Error opening cell:', err);
-      alert('Помилка відкриття комірки. Спробуйте ще раз або зверніться до служби підтримки.');
-    } finally {
-      setIsOpeningCell(false);
+      // Почекати 2 секунди і перевірити знову
+      setTimeout(async () => {
+        const response = await axios.get(`${API_URL}/api/liqpay/status/${orderId}`);
+        setPayment(response.data);
+        setAutoRetrying(false);
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Auto-retry failed:', error);
+      setAutoRetrying(false);
     }
   };
 
-  const getStatusMessage = () => {
-    switch (status) {
-      case 'checking':
-        return {
-          icon: '⏳',
-          title: 'Перевіряємо статус платежу...',
-          color: 'text-blue-600',
-        };
-      case 'success':
-        return {
-          icon: '✅',
-          title: 'Платіж успішний!',
-          color: 'text-green-600',
-        };
-      case 'failed':
-        return {
-          icon: '❌',
-          title: 'Платіж не вдався',
-          color: 'text-red-600',
-        };
-      case 'pending':
-        return {
-          icon: '⏰',
-          title: 'Платіж в обробці',
-          color: 'text-yellow-600',
-        };
-      default:
-        return {
-          icon: '⚠️',
-          title: 'Помилка перевірки статусу',
-          color: 'text-gray-600',
-        };
+  // Ручний retry
+  const handleManualRetry = async () => {
+    if (!order) return;
+    
+    try {
+      setLoading(true);
+      console.log('🔄 Manual retry for:', order);
+      await axios.post(`${API_URL}/api/liqpay/test-callback/${order}`);
+      
+      setTimeout(async () => {
+        const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
+        setPayment(response.data);
+        setLoading(false);
+      }, 2000);
+    } catch (error) {
+      console.error('❌ Manual retry failed:', error);
+      setLoading(false);
     }
   };
 
-  const statusInfo = getStatusMessage();
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-lg text-gray-600">
+            {autoRetrying ? '🔄 Автоматична перевірка платежу...' : 'Завантаження...'}
+          </p>
+          {retryCount > 0 && (
+            <p className="text-sm text-gray-400 mt-2">
+              Перевірка {retryCount}/10
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (!payment) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Платіж не знайдено</h1>
+          <button
+            onClick={() => router.push('/')}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            На головну
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      <Head>
-        <title>Статус платежу - Ортомат</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
-
-      <div className="min-h-screen bg-gray-50">
-        {/* Header */}
-        <header className="bg-white shadow-sm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <h1 className="text-2xl font-bold text-blue-600">🏥 Ортомат</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
+        {/* SUCCESS */}
+        {payment.status === 'SUCCESS' && (
+          <>
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
+                <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">✅ Оплата успішна!</h1>
+              <p className="text-gray-600 mb-4">Дякуємо за покупку</p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-500">Сума платежу</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(payment.amount)}
+                </p>
+                <p className="text-xs text-gray-400 mt-2">Order: {payment.orderId}</p>
+              </div>
             </div>
-          </div>
-        </header>
 
-        {/* Main Content */}
-        <div className="py-12">
-          <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-8 text-center">
-            <div className="text-6xl mb-4">{statusInfo.icon}</div>
-            
-            <h1 className={`text-2xl font-bold mb-4 ${statusInfo.color}`}>
-              {statusInfo.title}
-            </h1>
+            {/* Кнопка відкрити комірку */}
+            {payment.sales && payment.sales.length > 0 && payment.sales[0].ortomatId && (
+              <button
+                onClick={() => {
+                  // Тут ваша логіка відкриття комірки
+                  router.push(`/ortomat/${payment.sales[0].ortomatId}/open`);
+                }}
+                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold mb-4"
+              >
+                🔓 Відкрити комірку
+              </button>
+            )}
 
-            {paymentInfo && (
-              <div className="bg-gray-50 rounded p-4 mb-6 text-left">
-                <p className="text-sm text-gray-600 mb-2">
-                  <strong>Номер замовлення:</strong> {paymentInfo.orderId}
+            <button
+              onClick={() => router.push('/')}
+              className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            >
+              На головну
+            </button>
+          </>
+        )}
+
+        {/* PENDING */}
+        {payment.status === 'PENDING' && (
+          <>
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
+                <svg className="animate-spin h-10 w-10 text-yellow-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">⏳ Платіж в обробці</h1>
+              <p className="text-gray-600 mb-4">Будь ласка, зачекайте...</p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-6">
+                <p className="text-sm text-gray-500">Сума платежу</p>
+                <p className="text-3xl font-bold text-gray-900">
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(payment.amount)}
                 </p>
-                <p className="text-sm text-gray-600 mb-2">
-                  <strong>Сума:</strong> {paymentInfo.amount} ₴
-                </p>
-                {paymentInfo.transactionId && (
-                  <p className="text-sm text-gray-600">
-                    <strong>ID транзакції:</strong> {paymentInfo.transactionId}
+              </div>
+
+              {retryCount > 5 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-yellow-800 mb-2">
+                    ⚠️ Платіж ще обробляється. Спробуйте оновити вручну:
                   </p>
-                )}
-              </div>
-            )}
-
-            {status === 'success' && (
-              <div className="space-y-4">
-                <p className="text-gray-600 mb-4">
-                  Дякуємо за покупку! Ваше замовлення успішно оплачено.
-                </p>
-
-                {/* ✅ ДОДАНО: Кнопка відкриття комірки */}
-                {paymentInfo?.sales && paymentInfo.sales.length > 0 && paymentInfo.sales[0].ortomatId && (
-                  <div className="mb-6">
-                    <button
-                      onClick={handleOpenCell}
-                      disabled={isOpeningCell}
-                      className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-                    >
-                      {isOpeningCell ? (
-                        <>
-                          <svg className="animate-spin h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                          </svg>
-                          Відкриваємо комірку...
-                        </>
-                      ) : (
-                        <>
-                          🔓 Відкрити комірку
-                        </>
-                      )}
-                    </button>
-                    <p className="mt-2 text-sm text-gray-500">
-                      Натисніть щоб відкрити комірку та забрати товар
-                    </p>
-                  </div>
-                )}
-
-                <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
-                  <p className="font-semibold mb-2">💡 Що далі?</p>
-                  <ol className="text-left space-y-1">
-                    <li>1. Натисніть кнопку "Відкрити комірку"</li>
-                    <li>2. Підійдіть до ортомату</li>
-                    <li>3. Заберіть ваш товар з комірки</li>
-                  </ol>
+                  <button
+                    onClick={handleManualRetry}
+                    disabled={loading}
+                    className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
+                  >
+                    🔄 Оновити статус
+                  </button>
                 </div>
-              </div>
-            )}
-
-            {status === 'failed' && (
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  На жаль, платіж не пройшов. Спробуйте ще раз або
-                  зверніться до служби підтримки.
-                </p>
-                <button
-                  onClick={() => router.back()}
-                  className="bg-red-600 text-white py-2 px-6 rounded-lg hover:bg-red-700"
-                >
-                  Спробувати знову
-                </button>
-              </div>
-            )}
-
-            {status === 'pending' && (
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Платіж обробляється. Будь ласка, зачекайте...
-                </p>
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              </div>
-            )}
-
-            {status === 'error' && (
-              <div className="space-y-4">
-                <p className="text-gray-600">
-                  Не вдалося перевірити статус платежу. Спробуйте оновити сторінку.
-                </p>
-                <button
-                  onClick={checkStatus}
-                  className="bg-blue-600 text-white py-2 px-6 rounded-lg hover:bg-blue-700"
-                >
-                  Перевірити ще раз
-                </button>
-              </div>
-            )}
-
-            <div className="mt-8 space-x-4">
-              <Link href="/" className="text-blue-600 hover:underline">
-                На головну
-              </Link>
-              {status === 'success' && (
-                <Link href="/profile" className="text-blue-600 hover:underline">
-                  Мої замовлення
-                </Link>
               )}
-            </div>
-          </div>
-        </div>
 
-        {/* Footer */}
-        <footer className="bg-white mt-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            <p className="text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} Ортомат. Всі права захищені.
-            </p>
-          </div>
-        </footer>
+              <p className="text-xs text-gray-400">
+                Автоматична перевірка: {retryCount}/10
+              </p>
+            </div>
+          </>
+        )}
+
+        {/* FAILED */}
+        {payment.status === 'FAILED' && (
+          <>
+            <div className="text-center mb-6">
+              <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
+                <svg className="h-10 w-10 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">❌ Помилка оплати</h1>
+              <p className="text-gray-600 mb-6">Платіж не вдалося здійснити</p>
+            </div>
+
+            <button
+              onClick={() => router.push('/')}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold"
+            >
+              Спробувати ще раз
+            </button>
+          </>
+        )}
       </div>
-    </>
+    </div>
   );
+}
+
+export async function getServerSideProps() {
+  return { props: {} };
 }
