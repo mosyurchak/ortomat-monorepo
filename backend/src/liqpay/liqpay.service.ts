@@ -179,7 +179,7 @@ export class LiqPayService {
       where: { id: payment.id },
       data: {
         status: newStatus,
-        transactionId: paymentData.transaction_id,
+        transactionId: paymentData.transaction_id?.toString() || null, // ✅ Конвертуємо в string
         paymentDetails: paymentData,
       },
     });
