@@ -119,7 +119,7 @@ export class OrtomatsService {
             productId: {
               not: null,
             },
-            isAvailable: false,
+            isAvailable: false, // Комірки з товаром (заповнені)
           },
           include: {
             product: true,
@@ -226,6 +226,7 @@ export class OrtomatsService {
     return { success: true, message: `Cell ${cellNumber} opened` };
   }
 
+  // ✅ ВИПРАВЛЕНО: Правильно встановлює isAvailable
   async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
     let cell = await this.prisma.cell.findFirst({
       where: {
@@ -240,7 +241,7 @@ export class OrtomatsService {
           number: cellNumber,
           ortomatId,
           productId,
-          isAvailable: true,
+          isAvailable: productId ? false : true, // ✅ false = заповнена, true = пуста
         },
       });
       
@@ -254,7 +255,7 @@ export class OrtomatsService {
       where: { id: cell.id },
       data: {
         productId,
-        isAvailable: true,
+        isAvailable: productId ? false : true, // ✅ false = заповнена, true = пуста
       },
       include: {
         product: true,
@@ -325,7 +326,6 @@ export class OrtomatsService {
       });
     }
 
-    // ✅ ВИПРАВЛЕНО: Використовуємо реальний ID ортомату
     const deviceId = ortomatId;
     const ortomatName = cell.ortomat.name;
     
@@ -343,7 +343,6 @@ export class OrtomatsService {
       }
     }
 
-    // ✅ ВИПРАВЛЕНО: Логування з повними деталями
     await this.logsService.logCellOpened({
       cellNumber,
       ortomatId,
@@ -393,7 +392,7 @@ export class OrtomatsService {
     const updatedCell = await this.prisma.cell.update({
       where: { id: cell.id },
       data: {
-        isAvailable: false,
+        isAvailable: false, // Комірка заповнена
         lastRefillDate: new Date(),
         courierId,
       },
@@ -402,7 +401,6 @@ export class OrtomatsService {
       },
     });
 
-    // ✅ Логування заповнення комірки
     await this.logsService.logCourierRefill({
       cellNumber,
       ortomatId,
@@ -446,7 +444,7 @@ export class OrtomatsService {
       where: { id: cell.id },
       data: {
         productId,
-        isAvailable: false,
+        isAvailable: false, // Комірка заповнена
         lastRefillDate: new Date(),
         courierId,
       },
