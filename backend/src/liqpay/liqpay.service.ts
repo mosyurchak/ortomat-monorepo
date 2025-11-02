@@ -262,20 +262,25 @@ export class LiqPayService {
       }
 
       // Створити лог активності
-      await this.createActivityLog({
-        category: 'orders',
-        severity: 'INFO',
-        message: `Продаж: ${payment.description}`,
-        ortomatId: ortomatId,
-        cellNumber: cellNumber,
-        metadata: {
-          saleId: sale.id,
-          paymentId: payment.id,
-          orderId: payment.orderId,
-          amount: payment.amount,
-          productId: productId,
-        },
-      });
+      try {
+        await this.createActivityLog({
+          category: 'orders',
+          severity: 'INFO',
+          message: `Продаж: ${payment.description}`,
+          ortomatId: ortomatId,
+          cellNumber: cellNumber,
+          metadata: {
+            saleId: sale.id,
+            paymentId: payment.id,
+            orderId: payment.orderId,
+            amount: payment.amount,
+            productId: productId,
+          },
+        });
+      } catch (error) {
+        this.logger.error('Failed to create activity log:', error);
+        // Не критична помилка - продовжуємо
+      }
 
       this.logger.log(`✅ Payment successful: ${payment.orderId}, amount: ${payment.amount} UAH`);
       this.logger.log('=== END HANDLING SUCCESSFUL PAYMENT ===\n');
@@ -332,19 +337,34 @@ export class LiqPayService {
     metadata?: any;
   }) {
     try {
+      // Базові дані
+      const logData: any = {
+        type: 'PAYMENT_SUCCESS', // ✅ ДОДАНО: обов'язкове поле
+        category: data.category,
+        severity: data.severity,
+        message: data.message,
+        metadata: data.metadata || {},
+      };
+
+      // Додаємо cellNumber якщо є
+      if (data.cellNumber !== null && data.cellNumber !== undefined) {
+        logData.cellNumber = data.cellNumber;
+      }
+
+      // Додаємо ortomatId якщо є
+      if (data.ortomatId) {
+        logData.ortomatId = data.ortomatId;
+      }
+
       await this.prisma.activityLog.create({
-        data: {
-          category: data.category,
-          severity: data.severity as any, // Cast to Prisma enum
-          message: data.message,
-          ortomatId: data.ortomatId || null,
-          cellNumber: data.cellNumber || null,
-          metadata: data.metadata || {},
-        },
+        data: logData,
       });
+      
       this.logger.log(`✅ Activity log created: ${data.message}`);
     } catch (error) {
       this.logger.error('❌ Error creating activity log:', error);
+      this.logger.error('Error details:', JSON.stringify(error));
+      // Не кидаємо помилку - це не критично
     }
   }
 
