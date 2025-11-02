@@ -321,7 +321,8 @@ export class LiqPayService {
   }
 
   /**
-   * Позначити комірку як використану (очистити товар)
+   * Позначити комірку як використану (після покупки)
+   * Комірка стає СИНЬОЮ - пуста, але товар залишається призначеним
    */
   private async markCellAsUsed(ortomatId: string, cellNumber: number) {
     try {
@@ -340,17 +341,17 @@ export class LiqPayService {
         return;
       }
 
-      // ✅ ВИПРАВЛЕНО: Очистити комірку (видалити товар)
+      // ✅ ВИПРАВЛЕНО: НЕ видаляємо товар, тільки ставимо isAvailable=true (синя)
       await this.prisma.cell.update({
         where: { id: cell.id },
         data: {
-          productId: null,          // ✅ Видаляємо товар з комірки
-          isAvailable: false,       // Комірка пуста
+          isAvailable: true,           // ✅ Комірка пуста (синя), товар залишається
+          // productId залишається без змін!
           lastRefillDate: new Date(),
         },
       });
 
-      this.logger.log(`✅ Cell cleared: ${cellNumber}, product removed`);
+      this.logger.log(`✅ Cell marked as empty (blue): ${cellNumber}, product still assigned, needs refill`);
     } catch (error) {
       this.logger.error('❌ Error marking cell as used:', error);
     }

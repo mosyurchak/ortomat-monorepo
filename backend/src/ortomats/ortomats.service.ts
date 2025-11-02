@@ -119,7 +119,9 @@ export class OrtomatsService {
             productId: {
               not: null,
             },
-            isAvailable: false, // Комірки з товаром (заповнені)
+            // ✅ ВИПРАВЛЕНО: Показуємо ВСІ комірки з товаром (і сині і зелені)
+            // isAvailable: true = синя (пуста, товар призначений)
+            // isAvailable: false = зелена (заповнена)
           },
           include: {
             product: true,
@@ -226,7 +228,7 @@ export class OrtomatsService {
     return { success: true, message: `Cell ${cellNumber} opened` };
   }
 
-  // ✅ ВИПРАВЛЕНО: Правильно встановлює isAvailable
+  // ✅ ВИПРАВЛЕНО: При призначенні товару комірка стає СИНЬОЮ (пуста, але з товаром)
   async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
     let cell = await this.prisma.cell.findFirst({
       where: {
@@ -241,7 +243,7 @@ export class OrtomatsService {
           number: cellNumber,
           ortomatId,
           productId,
-          isAvailable: productId ? false : true, // ✅ false = заповнена, true = пуста
+          isAvailable: true, // ✅ Комірка пуста (синя), товар лише призначений
         },
       });
       
@@ -255,7 +257,7 @@ export class OrtomatsService {
       where: { id: cell.id },
       data: {
         productId,
-        isAvailable: productId ? false : true, // ✅ false = заповнена, true = пуста
+        isAvailable: productId ? true : true, // ✅ true = пуста (синя), кур'єр заповнить → false
       },
       include: {
         product: true,
