@@ -119,9 +119,7 @@ export class OrtomatsService {
             productId: {
               not: null,
             },
-            // ✅ ВИПРАВЛЕНО: Показуємо ВСІ комірки з товаром (і сині і зелені)
-            // isAvailable: true = синя (пуста, товар призначений)
-            // isAvailable: false = зелена (заповнена)
+            isAvailable: false, // ✅ ВИПРАВЛЕНО: Показуємо тільки ЗАПОВНЕНІ комірки (зелені)
           },
           include: {
             product: true,

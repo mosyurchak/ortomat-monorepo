@@ -67,39 +67,38 @@ export default function PaymentPage() {
       console.log('✅ Ortomat loaded:', ortomatResponse.data);
       setOrtomat(ortomatResponse.data);
       
-      // ✅ ВИПРАВЛЕНО: Знаходимо номер комірки
+      // ✅ ВИПРАВЛЕНО: Знаходимо номер комірки (шукаємо ЗАПОВНЕНУ комірку)
       console.log('🔍 Finding cell number for product...');
       try {
         const inventoryResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}/inventory`);
         console.log('✅ Inventory loaded:', inventoryResponse.data);
         
-        // Знаходимо комірку з цим товаром що доступна
+        // Знаходимо комірку з цим товаром що ЗАПОВНЕНА (готова до продажу)
         const cell = inventoryResponse.data.cells?.find((c: any) => {
           const matchesProduct = c.productId === productId;
-          const isAvailable = c.isAvailable === true;
+          const isFilled = c.isAvailable === false; // ✅ ВИПРАВЛЕНО: false = зелена (заповнена)
           
-          console.log(`Cell ${c.number}: productId=${c.productId}, matches=${matchesProduct}, available=${isAvailable}`);
+          console.log(`Cell ${c.number}: productId=${c.productId}, matches=${matchesProduct}, filled=${isFilled}`);
           
-          return matchesProduct && isAvailable;
+          return matchesProduct && isFilled; // ✅ Шукаємо заповнену комірку!
         });
         
         if (cell) {
-          setCellNumber(cell.number); // ✅ Використовуємо 'number', а не 'cellNumber'
+          setCellNumber(cell.number);
           console.log(`✅ Cell number found: ${cell.number}`);
         } else {
-          console.warn('⚠️ No available cell found with this product');
+          console.warn('⚠️ No filled cell found with this product');
           console.warn('Available cells:', inventoryResponse.data.cells?.map((c: any) => ({
             number: c.number,
             productId: c.productId,
             isAvailable: c.isAvailable
           })));
           
-          // ✅ НЕ показуємо помилку, просто продовжуємо без cellNumber
-          // setError('Товар закінчився в автоматі');
+          setError('Товар закінчився в автоматі');
         }
       } catch (err) {
         console.error('❌ Error loading inventory:', err);
-        // Не критична помилка - продовжуємо без cellNumber
+        setError('Помилка завантаження інвентарю');
       }
       
       console.log('✅ All data loaded successfully!');
