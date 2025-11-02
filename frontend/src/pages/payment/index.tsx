@@ -67,23 +67,35 @@ export default function PaymentPage() {
       console.log('✅ Ortomat loaded:', ortomatResponse.data);
       setOrtomat(ortomatResponse.data);
       
-      // ✅ ДОДАНО: Знаходимо номер комірки
+      // ✅ ВИПРАВЛЕНО: Знаходимо номер комірки
       console.log('🔍 Finding cell number for product...');
       try {
         const inventoryResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}/inventory`);
         console.log('✅ Inventory loaded:', inventoryResponse.data);
         
-        // Знаходимо комірку з цим товаром
-        const cell = inventoryResponse.data.cells?.find((c: any) => 
-          c.productId === productId && c.currentStock > 0
-        );
+        // Знаходимо комірку з цим товаром що доступна
+        const cell = inventoryResponse.data.cells?.find((c: any) => {
+          const matchesProduct = c.productId === productId;
+          const isAvailable = c.isAvailable === true;
+          
+          console.log(`Cell ${c.number}: productId=${c.productId}, matches=${matchesProduct}, available=${isAvailable}`);
+          
+          return matchesProduct && isAvailable;
+        });
         
         if (cell) {
-          setCellNumber(cell.cellNumber);
-          console.log(`✅ Cell number found: ${cell.cellNumber}`);
+          setCellNumber(cell.number); // ✅ Використовуємо 'number', а не 'cellNumber'
+          console.log(`✅ Cell number found: ${cell.number}`);
         } else {
-          console.warn('⚠️ Cell with this product not found or out of stock');
-          setError('Товар закінчився в автоматі');
+          console.warn('⚠️ No available cell found with this product');
+          console.warn('Available cells:', inventoryResponse.data.cells?.map((c: any) => ({
+            number: c.number,
+            productId: c.productId,
+            isAvailable: c.isAvailable
+          })));
+          
+          // ✅ НЕ показуємо помилку, просто продовжуємо без cellNumber
+          // setError('Товар закінчився в автоматі');
         }
       } catch (err) {
         console.error('❌ Error loading inventory:', err);
