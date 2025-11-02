@@ -199,6 +199,9 @@ export class LiqPayService {
   private async handleSuccessfulPayment(payment: any, paymentData: any) {
     try {
       this.logger.log('=== HANDLING SUCCESSFUL PAYMENT ===');
+      this.logger.log(`Payment ID: ${payment.id}`);
+      this.logger.log(`Order ID: ${payment.orderId}`);
+      this.logger.log(`Amount: ${payment.amount}`);
       
       // Перевірка на дублікати
       const existingSale = await this.prisma.sale.findFirst({
@@ -214,7 +217,7 @@ export class LiqPayService {
       try {
         if (paymentData.info) {
           info = JSON.parse(paymentData.info);
-          this.logger.log(`Info from callback: ${JSON.stringify(info)}`);
+          this.logger.log(`📦 Info from callback: ${JSON.stringify(info)}`);
         }
       } catch (e) {
         this.logger.warn('Failed to parse payment info');
@@ -225,10 +228,35 @@ export class LiqPayService {
       const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
       const cellNumber = storedDetails.cellNumber || info.cellNumber || null;
       
-      this.logger.log(`Product ID: ${productId}`);
-      this.logger.log(`Ortomat ID: ${ortomatId}`);
-      this.logger.log(`Cell Number: ${cellNumber}`);
-      this.logger.log(`Doctor ID: ${payment.doctorId || info.doctorId || 'none'}`);
+      this.logger.log(`📋 Extracted data:`);
+      this.logger.log(`  - Product ID: ${productId}`);
+      this.logger.log(`  - Ortomat ID: ${ortomatId}`);
+      this.logger.log(`  - Cell Number: ${cellNumber}`);
+      this.logger.log(`  - Doctor ID: ${payment.doctorId || info.doctorId || 'none'}`);
+
+      // ✅ ВАЖЛИВО: Якщо cellNumber відсутній - спробувати знайти
+      let finalCellNumber = cellNumber;
+      if (!finalCellNumber && ortomatId && productId) {
+        this.logger.warn(`⚠️ Cell number not provided, trying to find available cell...`);
+        try {
+          const cell = await this.prisma.cell.findFirst({
+            where: {
+              ortomatId: ortomatId,
+              productId: productId,
+              isAvailable: true,
+            },
+          });
+          
+          if (cell) {
+            finalCellNumber = cell.number;
+            this.logger.log(`✅ Found cell: ${finalCellNumber}`);
+          } else {
+            this.logger.error(`❌ No available cell found with product ${productId} in ortomat ${ortomatId}`);
+          }
+        } catch (error) {
+          this.logger.error('Error finding cell:', error);
+        }
+      }
 
       // Створюємо продаж
       const sale = await this.prisma.sale.create({
@@ -238,19 +266,21 @@ export class LiqPayService {
           paymentId: payment.id,
           ortomatId: ortomatId,
           productId: productId,
-          cellNumber: cellNumber,
+          cellNumber: finalCellNumber, // ✅ Використовуємо знайдений номер
           status: 'completed',
           completedAt: new Date(),
         },
       });
 
       this.logger.log(`✅ Sale created: ${sale.id}`);
+      this.logger.log(`   - Cell Number in sale: ${sale.cellNumber}`);
 
-      // ✅ Оновити статус комірки (замість списання stock)
-      if (ortomatId && cellNumber !== null) {
-        await this.markCellAsUsed(ortomatId, cellNumber);
+      // Оновити статус комірки
+      if (ortomatId && finalCellNumber !== null) {
+        this.logger.log(`🔄 Marking cell as used: ortomat=${ortomatId}, cell=${finalCellNumber}`);
+        await this.markCellAsUsed(ortomatId, finalCellNumber);
       } else {
-        this.logger.warn('⚠️ Missing ortomatId or cellNumber to mark cell as used');
+        this.logger.error(`⚠️ Cannot mark cell as used - missing data: ortomatId=${ortomatId}, cellNumber=${finalCellNumber}`);
       }
 
       if (payment.doctorId) {
@@ -268,7 +298,7 @@ export class LiqPayService {
           severity: 'INFO',
           message: `Продаж: ${payment.description}`,
           ortomatId: ortomatId,
-          cellNumber: cellNumber,
+          cellNumber: finalCellNumber,
           metadata: {
             saleId: sale.id,
             paymentId: payment.id,
@@ -286,6 +316,7 @@ export class LiqPayService {
       this.logger.log('=== END HANDLING SUCCESSFUL PAYMENT ===\n');
     } catch (error) {
       this.logger.error('❌ Error handling successful payment:', error);
+      this.logger.error('Error stack:', error.stack);
       throw error;
     }
   }
