@@ -79,14 +79,13 @@ export class LiqPayService {
       language: 'uk',
     };
 
-    if (doctorId || productId || ortomatId || cellNumber) {
-      params['info'] = JSON.stringify({ 
-        doctorId, 
-        productId, 
-        ortomatId,
-        cellNumber,
-      });
-    }
+    // ✅ ВИПРАВЛЕНО: Завжди додаємо info з усіма даними
+    params['info'] = JSON.stringify({ 
+      doctorId: doctorId || null, 
+      productId: productId || null, 
+      ortomatId: ortomatId || null,
+      cellNumber: cellNumber || null, // ✅ ВАЖЛИВО: Додаємо cellNumber в info!
+    });
 
     this.logger.log(`LiqPay params: ${JSON.stringify(params, null, 2)}`);
 
