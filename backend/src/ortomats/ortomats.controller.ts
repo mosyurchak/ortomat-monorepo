@@ -130,7 +130,34 @@ export class OrtomatsController {
     return this.ortomatsService.openCell(id, body.cellNumber);
   }
 
-  // ✅ Адмін: Прив'язати/видалити товар з комірки
+  // ✅ ДОДАНО: Відкрити комірку після покупки (для клієнта)
+  @Post(':id/cells/:cellNumber/open')
+  async openCellForCustomer(
+    @Param('id') id: string,
+    @Param('cellNumber') cellNumber: string,
+    @Body() body: { reason?: string; saleId?: string },
+  ) {
+    const cellNum = parseInt(cellNumber);
+    
+    // Логування
+    console.log(`🔓 Opening cell for customer: ortomat=${id}, cell=${cellNum}, sale=${body.saleId}`);
+    
+    // Викликаємо сервіс для відкриття
+    const result = await this.ortomatsService.openCell(id, cellNum);
+    
+    // Логування успіху
+    console.log(`✅ Cell ${cellNum} opened successfully`);
+    
+    return {
+      success: true,
+      message: `Комірка ${cellNum} відкрита. Заберіть свій товар!`,
+      cellNumber: cellNum,
+      ortomatId: id,
+      ...result,
+    };
+  }
+
+  // Адмін: Прив'язати/видалити товар з комірки
   @UseGuards(AuthGuard('jwt'))
   @Patch(':id/cells/:cellNumber/product')
   updateCellProduct(
@@ -145,7 +172,7 @@ export class OrtomatsController {
     );
   }
 
-  // ✅ ВИПРАВЛЕНО: Кур'єр відкриває комірку для поповнення + WebSocket
+  // ВИПРАВЛЕНО: Кур'єр відкриває комірку для поповнення + WebSocket
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/cells/:cellNumber/open-for-refill')
   openCellForRefill(
@@ -153,16 +180,15 @@ export class OrtomatsController {
     @Param('cellNumber') cellNumber: string,
     @Body() body: { courierId: string },
   ) {
-    // 🔥 ПЕРЕДАЄМО gateway для WebSocket
     return this.ortomatsService.openCellForRefill(
       id,
       parseInt(cellNumber),
       body.courierId,
-      this.ortomatsGateway, // ✅ Додано
+      this.ortomatsGateway,
     );
   }
 
-  // ✅ Кур'єр відмічає комірку як заповнену
+  // Кур'єр відмічає комірку як заповнену
   @UseGuards(AuthGuard('jwt'))
   @Post(':id/cells/:cellNumber/mark-filled')
   markCellFilled(

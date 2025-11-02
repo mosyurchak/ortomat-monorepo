@@ -1,5 +1,4 @@
 // frontend/src/pages/payment/success.tsx
-// Додайте цей код в ваш існуючий файл
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
@@ -14,6 +13,7 @@ export default function PaymentSuccessPage() {
   const [loading, setLoading] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const [autoRetrying, setAutoRetrying] = useState(false);
+  const [openingCell, setOpeningCell] = useState(false);
 
   useEffect(() => {
     if (!order) return;
@@ -25,7 +25,6 @@ export default function PaymentSuccessPage() {
         console.log('✅ Payment status:', response.data);
         setPayment(response.data);
 
-        // ✅ ДОДАНО: Якщо PENDING і ще не пробували retry - спробуємо автоматично
         if (response.data.status === 'PENDING' && retryCount === 0 && !autoRetrying) {
           console.log('⏳ Payment is PENDING, attempting auto-retry...');
           setAutoRetrying(true);
@@ -41,7 +40,6 @@ export default function PaymentSuccessPage() {
 
     checkPaymentStatus();
 
-    // Перевіряємо статус кожні 3 секунди (максимум 10 разів)
     const interval = setInterval(() => {
       if (retryCount < 10) {
         checkPaymentStatus();
@@ -54,14 +52,12 @@ export default function PaymentSuccessPage() {
     return () => clearInterval(interval);
   }, [order, retryCount]);
 
-  // ✅ ДОДАНО: Автоматичний retry callback
   const autoRetryCallback = async (orderId: string) => {
     try {
       console.log('🔄 Auto-retrying callback for:', orderId);
       await axios.post(`${API_URL}/api/liqpay/test-callback/${orderId}`);
       console.log('✅ Auto-retry successful');
       
-      // Почекати 2 секунди і перевірити знову
       setTimeout(async () => {
         const response = await axios.get(`${API_URL}/api/liqpay/status/${orderId}`);
         setPayment(response.data);
@@ -73,7 +69,6 @@ export default function PaymentSuccessPage() {
     }
   };
 
-  // Ручний retry
   const handleManualRetry = async () => {
     if (!order) return;
     
@@ -90,6 +85,57 @@ export default function PaymentSuccessPage() {
     } catch (error) {
       console.error('❌ Manual retry failed:', error);
       setLoading(false);
+    }
+  };
+
+  // ✅ ДОДАНО: Функція відкриття комірки
+  const handleOpenCell = async () => {
+    if (!payment || !payment.sales || payment.sales.length === 0) {
+      alert('Помилка: інформація про продаж не знайдена');
+      return;
+    }
+
+    const sale = payment.sales[0];
+    
+    if (!sale.ortomatId || sale.cellNumber === null) {
+      alert('Помилка: невідомо яку комірку відкрити');
+      console.error('Missing data:', { ortomatId: sale.ortomatId, cellNumber: sale.cellNumber });
+      return;
+    }
+
+    try {
+      setOpeningCell(true);
+      console.log('🔓 Opening cell:', { ortomatId: sale.ortomatId, cellNumber: sale.cellNumber });
+
+      // ✅ ВИПРАВЛЕНО: Викликаємо API для відкриття комірки
+      const response = await axios.post(
+        `${API_URL}/api/ortomats/${sale.ortomatId}/cells/${sale.cellNumber}/open`,
+        {
+          reason: 'CUSTOMER_PURCHASE',
+          saleId: sale.id,
+        }
+      );
+
+      console.log('✅ Cell opened:', response.data);
+      alert('🔓 Комірка відкрита! Заберіть свій товар.');
+      
+      // Можна додати таймер закриття
+      setTimeout(() => {
+        router.push('/');
+      }, 5000);
+
+    } catch (error: any) {
+      console.error('❌ Error opening cell:', error);
+      
+      if (error.response?.status === 404) {
+        alert('Помилка: endpoint для відкриття комірки не знайдено. Зверніться до адміністратора.');
+      } else if (error.response?.status === 400) {
+        alert('Помилка: ' + (error.response.data?.message || 'Невірні дані'));
+      } else {
+        alert('Помилка відкриття комірки. Спробуйте ще раз або зверніться до підтримки.');
+      }
+    } finally {
+      setOpeningCell(false);
     }
   };
 
@@ -147,19 +193,34 @@ export default function PaymentSuccessPage() {
                   {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(payment.amount)}
                 </p>
                 <p className="text-xs text-gray-400 mt-2">Order: {payment.orderId}</p>
+                
+                {/* ✅ ДОДАНО: Показати номер комірки */}
+                {payment.sales && payment.sales.length > 0 && payment.sales[0].cellNumber !== null && (
+                  <p className="text-sm text-green-600 mt-2">
+                    📦 Комірка #{payment.sales[0].cellNumber}
+                  </p>
+                )}
               </div>
             </div>
 
-            {/* Кнопка відкрити комірку */}
-            {payment.sales && payment.sales.length > 0 && payment.sales[0].ortomatId && (
+            {/* ✅ ВИПРАВЛЕНО: Кнопка відкрити комірку */}
+            {payment.sales && payment.sales.length > 0 && payment.sales[0].cellNumber !== null && (
               <button
-                onClick={() => {
-                  // Тут ваша логіка відкриття комірки
-                  router.push(`/ortomat/${payment.sales[0].ortomatId}/open`);
-                }}
-                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold mb-4"
+                onClick={handleOpenCell}
+                disabled={openingCell}
+                className="w-full px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold mb-4 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                🔓 Відкрити комірку
+                {openingCell ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Відкриття...
+                  </>
+                ) : (
+                  <>🔓 Відкрити комірку</>
+                )}
               </button>
             )}
 
