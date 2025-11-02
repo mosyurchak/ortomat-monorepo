@@ -23,7 +23,6 @@ export class LiqPayService {
       throw new Error('LiqPay configuration error');
     }
     
-    // ✅ ДОДАНО: Логуємо конфігурацію при запуску
     this.logger.log('=== LIQPAY SERVICE INITIALIZED ===');
     this.logger.log(`Public Key: ${this.publicKey?.substring(0, 20)}...`);
     this.logger.log(`BACKEND_URL: ${this.configService.get('BACKEND_URL')}`);
@@ -40,17 +39,16 @@ export class LiqPayService {
     doctorId?: string,
     productId?: string,
     ortomatId?: string,
+    cellNumber?: number,
   ) {
     const orderReference = `ORDER_${orderId}_${Date.now()}`;
     
-    // Конвертуємо amount в число
     const numericAmount = parseFloat(amount.toString());
     
     if (isNaN(numericAmount) || numericAmount <= 0) {
       throw new Error(`Invalid amount: ${amount}`);
     }
     
-    // ✅ ДОДАНО: Детальне логування URLs
     const backendUrl = this.configService.get('BACKEND_URL');
     const frontendUrl = this.configService.get('FRONTEND_URL');
     const serverUrl = `${backendUrl}/api/liqpay/callback`;
@@ -63,12 +61,10 @@ export class LiqPayService {
     this.logger.log(`Doctor ID: ${doctorId || 'none'}`);
     this.logger.log(`Product ID: ${productId || 'none'}`);
     this.logger.log(`Ortomat ID: ${ortomatId || 'none'}`);
+    this.logger.log(`Cell Number: ${cellNumber || 'none'}`);
     this.logger.log(`---`);
-    this.logger.log(`BACKEND_URL: ${backendUrl}`);
-    this.logger.log(`FRONTEND_URL: ${frontendUrl}`);
     this.logger.log(`Server URL (callback): ${serverUrl}`);
     this.logger.log(`Result URL (redirect): ${resultUrl}`);
-    this.logger.log(`Public Key: ${this.publicKey?.substring(0, 20)}...`);
     
     const params = {
       public_key: this.publicKey,
@@ -84,23 +80,19 @@ export class LiqPayService {
     };
 
     // Додаємо додаткову інформацію
-    if (doctorId || productId || ortomatId) {
+    if (doctorId || productId || ortomatId || cellNumber) {
       params['info'] = JSON.stringify({ 
         doctorId, 
         productId, 
-        ortomatId 
+        ortomatId,
+        cellNumber,
       });
     }
 
-    // ✅ ДОДАНО: Виводимо params
     this.logger.log(`LiqPay params: ${JSON.stringify(params, null, 2)}`);
 
     const data = Buffer.from(JSON.stringify(params)).toString('base64');
     const signature = this.generateSignature(data);
-    
-    // ✅ ДОДАНО: Логуємо data і signature
-    this.logger.log(`Data (first 100 chars): ${data.substring(0, 100)}...`);
-    this.logger.log(`Signature: ${signature.substring(0, 30)}...`);
 
     // Зберігаємо платіж в БД
     await this.prisma.payment.create({
@@ -113,6 +105,7 @@ export class LiqPayService {
         paymentDetails: {
           productId,
           ortomatId,
+          cellNumber,
         },
       },
     });
@@ -155,11 +148,8 @@ export class LiqPayService {
    * Обробка callback від LiqPay
    */
   async processCallback(data: string, signature: string) {
-    // ✅ ДОДАНО: Детальне логування callback
     this.logger.log('\n=== CALLBACK RECEIVED FROM LIQPAY ===');
     this.logger.log(`Timestamp: ${new Date().toISOString()}`);
-    this.logger.log(`Data (first 100 chars): ${data.substring(0, 100)}...`);
-    this.logger.log(`Signature (first 30 chars): ${signature.substring(0, 30)}...`);
     
     // Перевіряємо підпис
     if (!this.verifySignature(data, signature)) {
@@ -230,6 +220,16 @@ export class LiqPayService {
     try {
       this.logger.log('=== HANDLING SUCCESSFUL PAYMENT ===');
       
+      // ✅ ПЕРЕВІРКА: Чи вже є продаж для цього платежу?
+      const existingSale = await this.prisma.sale.findFirst({
+        where: { paymentId: payment.id },
+      });
+
+      if (existingSale) {
+        this.logger.warn(`⚠️ Sale already exists for payment ${payment.id}, skipping duplicate...`);
+        return;
+      }
+      
       // Парсимо info
       let info: any = {};
       try {
@@ -245,9 +245,11 @@ export class LiqPayService {
       const storedDetails = payment.paymentDetails || {};
       const productId = storedDetails.productId || info.productId || null;
       const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
+      const cellNumber = storedDetails.cellNumber || info.cellNumber || null;
       
       this.logger.log(`Product ID: ${productId}`);
       this.logger.log(`Ortomat ID: ${ortomatId}`);
+      this.logger.log(`Cell Number: ${cellNumber}`);
       this.logger.log(`Doctor ID: ${payment.doctorId || info.doctorId || 'none'}`);
 
       // Створюємо продаж
@@ -258,12 +260,21 @@ export class LiqPayService {
           paymentId: payment.id,
           ortomatId: ortomatId,
           productId: productId,
+          cellNumber: cellNumber,
           status: 'completed',
           completedAt: new Date(),
         },
       });
 
       this.logger.log(`✅ Sale created: ${sale.id}`);
+
+      // ✅ СПИСАТИ ТОВАР З КОМІРКИ
+      if (productId && ortomatId && cellNumber !== null) {
+        await this.decrementCellStock(ortomatId, cellNumber, productId);
+      } else {
+        this.logger.warn('⚠️ Missing data to decrement stock: productId, ortomatId, or cellNumber');
+        this.logger.warn(`Values: productId=${productId}, ortomatId=${ortomatId}, cellNumber=${cellNumber}`);
+      }
 
       // Якщо є лікар - комісія
       if (payment.doctorId) {
@@ -275,11 +286,95 @@ export class LiqPayService {
         await this.handlePurchaseEmail(paymentData, payment);
       }
 
+      // ✅ СТВОРИТИ ЛОГ АКТИВНОСТІ
+      await this.createActivityLog({
+        category: 'orders',
+        severity: 'INFO',
+        message: `Продаж: ${payment.description}`,
+        ortomatId: ortomatId,
+        cellNumber: cellNumber,
+        metadata: {
+          saleId: sale.id,
+          paymentId: payment.id,
+          orderId: payment.orderId,
+          amount: payment.amount,
+          productId: productId,
+        },
+      });
+
       this.logger.log(`✅ Payment successful: ${payment.orderId}, amount: ${payment.amount} UAH`);
       this.logger.log('=== END HANDLING SUCCESSFUL PAYMENT ===\n');
     } catch (error) {
       this.logger.error('❌ Error handling successful payment:', error);
       throw error;
+    }
+  }
+
+  /**
+   * ✅ СПИСАТИ ТОВАР З КОМІРКИ
+   */
+  private async decrementCellStock(ortomatId: string, cellNumber: number, productId: string) {
+    try {
+      this.logger.log(`Attempting to decrement stock: ortomat=${ortomatId}, cell=${cellNumber}, product=${productId}`);
+      
+      // Знайти комірку
+      const cell = await this.prisma.cell.findFirst({
+        where: {
+          ortomatId: ortomatId,
+          cellNumber: cellNumber,
+          productId: productId,
+        },
+      });
+
+      if (!cell) {
+        this.logger.error(`❌ Cell not found: ortomat=${ortomatId}, cell=${cellNumber}, product=${productId}`);
+        return;
+      }
+
+      if (cell.currentStock <= 0) {
+        this.logger.warn(`⚠️ Cell ${cellNumber} is already empty!`);
+        return;
+      }
+
+      // Зменшити stock
+      const updatedCell = await this.prisma.cell.update({
+        where: { id: cell.id },
+        data: {
+          currentStock: cell.currentStock - 1,
+        },
+      });
+
+      this.logger.log(`✅ Stock decremented: cell ${cellNumber}, old stock: ${cell.currentStock}, new stock: ${updatedCell.currentStock}`);
+    } catch (error) {
+      this.logger.error('❌ Error decrementing cell stock:', error);
+    }
+  }
+
+  /**
+   * ✅ СТВОРИТИ ЛОГ АКТИВНОСТІ
+   */
+  private async createActivityLog(data: {
+    category: string;
+    severity: string;
+    message: string;
+    ortomatId?: string;
+    cellNumber?: number;
+    metadata?: any;
+  }) {
+    try {
+      await this.prisma.activityLog.create({
+        data: {
+          category: data.category,
+          severity: data.severity,
+          message: data.message,
+          ortomatId: data.ortomatId || null,
+          cellNumber: data.cellNumber || null,
+          metadata: data.metadata || {},
+        },
+      });
+      this.logger.log(`✅ Activity log created: ${data.message}`);
+    } catch (error) {
+      this.logger.error('❌ Error creating activity log:', error);
     }
   }
 

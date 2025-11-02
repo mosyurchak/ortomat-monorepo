@@ -15,6 +15,7 @@ export interface CreatePaymentParams {
   doctorId?: string;
   productId?: string;
   ortomatId?: string;
+  cellNumber?: number; // ✅ ДОДАНО
 }
 
 /**
@@ -35,6 +36,13 @@ export async function createPayment(
       throw new Error('Amount must be greater than 0');
     }
 
+    // ✅ ДОДАНО: Логування cellNumber
+    if (params.cellNumber !== undefined) {
+      console.log(`✅ Cell number included: ${params.cellNumber}`);
+    } else {
+      console.warn('⚠️ Cell number is missing!');
+    }
+
     const response = await axios.post(`${API_URL}/api/liqpay/create-payment`, {
       orderId: params.orderId,
       amount: params.amount,
@@ -42,6 +50,7 @@ export async function createPayment(
       doctorId: params.doctorId,
       productId: params.productId,
       ortomatId: params.ortomatId,
+      cellNumber: params.cellNumber, // ✅ ДОДАНО
     });
     
     console.log('Payment created successfully:', response.data);

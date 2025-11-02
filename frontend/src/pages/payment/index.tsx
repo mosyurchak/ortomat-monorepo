@@ -28,10 +28,10 @@ export default function PaymentPage() {
   
   const [product, setProduct] = useState<Product | null>(null);
   const [ortomat, setOrtomat] = useState<Ortomat | null>(null);
+  const [cellNumber, setCellNumber] = useState<number | null>(null); // ✅ ДОДАНО
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // 🔍 ДЕБАГ: Логування параметрів при завантаженні
   useEffect(() => {
     console.log('=== PAYMENT PAGE LOADED ===');
     console.log('Query params:', { productId, ortomatId, doctorRef });
@@ -67,6 +67,29 @@ export default function PaymentPage() {
       console.log('✅ Ortomat loaded:', ortomatResponse.data);
       setOrtomat(ortomatResponse.data);
       
+      // ✅ ДОДАНО: Знаходимо номер комірки
+      console.log('🔍 Finding cell number for product...');
+      try {
+        const inventoryResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}/inventory`);
+        console.log('✅ Inventory loaded:', inventoryResponse.data);
+        
+        // Знаходимо комірку з цим товаром
+        const cell = inventoryResponse.data.cells?.find((c: any) => 
+          c.productId === productId && c.currentStock > 0
+        );
+        
+        if (cell) {
+          setCellNumber(cell.cellNumber);
+          console.log(`✅ Cell number found: ${cell.cellNumber}`);
+        } else {
+          console.warn('⚠️ Cell with this product not found or out of stock');
+          setError('Товар закінчився в автоматі');
+        }
+      } catch (err) {
+        console.error('❌ Error loading inventory:', err);
+        // Не критична помилка - продовжуємо без cellNumber
+      }
+      
       console.log('✅ All data loaded successfully!');
       setLoading(false);
     } catch (err: any) {
@@ -97,13 +120,18 @@ export default function PaymentPage() {
       return;
     }
 
+    // ✅ ДОДАНО: Попередження якщо немає cellNumber
+    if (cellNumber === null) {
+      console.warn('⚠️ Cell number is missing, payment will proceed without it');
+    }
+
     try {
       setLoading(true);
       console.log('🔄 Creating payment...');
       
       // Генеруємо унікальний ID замовлення
       const orderId = `ORD_${Date.now()}`;
-      console.log('📝 Order ID:', orderId);
+      console.log('🆔 Order ID:', orderId);
       
       // Підготовка даних для платежу
       const paymentParams = {
@@ -113,9 +141,11 @@ export default function PaymentPage() {
         doctorId: doctorRef as string,
         productId: product.id,
         ortomatId: ortomat.id,
+        cellNumber: cellNumber ?? undefined, // ✅ ДОДАНО
       };
       
       console.log('📋 Payment params:', paymentParams);
+      console.log(`✅ Cell number: ${cellNumber !== null ? cellNumber : 'NOT AVAILABLE'}`);
       
       // Створюємо платіж
       console.log('🌐 Calling createPayment API...');
@@ -148,24 +178,18 @@ export default function PaymentPage() {
     }
   };
 
-  // Loading state
+  // Loading/Error states...
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Завантаження...</p>
-          <p className="mt-2 text-sm text-gray-400">
-            {!product && !ortomat && 'Завантаження даних...'}
-            {product && !ortomat && 'Завантаження інформації про ортомат...'}
-            {product && ortomat && 'Обробка платежу...'}
-          </p>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -184,7 +208,6 @@ export default function PaymentPage() {
     );
   }
 
-  // Missing data state
   if (!product || !ortomat) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-50">
@@ -206,29 +229,21 @@ export default function PaymentPage() {
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
         <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          {/* Header */}
           <div className="bg-blue-500 text-white py-6 px-8">
             <h1 className="text-2xl font-bold">Оплата товару</h1>
           </div>
 
-          {/* Content */}
           <div className="p-8">
-            {/* Зображення товару */}
             {product.imageUrl && (
               <div className="mb-6">
                 <img 
                   src={product.imageUrl} 
                   alt={product.name}
                   className="w-full h-64 object-cover rounded-lg"
-                  onError={(e) => {
-                    console.log('❌ Image failed to load:', product.imageUrl);
-                    e.currentTarget.style.display = 'none';
-                  }}
                 />
               </div>
             )}
 
-            {/* Товар */}
             <div className="mb-6 pb-6 border-b">
               <h2 className="text-sm text-gray-500 mb-2">Товар</h2>
               <p className="text-xl font-semibold">{product.name}</p>
@@ -237,7 +252,6 @@ export default function PaymentPage() {
               )}
             </div>
 
-            {/* Ортомат */}
             <div className="mb-6 pb-6 border-b">
               <h2 className="text-sm text-gray-500 mb-2">Ортомат</h2>
               <p className="text-xl font-semibold">{ortomat.name}</p>
@@ -245,9 +259,13 @@ export default function PaymentPage() {
                 {ortomat.address}
                 {ortomat.city && `, ${ortomat.city}`}
               </p>
+              {cellNumber !== null && (
+                <p className="text-sm text-green-600 mt-2">
+                  📦 Комірка №{cellNumber}
+                </p>
+              )}
             </div>
 
-            {/* Сума */}
             <div className="mb-8">
               <h2 className="text-sm text-gray-500 mb-2">Сума до сплати</h2>
               <p className="text-3xl font-bold text-blue-600">
@@ -255,55 +273,28 @@ export default function PaymentPage() {
               </p>
             </div>
 
-            {/* Кнопка оплати */}
             <button
               onClick={handlePayment}
               disabled={loading}
               className="w-full bg-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? (
-                <>
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                  </svg>
-                  Обробка...
-                </>
-              ) : (
-                'Оплатити'
-              )}
+              {loading ? 'Обробка...' : 'Оплатити'}
             </button>
 
-            {/* Інформація про безпеку */}
             <div className="mt-6 text-center text-sm text-gray-500">
               <p>🔒 Захищено платіжною системою LiqPay</p>
             </div>
           </div>
         </div>
 
-        {/* Кнопка повернення */}
         <div className="mt-6 text-center">
           <button
-            onClick={() => {
-              console.log('⬅️ Going back...');
-              router.back();
-            }}
+            onClick={() => router.back()}
             className="text-blue-500 hover:text-blue-600 underline"
           >
             ← Повернутися до вибору товару
           </button>
         </div>
-
-        {/* Debug info (видаліть в продакшн) */}
-        {process.env.NODE_ENV === 'development' && (
-          <div className="mt-6 bg-gray-100 rounded-lg p-4 text-xs">
-            <p className="font-bold mb-2">🔍 Debug Info:</p>
-            <p>Product ID: {productId}</p>
-            <p>Ortomat ID: {ortomatId}</p>
-            <p>Doctor Ref: {doctorRef || 'N/A'}</p>
-            <p>API URL: {API_URL}</p>
-          </div>
-        )}
       </div>
     </div>
   );

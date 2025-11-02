@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 
@@ -90,6 +91,13 @@ export default function AdminLogsPage() {
     return new Date(date).toLocaleString('uk-UA');
   };
 
+  const formatAmount = (amount: number) => {
+    return new Intl.NumberFormat('uk-UA', {
+      style: 'currency',
+      currency: 'UAH',
+    }).format(amount);
+  };
+
   const handleClearFilters = () => {
     setCategory('');
     setSeverity('');
@@ -129,8 +137,19 @@ export default function AdminLogsPage() {
             </svg>
             Назад
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Логи активності</h1>
-          <p className="text-gray-600">Моніторинг всіх подій у системі</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Логи активності</h1>
+              <p className="text-gray-600">Моніторинг всіх подій у системі</p>
+            </div>
+            {/* ✅ ДОДАНО: Посилання на платежі */}
+            <Link
+              href="/admin/payments"
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+            >
+              💳 Платежі
+            </Link>
+          </div>
         </div>
 
         {/* Stats */}
@@ -224,14 +243,14 @@ export default function AdminLogsPage() {
           <div className="mt-4 flex justify-end">
             <button
               onClick={handleClearFilters}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md"
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200"
             >
-              Скинути фільтри
+              Очистити фільтри
             </button>
           </div>
         </div>
 
-        {/* Logs Table */}
+        {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -275,9 +294,43 @@ export default function AdminLogsPage() {
                             <summary className="text-xs text-gray-500 cursor-pointer hover:text-gray-700">
                               Деталі
                             </summary>
-                            <pre className="mt-2 text-xs bg-gray-50 p-2 rounded overflow-auto">
-                              {JSON.stringify(log.metadata, null, 2)}
-                            </pre>
+                            <div className="mt-2 text-xs bg-gray-50 p-2 rounded">
+                              {/* ✅ ДОДАНО: Форматований вивід metadata */}
+                              {log.metadata.saleId && (
+                                <p className="mb-1">
+                                  <span className="font-semibold">Продаж:</span> {log.metadata.saleId}
+                                </p>
+                              )}
+                              {log.metadata.paymentId && (
+                                <p className="mb-1">
+                                  <span className="font-semibold">Платіж:</span> {log.metadata.paymentId}
+                                </p>
+                              )}
+                              {log.metadata.orderId && (
+                                <p className="mb-1">
+                                  <span className="font-semibold">Замовлення:</span> {log.metadata.orderId}
+                                </p>
+                              )}
+                              {log.metadata.amount && (
+                                <p className="mb-1">
+                                  <span className="font-semibold">Сума:</span> {formatAmount(log.metadata.amount)}
+                                </p>
+                              )}
+                              {log.metadata.productId && (
+                                <p className="mb-1">
+                                  <span className="font-semibold">Товар:</span> {log.metadata.productId}
+                                </p>
+                              )}
+                              {/* Показати весь JSON якщо є інші поля */}
+                              <details className="mt-2">
+                                <summary className="text-xs text-blue-600 cursor-pointer">
+                                  Повний JSON
+                                </summary>
+                                <pre className="mt-1 overflow-auto text-xs">
+                                  {JSON.stringify(log.metadata, null, 2)}
+                                </pre>
+                              </details>
+                            </div>
                           </details>
                         )}
                       </div>
@@ -293,7 +346,7 @@ export default function AdminLogsPage() {
                           <p className="text-xs text-gray-500">{log.user.role}</p>
                         </div>
                       ) : (
-                        <span className="text-gray-400">—</span>
+                        <span className="text-gray-400">Система</span>
                       )}
                     </td>
                     
@@ -302,8 +355,8 @@ export default function AdminLogsPage() {
                       {log.ortomat ? (
                         <div>
                           <p className="font-medium text-gray-900">{log.ortomat.name}</p>
-                          {log.cellNumber && (
-                            <p className="text-xs text-gray-500">Комірка #{log.cellNumber}</p>
+                          {log.cellNumber !== null && (
+                            <p className="text-xs text-green-600">📦 Комірка #{log.cellNumber}</p>
                           )}
                         </div>
                       ) : (
@@ -397,12 +450,12 @@ export default function AdminLogsPage() {
         </div>
 
         {logs.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-12 bg-white rounded-lg shadow">
             <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             </svg>
             <h3 className="mt-2 text-sm font-medium text-gray-900">Логів не знайдено</h3>
-            <p className="mt-1 text-sm text-gray-500">Спробуйте змінити фільтри</p>
+            <p className="mt-1 text-sm text-gray-500">Спробуйте змінити фільтри або перегляньте <Link href="/admin/payments" className="text-blue-600 hover:underline">платежі</Link></p>
           </div>
         )}
       </div>
