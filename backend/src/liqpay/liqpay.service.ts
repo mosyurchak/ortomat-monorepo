@@ -79,7 +79,6 @@ export class LiqPayService {
       language: 'uk',
     };
 
-    // Додаємо додаткову інформацію
     if (doctorId || productId || ortomatId || cellNumber) {
       params['info'] = JSON.stringify({ 
         doctorId, 
@@ -94,7 +93,6 @@ export class LiqPayService {
     const data = Buffer.from(JSON.stringify(params)).toString('base64');
     const signature = this.generateSignature(data);
 
-    // Зберігаємо платіж в БД
     await this.prisma.payment.create({
       data: {
         orderId: orderReference,
@@ -120,17 +118,11 @@ export class LiqPayService {
     };
   }
 
-  /**
-   * Генерація підпису
-   */
   private generateSignature(data: string): string {
     const signString = this.privateKey + data + this.privateKey;
     return crypto.createHash('sha1').update(signString).digest('base64');
   }
 
-  /**
-   * Перевірка підпису від LiqPay
-   */
   verifySignature(data: string, signature: string): boolean {
     const expectedSignature = this.generateSignature(data);
     const isValid = expectedSignature === signature;
@@ -144,14 +136,10 @@ export class LiqPayService {
     return isValid;
   }
 
-  /**
-   * Обробка callback від LiqPay
-   */
   async processCallback(data: string, signature: string) {
     this.logger.log('\n=== CALLBACK RECEIVED FROM LIQPAY ===');
     this.logger.log(`Timestamp: ${new Date().toISOString()}`);
     
-    // Перевіряємо підпис
     if (!this.verifySignature(data, signature)) {
       this.logger.error('❌ Invalid signature from LiqPay');
       throw new Error('Invalid signature');
@@ -159,7 +147,6 @@ export class LiqPayService {
     
     this.logger.log('✅ Signature valid');
 
-    // Розшифровуємо дані
     const decodedData = Buffer.from(data, 'base64').toString('utf-8');
     const paymentData = JSON.parse(decodedData);
 
@@ -168,7 +155,6 @@ export class LiqPayService {
     this.logger.log(`Status: ${paymentData.status}`);
     this.logger.log(`Amount: ${paymentData.amount}`);
 
-    // Знаходимо платіж
     const payment = await this.prisma.payment.findFirst({
       where: { orderId: paymentData.order_id },
     });
@@ -180,7 +166,6 @@ export class LiqPayService {
     
     this.logger.log(`✅ Payment found in DB: ${payment.id}`);
 
-    // Визначаємо статус
     let newStatus = 'PENDING';
     if (paymentData.status === 'success' || paymentData.status === 'sandbox') {
       newStatus = 'SUCCESS';
@@ -190,7 +175,6 @@ export class LiqPayService {
     
     this.logger.log(`New status: ${newStatus}`);
 
-    // Оновлюємо платіж
     await this.prisma.payment.update({
       where: { id: payment.id },
       data: {
@@ -202,7 +186,6 @@ export class LiqPayService {
     
     this.logger.log(`✅ Payment updated in DB`);
 
-    // Якщо успішний - обробляємо
     if (newStatus === 'SUCCESS') {
       this.logger.log(`Processing successful payment...`);
       await this.handleSuccessfulPayment(payment, paymentData);
@@ -213,14 +196,11 @@ export class LiqPayService {
     return { status: newStatus };
   }
 
-  /**
-   * Обробка успішного платежу
-   */
   private async handleSuccessfulPayment(payment: any, paymentData: any) {
     try {
       this.logger.log('=== HANDLING SUCCESSFUL PAYMENT ===');
       
-      // ✅ ПЕРЕВІРКА: Чи вже є продаж для цього платежу?
+      // Перевірка на дублікати
       const existingSale = await this.prisma.sale.findFirst({
         where: { paymentId: payment.id },
       });
@@ -230,7 +210,6 @@ export class LiqPayService {
         return;
       }
       
-      // Парсимо info
       let info: any = {};
       try {
         if (paymentData.info) {
@@ -241,7 +220,6 @@ export class LiqPayService {
         this.logger.warn('Failed to parse payment info');
       }
 
-      // Отримуємо дані
       const storedDetails = payment.paymentDetails || {};
       const productId = storedDetails.productId || info.productId || null;
       const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
@@ -268,25 +246,22 @@ export class LiqPayService {
 
       this.logger.log(`✅ Sale created: ${sale.id}`);
 
-      // ✅ СПИСАТИ ТОВАР З КОМІРКИ
-      if (productId && ortomatId && cellNumber !== null) {
-        await this.decrementCellStock(ortomatId, cellNumber, productId);
+      // ✅ Оновити статус комірки (замість списання stock)
+      if (ortomatId && cellNumber !== null) {
+        await this.markCellAsUsed(ortomatId, cellNumber);
       } else {
-        this.logger.warn('⚠️ Missing data to decrement stock: productId, ortomatId, or cellNumber');
-        this.logger.warn(`Values: productId=${productId}, ortomatId=${ortomatId}, cellNumber=${cellNumber}`);
+        this.logger.warn('⚠️ Missing ortomatId or cellNumber to mark cell as used');
       }
 
-      // Якщо є лікар - комісія
       if (payment.doctorId) {
         await this.handleDoctorCommission(payment, sale);
       }
 
-      // Email покупцю
       if (paymentData.sender_email) {
         await this.handlePurchaseEmail(paymentData, payment);
       }
 
-      // ✅ СТВОРИТИ ЛОГ АКТИВНОСТІ
+      // Створити лог активності
       await this.createActivityLog({
         category: 'orders',
         severity: 'INFO',
@@ -311,47 +286,42 @@ export class LiqPayService {
   }
 
   /**
-   * ✅ СПИСАТИ ТОВАР З КОМІРКИ
+   * Позначити комірку як використану
    */
-  private async decrementCellStock(ortomatId: string, cellNumber: number, productId: string) {
+  private async markCellAsUsed(ortomatId: string, cellNumber: number) {
     try {
-      this.logger.log(`Attempting to decrement stock: ortomat=${ortomatId}, cell=${cellNumber}, product=${productId}`);
+      this.logger.log(`Marking cell as used: ortomat=${ortomatId}, cell=${cellNumber}`);
       
-      // Знайти комірку
+      // Знайти комірку за номером
       const cell = await this.prisma.cell.findFirst({
         where: {
           ortomatId: ortomatId,
-          cellNumber: cellNumber,
-          productId: productId,
+          number: cellNumber,
         },
       });
 
       if (!cell) {
-        this.logger.error(`❌ Cell not found: ortomat=${ortomatId}, cell=${cellNumber}, product=${productId}`);
+        this.logger.error(`❌ Cell not found: ortomat=${ortomatId}, cell=${cellNumber}`);
         return;
       }
 
-      if (cell.currentStock <= 0) {
-        this.logger.warn(`⚠️ Cell ${cellNumber} is already empty!`);
-        return;
-      }
-
-      // Зменшити stock
-      const updatedCell = await this.prisma.cell.update({
+      // Оновити статус (наприклад, isAvailable = false)
+      await this.prisma.cell.update({
         where: { id: cell.id },
         data: {
-          currentStock: cell.currentStock - 1,
+          isAvailable: false,
+          lastRefillDate: new Date(),
         },
       });
 
-      this.logger.log(`✅ Stock decremented: cell ${cellNumber}, old stock: ${cell.currentStock}, new stock: ${updatedCell.currentStock}`);
+      this.logger.log(`✅ Cell marked as used: ${cellNumber}`);
     } catch (error) {
-      this.logger.error('❌ Error decrementing cell stock:', error);
+      this.logger.error('❌ Error marking cell as used:', error);
     }
   }
 
   /**
-   * ✅ СТВОРИТИ ЛОГ АКТИВНОСТІ
+   * Створити лог активності
    */
   private async createActivityLog(data: {
     category: string;
@@ -365,7 +335,7 @@ export class LiqPayService {
       await this.prisma.activityLog.create({
         data: {
           category: data.category,
-          severity: data.severity,
+          severity: data.severity as any, // Cast to Prisma enum
           message: data.message,
           ortomatId: data.ortomatId || null,
           cellNumber: data.cellNumber || null,
@@ -378,12 +348,9 @@ export class LiqPayService {
     }
   }
 
-  /**
-   * Обробка комісії лікаря
-   */
   private async handleDoctorCommission(payment: any, sale: any) {
     try {
-      const commission = payment.amount * 0.1; // 10%
+      const commission = payment.amount * 0.1;
       
       await this.prisma.commission.create({
         data: {
@@ -393,7 +360,6 @@ export class LiqPayService {
         },
       });
 
-      // Email лікарю
       const doctor = await this.prisma.user.findUnique({
         where: { id: payment.doctorId },
       });
@@ -422,9 +388,6 @@ export class LiqPayService {
     }
   }
 
-  /**
-   * Email покупцю
-   */
   private async handlePurchaseEmail(paymentData: any, payment: any) {
     try {
       await this.prisma.emailLog.create({
@@ -446,9 +409,6 @@ export class LiqPayService {
     }
   }
 
-  /**
-   * Перевірка статусу платежу
-   */
   async checkPaymentStatus(orderId: string) {
     const payment = await this.prisma.payment.findFirst({
       where: { orderId },
