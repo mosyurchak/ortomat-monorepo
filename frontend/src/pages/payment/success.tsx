@@ -88,7 +88,7 @@ export default function PaymentSuccessPage() {
     }
   };
 
-  // ✅ ДОДАНО: Функція відкриття комірки
+  // ✅ ВИПРАВЛЕНО: Функція відкриття комірки використовує правильний endpoint
   const handleOpenCell = async () => {
     if (!payment || !payment.sales || payment.sales.length === 0) {
       alert('Помилка: інформація про продаж не знайдена');
@@ -97,40 +97,51 @@ export default function PaymentSuccessPage() {
 
     const sale = payment.sales[0];
     
-    if (!sale.ortomatId || sale.cellNumber === null) {
-      alert('Помилка: невідомо яку комірку відкрити');
-      console.error('Missing data:', { ortomatId: sale.ortomatId, cellNumber: sale.cellNumber });
+    if (!sale.id) {
+      alert('Помилка: ID замовлення не знайдено');
+      console.error('Missing sale ID:', sale);
+      return;
+    }
+
+    if (sale.cellNumber === null || sale.cellNumber === undefined) {
+      alert('Помилка: невідомо яку комірку відкрити. Зверніться до адміністратора.');
+      console.error('Missing cell number:', { saleId: sale.id, cellNumber: sale.cellNumber });
       return;
     }
 
     try {
       setOpeningCell(true);
-      console.log('🔓 Opening cell:', { ortomatId: sale.ortomatId, cellNumber: sale.cellNumber });
+      console.log('🔓 Opening cell for sale:', sale.id);
 
-      // ✅ ВИПРАВЛЕНО: Викликаємо API для відкриття комірки
+      // ✅ ВИПРАВЛЕНО: Використовуємо правильний endpoint
       const response = await axios.post(
-        `${API_URL}/api/ortomats/${sale.ortomatId}/cells/${sale.cellNumber}/open`,
-        {
-          reason: 'CUSTOMER_PURCHASE',
-          saleId: sale.id,
-        }
+        `${API_URL}/api/orders/${sale.id}/open-cell`
       );
 
-      console.log('✅ Cell opened:', response.data);
-      alert('🔓 Комірка відкрита! Заберіть свій товар.');
+      console.log('✅ Cell opened successfully:', response.data);
       
-      // Можна додати таймер закриття
+      // Показуємо повідомлення про успіх
+      const message = response.data.mode === 'demo' 
+        ? `🎭 DEMO MODE: Комірка #${response.data.cellNumber} відкрита!\n\n${response.data.note}`
+        : `🔓 Комірка #${response.data.cellNumber} відкрита!\n\nЗаберіть свій товар: ${response.data.product}`;
+      
+      alert(message);
+      
+      // Перенаправляємо на головну через 3 секунди
       setTimeout(() => {
         router.push('/');
-      }, 5000);
+      }, 3000);
 
     } catch (error: any) {
       console.error('❌ Error opening cell:', error);
       
       if (error.response?.status === 404) {
-        alert('Помилка: endpoint для відкриття комірки не знайдено. Зверніться до адміністратора.');
+        alert('Помилка: замовлення не знайдено. Зверніться до адміністратора.');
       } else if (error.response?.status === 400) {
-        alert('Помилка: ' + (error.response.data?.message || 'Невірні дані'));
+        const message = error.response.data?.message || 'Невірні дані';
+        alert(`Помилка: ${message}`);
+      } else if (error.response?.data?.message) {
+        alert(`Помилка: ${error.response.data.message}`);
       } else {
         alert('Помилка відкриття комірки. Спробуйте ще раз або зверніться до підтримки.');
       }
@@ -194,7 +205,7 @@ export default function PaymentSuccessPage() {
                 </p>
                 <p className="text-xs text-gray-400 mt-2">Order: {payment.orderId}</p>
                 
-                {/* ✅ ДОДАНО: Показати номер комірки */}
+                {/* ✅ Показати номер комірки */}
                 {payment.sales && payment.sales.length > 0 && payment.sales[0].cellNumber !== null && (
                   <p className="text-sm text-green-600 mt-2">
                     📦 Комірка #{payment.sales[0].cellNumber}

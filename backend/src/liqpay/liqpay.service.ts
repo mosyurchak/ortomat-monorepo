@@ -61,7 +61,7 @@ export class LiqPayService {
     this.logger.log(`Doctor ID: ${doctorId || 'none'}`);
     this.logger.log(`Product ID: ${productId || 'none'}`);
     this.logger.log(`Ortomat ID: ${ortomatId || 'none'}`);
-    this.logger.log(`Cell Number: ${cellNumber || 'none'}`);
+    this.logger.log(`Cell Number: ${cellNumber !== undefined ? cellNumber : 'none'}`);
     this.logger.log(`---`);
     this.logger.log(`Server URL (callback): ${serverUrl}`);
     this.logger.log(`Result URL (redirect): ${resultUrl}`);
@@ -79,12 +79,12 @@ export class LiqPayService {
       language: 'uk',
     };
 
-    // ✅ ВИПРАВЛЕНО: Завжди додаємо info з усіма даними
+    // ✅ Завжди додаємо info з усіма даними
     params['info'] = JSON.stringify({ 
       doctorId: doctorId || null, 
       productId: productId || null, 
       ortomatId: ortomatId || null,
-      cellNumber: cellNumber || null, // ✅ ВАЖЛИВО: Додаємо cellNumber в info!
+      cellNumber: cellNumber !== undefined ? cellNumber : null,
     });
 
     this.logger.log(`LiqPay params: ${JSON.stringify(params, null, 2)}`);
@@ -107,7 +107,7 @@ export class LiqPayService {
       },
     });
     
-    this.logger.log(`Payment saved to DB: ${orderReference}`);
+    this.logger.log(`✅ Payment saved to DB: ${orderReference}`);
     this.logger.log('=== END CREATING PAYMENT ===\n');
 
     return {
@@ -178,7 +178,7 @@ export class LiqPayService {
       where: { id: payment.id },
       data: {
         status: newStatus,
-        transactionId: paymentData.transaction_id?.toString() || null, // ✅ Конвертуємо в string
+        transactionId: paymentData.transaction_id?.toString() || null,
         paymentDetails: paymentData,
       },
     });
@@ -225,7 +225,7 @@ export class LiqPayService {
       const storedDetails = payment.paymentDetails || {};
       const productId = storedDetails.productId || info.productId || null;
       const ortomatId = storedDetails.ortomatId || info.ortomatId || null;
-      const cellNumber = storedDetails.cellNumber || info.cellNumber || null;
+      const cellNumber = storedDetails.cellNumber !== undefined ? storedDetails.cellNumber : (info.cellNumber || null);
       
       this.logger.log(`📋 Extracted data:`);
       this.logger.log(`  - Product ID: ${productId}`);
@@ -233,45 +233,51 @@ export class LiqPayService {
       this.logger.log(`  - Cell Number: ${cellNumber}`);
       this.logger.log(`  - Doctor ID: ${payment.doctorId || info.doctorId || 'none'}`);
 
-      // ✅ ВАЖЛИВО: Якщо cellNumber відсутній - спробувати знайти
+      // ✅ ВИПРАВЛЕНО: Якщо cellNumber відсутній - спробувати знайти ЗАПОВНЕНУ комірку
       let finalCellNumber = cellNumber;
-      if (!finalCellNumber && ortomatId && productId) {
-        this.logger.warn(`⚠️ Cell number not provided, trying to find available cell...`);
+      if (finalCellNumber === null && ortomatId && productId) {
+        this.logger.warn(`⚠️ Cell number not provided, trying to find available filled cell...`);
         try {
+          // ✅ ВИПРАВЛЕНО: шукаємо ЗАПОВНЕНУ комірку (isAvailable: false = зелена)
           const cell = await this.prisma.cell.findFirst({
             where: {
               ortomatId: ortomatId,
               productId: productId,
-              isAvailable: true,
+              isAvailable: false, // ✅ ВИПРАВЛЕНО: false = заповнена (зелена)
             },
           });
           
           if (cell) {
             finalCellNumber = cell.number;
-            this.logger.log(`✅ Found cell: ${finalCellNumber}`);
+            this.logger.log(`✅ Found filled cell: ${finalCellNumber}`);
           } else {
-            this.logger.error(`❌ No available cell found with product ${productId} in ortomat ${ortomatId}`);
+            this.logger.error(`❌ No filled cell found with product ${productId} in ortomat ${ortomatId}`);
           }
         } catch (error) {
           this.logger.error('Error finding cell:', error);
         }
       }
 
+      // Генеруємо унікальний номер замовлення якщо його немає
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
       // Створюємо продаж
       const sale = await this.prisma.sale.create({
         data: {
+          orderNumber: orderNumber,
           amount: payment.amount,
           doctorId: payment.doctorId || info.doctorId || null,
           paymentId: payment.id,
           ortomatId: ortomatId,
           productId: productId,
-          cellNumber: finalCellNumber, // ✅ Використовуємо знайдений номер
+          cellNumber: finalCellNumber,
           status: 'completed',
           completedAt: new Date(),
         },
       });
 
       this.logger.log(`✅ Sale created: ${sale.id}`);
+      this.logger.log(`   - Order Number: ${sale.orderNumber}`);
       this.logger.log(`   - Cell Number in sale: ${sale.cellNumber}`);
 
       // Оновити статус комірки
@@ -302,6 +308,7 @@ export class LiqPayService {
             saleId: sale.id,
             paymentId: payment.id,
             orderId: payment.orderId,
+            orderNumber: sale.orderNumber,
             amount: payment.amount,
             productId: productId,
           },
@@ -322,7 +329,7 @@ export class LiqPayService {
 
   /**
    * Позначити комірку як використану (після покупки)
-   * Комірка стає СИНЬОЮ - пуста, але товар залишається призначеним
+   * ✅ ВИПРАВЛЕНО: Комірка стає СИНЬОЮ - пуста, але товар залишається призначеним
    */
   private async markCellAsUsed(ortomatId: string, cellNumber: number) {
     try {
@@ -341,7 +348,7 @@ export class LiqPayService {
         return;
       }
 
-      // ✅ ВИПРАВЛЕНО: НЕ видаляємо товар, тільки ставимо isAvailable=true (синя)
+      // ✅ НЕ видаляємо товар, тільки ставимо isAvailable=true (синя - пуста)
       await this.prisma.cell.update({
         where: { id: cell.id },
         data: {
@@ -371,7 +378,7 @@ export class LiqPayService {
     try {
       // Базові дані
       const logData: any = {
-        type: 'PAYMENT_SUCCESS', // ✅ ДОДАНО: обов'язкове поле
+        type: 'PAYMENT_SUCCESS',
         category: data.category,
         severity: data.severity,
         message: data.message,
