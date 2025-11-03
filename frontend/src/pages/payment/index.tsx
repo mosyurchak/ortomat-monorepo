@@ -28,7 +28,7 @@ export default function PaymentPage() {
   
   const [product, setProduct] = useState<Product | null>(null);
   const [ortomat, setOrtomat] = useState<Ortomat | null>(null);
-  const [cellNumber, setCellNumber] = useState<number | null>(null); // ✅ ДОДАНО
+  const [cellNumber, setCellNumber] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -72,11 +72,19 @@ export default function PaymentPage() {
       try {
         const inventoryResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}/inventory`);
         console.log('✅ Inventory loaded:', inventoryResponse.data);
+        console.log('Inventory type:', Array.isArray(inventoryResponse.data) ? 'Array' : typeof inventoryResponse.data);
+        
+        // ✅ ВИПРАВЛЕНО: Витягуємо масив комірок - може бути напряму в data або в data.cells
+        const cells = Array.isArray(inventoryResponse.data) 
+          ? inventoryResponse.data 
+          : (inventoryResponse.data.cells || []);
+        
+        console.log(`📊 Found ${cells.length} cells in inventory`);
         
         // Знаходимо комірку з цим товаром що ЗАПОВНЕНА (готова до продажу)
-        const cell = inventoryResponse.data.cells?.find((c: any) => {
+        const cell = cells.find((c: any) => {
           const matchesProduct = c.productId === productId;
-          const isFilled = c.isAvailable === false; // ✅ ВИПРАВЛЕНО: false = зелена (заповнена)
+          const isFilled = c.isAvailable === false; // ✅ false = зелена (заповнена)
           
           console.log(`Cell ${c.number}: productId=${c.productId}, matches=${matchesProduct}, filled=${isFilled}`);
           
@@ -88,13 +96,24 @@ export default function PaymentPage() {
           console.log(`✅ Cell number found: ${cell.number}`);
         } else {
           console.warn('⚠️ No filled cell found with this product');
-          console.warn('Available cells:', inventoryResponse.data.cells?.map((c: any) => ({
-            number: c.number,
-            productId: c.productId,
-            isAvailable: c.isAvailable
-          })));
           
-          setError('Товар закінчився в автоматі');
+          // Показуємо доступні комірки для діагностики
+          const availableCells = cells
+            .filter((c: any) => c.productId === productId)
+            .map((c: any) => ({
+              number: c.number,
+              productId: c.productId,
+              isAvailable: c.isAvailable,
+              status: c.isAvailable ? 'empty/синя' : 'filled/зелена'
+            }));
+          
+          console.warn('📋 Cells with this product:', availableCells);
+          
+          if (availableCells.length === 0) {
+            setError('Товар відсутній в цьому автоматі');
+          } else {
+            setError('Товар закінчився в автоматі (всі комірки порожні)');
+          }
         }
       } catch (err) {
         console.error('❌ Error loading inventory:', err);
@@ -134,6 +153,8 @@ export default function PaymentPage() {
     // ✅ ДОДАНО: Попередження якщо немає cellNumber
     if (cellNumber === null) {
       console.warn('⚠️ Cell number is missing, payment will proceed without it');
+      setError('Не вдалося знайти комірку з товаром. Товар може бути відсутній.');
+      return;
     }
 
     try {
@@ -152,11 +173,11 @@ export default function PaymentPage() {
         doctorId: doctorRef as string,
         productId: product.id,
         ortomatId: ortomat.id,
-        cellNumber: cellNumber ?? undefined, // ✅ ДОДАНО
+        cellNumber: cellNumber,
       };
       
       console.log('📋 Payment params:', paymentParams);
-      console.log(`✅ Cell number: ${cellNumber !== null ? cellNumber : 'NOT AVAILABLE'}`);
+      console.log(`✅ Cell number: ${cellNumber}`);
       
       // Створюємо платіж
       console.log('🌐 Calling createPayment API...');
@@ -286,11 +307,19 @@ export default function PaymentPage() {
 
             <button
               onClick={handlePayment}
-              disabled={loading}
+              disabled={loading || cellNumber === null}
               className="w-full bg-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              {loading ? 'Обробка...' : 'Оплатити'}
+              {loading ? 'Обробка...' : cellNumber === null ? 'Товар недоступний' : 'Оплатити'}
             </button>
+
+            {cellNumber === null && (
+              <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ Товар тимчасово недоступний. Оберіть інший товар або спробуйте пізніше.
+                </p>
+              </div>
+            )}
 
             <div className="mt-6 text-center text-sm text-gray-500">
               <p>🔒 Захищено платіжною системою LiqPay</p>
