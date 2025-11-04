@@ -42,6 +42,9 @@ export class ProductsService {
         color: createProductDto.color,
         material: createProductDto.material,
         manufacturer: createProductDto.manufacturer,
+        country: createProductDto.country, // ✅ ДОДАНО
+        type: createProductDto.type, // ✅ ДОДАНО
+        sizeChartUrl: createProductDto.sizeChartUrl, // ✅ ДОДАНО
         termsAndConditions: createProductDto.termsAndConditions,
         attributes: createProductDto.attributes,
       },

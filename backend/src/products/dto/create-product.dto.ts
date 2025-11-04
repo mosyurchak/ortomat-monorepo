@@ -6,7 +6,8 @@ import {
   IsArray, 
   IsIn,
   MinLength,
-  Min
+  Min,
+  IsUrl
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -50,6 +51,7 @@ export class CreateProductDto {
   @IsOptional()
   imageUrl?: string;
 
+  // ✅ ІСНУЮЧІ поля характеристик
   @IsString()
   @IsOptional()
   color?: string;
@@ -61,6 +63,20 @@ export class CreateProductDto {
   @IsString()
   @IsOptional()
   manufacturer?: string;
+
+  // ✅ НОВІ поля характеристик
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsString()
+  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
+  @IsOptional()
+  sizeChartUrl?: string;
 
   @IsString()
   @IsOptional()
@@ -121,6 +137,20 @@ export class UpdateProductDto {
   @IsString()
   @IsOptional()
   manufacturer?: string;
+
+  // ✅ НОВІ поля
+  @IsString()
+  @IsOptional()
+  country?: string;
+
+  @IsString()
+  @IsOptional()
+  type?: string;
+
+  @IsString()
+  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
+  @IsOptional()
+  sizeChartUrl?: string;
 
   @IsString()
   @IsOptional()

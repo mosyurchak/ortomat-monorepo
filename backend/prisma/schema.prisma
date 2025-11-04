@@ -82,11 +82,19 @@ model Product {
   mainImage          String?
   images             String[] @default([])
   imageUrl           String?
+  
+  // ✅ ІСНУЮЧІ поля (вже були в БД)
   color              String?
   material           String?
   manufacturer       String?
+  
+  // ✅ НОВІ поля
+  country            String?  // Країна виробника
+  type               String?  // Тип товару
+  sizeChartUrl       String?  // URL картинки таблиці розмірів
+  
   videoUrl           String?
-  termsAndConditions String?
+  termsAndConditions String?  // Специфічні умови для товару (опціонально)
   attributes         Json?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
@@ -94,6 +102,16 @@ model Product {
   sales              Sale[]
 
   @@map("products")
+}
+
+// ✅ НОВА модель для глобальних налаштувань
+model Settings {
+  id            String   @id @default("default")
+  purchaseTerms String   @default("") // Загальні умови покупки
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("settings")
 }
 
 model DoctorOrtomat {
@@ -215,12 +233,11 @@ model OrtomatInvite {
   @@map("ortomat_invites")
 }
 
-// Модель для платежів
 model Payment {
   id              String   @id @default(uuid())
   orderId         String   @unique
   amount          Float
-  status          String   // PENDING, SUCCESS, FAILED
+  status          String
   transactionId   String?
   doctorId        String?
   description     String?
@@ -234,7 +251,6 @@ model Payment {
   @@map("payments")
 }
 
-// Модель для комісій
 model Commission {
   id        String   @id @default(uuid())
   amount    Float

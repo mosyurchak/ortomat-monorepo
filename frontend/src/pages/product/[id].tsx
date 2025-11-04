@@ -1,11 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
-import { ArrowLeft, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import axios from 'axios';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function ProductPage() {
   const router = useRouter();
@@ -15,7 +18,11 @@ export default function ProductPage() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isOrdering, setIsOrdering] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  
+  // ✅ ДОДАНО: Стани для попапів
+  const [showSizeChartModal, setShowSizeChartModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
+  const [purchaseTerms, setPurchaseTerms] = useState('');
 
   const { data: product, isLoading } = useQuery({
     queryKey: ['product', id],
@@ -23,11 +30,24 @@ export default function ProductPage() {
     enabled: !!id,
   });
 
-  // Функція для конвертації YouTube URL в embed формат
+  // ✅ ДОДАНО: Завантаження глобальних умов покупки
+  useEffect(() => {
+    const loadPurchaseTerms = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/settings/purchase-terms`);
+        setPurchaseTerms(response.data.purchaseTerms || '');
+      } catch (error) {
+        console.error('Error loading purchase terms:', error);
+        setPurchaseTerms('Умови покупки тимчасово недоступні.');
+      }
+    };
+    
+    loadPurchaseTerms();
+  }, []);
+
   const getEmbedUrl = (url: string) => {
     if (!url) return url;
     
-    // YouTube: https://www.youtube.com/watch?v=VIDEO_ID
     if (url.includes('youtube.com/watch')) {
       const videoId = new URL(url).searchParams.get('v');
       if (videoId) {
@@ -35,7 +55,6 @@ export default function ProductPage() {
       }
     }
     
-    // YouTube short: https://youtu.be/VIDEO_ID
     if (url.includes('youtu.be/')) {
       const videoId = url.split('youtu.be/')[1]?.split('?')[0];
       if (videoId) {
@@ -43,18 +62,15 @@ export default function ProductPage() {
       }
     }
     
-    // Для прямих відео (.mp4, .webm) залишаємо як є
     return url;
   };
 
-  // Перевірка чи це YouTube відео
   const isYouTubeVideo = (url: string) => {
     return url?.includes('youtube.com') || url?.includes('youtu.be');
   };
 
   const handleBuy = async () => {
     console.log('💳 Buy button clicked!');
-    console.log('Current params:', { id, ortomatId, ref });
     
     if (!ortomatId) {
       alert('Оберіть ортомат');
@@ -69,20 +85,17 @@ export default function ProductPage() {
     setIsOrdering(true);
 
     try {
-      // ✅ ВИПРАВЛЕНО: Переходимо на payment з правильними параметрами
       const params = new URLSearchParams({
         productId: id as string,
         ortomatId: ortomatId as string,
       });
 
-      // Додаємо реферальний код якщо є
       if (ref) {
         params.append('doctorRef', ref as string);
       }
 
       console.log('🚀 Redirecting to payment with params:', params.toString());
 
-      // Переходимо на сторінку оплати
       router.push(`/payment?${params.toString()}`);
 
     } catch (error: any) {
@@ -97,7 +110,7 @@ export default function ProductPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">{t('product.loadingProduct')}</p>
+          <p className="mt-4 text-gray-600">Завантаження товару...</p>
         </div>
       </div>
     );
@@ -107,9 +120,9 @@ export default function ProductPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">{t('product.notFound')}</p>
+          <p className="text-gray-600">Товар не знайдено</p>
           <Link href="/" className="mt-4 text-blue-600 hover:text-blue-700">
-            {t('product.backToHome')}
+            На головну
           </Link>
         </div>
       </div>
@@ -121,7 +134,15 @@ export default function ProductPage() {
     ...(product.images || [])
   ].filter(img => img);
 
-  const hasCharacteristics = !!(product.color || product.size || product.material || product.manufacturer);
+  // ✅ ДОДАНО: Перевірка наявності хоч однієї характеристики
+  const hasCharacteristics = !!(
+    product.manufacturer || 
+    product.country || 
+    product.material || 
+    product.color || 
+    product.type || 
+    product.size
+  );
 
   return (
     <div>
@@ -138,7 +159,7 @@ export default function ProductPage() {
                 className="flex items-center text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft className="h-5 w-5 mr-2" />
-                {t('product.backToCatalog')}
+                Назад до каталогу
               </button>
               <div className="flex items-center">
                 <span className="text-xl font-bold text-gray-900">Ortomat</span>
@@ -240,7 +261,7 @@ export default function ProductPage() {
 
                 <div className="mb-6">
                   <span className="text-4xl font-bold text-blue-600">
-                    {product.price} {t('common.currency')}
+                    {product.price} ₴
                   </span>
                 </div>
 
@@ -248,7 +269,7 @@ export default function ProductPage() {
                 {product.description && (
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                      {t('product.description')}
+                      Опис товару
                     </h2>
                     <div 
                       className="text-gray-600 prose prose-sm max-w-none"
@@ -257,35 +278,62 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* Характеристики */}
+                {/* ✅ ДОДАНО: Характеристики з новими полями */}
                 {hasCharacteristics && (
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                      {t('product.characteristics')}
+                      Характеристики
                     </h2>
                     <div className="space-y-2">
-                      {product.color && (
+                      {product.manufacturer && (
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-gray-600">{t('product.color')}:</span>
-                          <span className="font-medium">{product.color}</span>
+                          <span className="text-gray-600">Виробник:</span>
+                          <span className="font-medium">{product.manufacturer}</span>
                         </div>
                       )}
-                      {product.size && (
+                      {product.country && (
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-gray-600">{t('common.size')}:</span>
-                          <span className="font-medium">{product.size}</span>
+                          <span className="text-gray-600">Країна:</span>
+                          <span className="font-medium">{product.country}</span>
                         </div>
                       )}
                       {product.material && (
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-gray-600">{t('product.material')}:</span>
+                          <span className="text-gray-600">Матеріал:</span>
                           <span className="font-medium">{product.material}</span>
                         </div>
                       )}
-                      {product.manufacturer && (
+                      {product.color && (
                         <div className="flex justify-between py-2 border-b">
-                          <span className="text-gray-600">{t('product.manufacturer')}:</span>
-                          <span className="font-medium">{product.manufacturer}</span>
+                          <span className="text-gray-600">Колір:</span>
+                          <span className="font-medium">{product.color}</span>
+                        </div>
+                      )}
+                      {product.type && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">Тип:</span>
+                          <span className="font-medium">{product.type}</span>
+                        </div>
+                      )}
+                      {product.size && (
+                        <div className="flex justify-between py-2 border-b">
+                          <span className="text-gray-600">Розмір:</span>
+                          <span className="font-medium">{product.size}</span>
+                        </div>
+                      )}
+                      
+                      {/* ✅ ДОДАНО: Кнопка "Таблиця розмірів" */}
+                      {product.sizeChartUrl && (
+                        <div className="pt-2">
+                          <button
+                            onClick={() => setShowSizeChartModal(true)}
+                            className="text-blue-600 hover:text-blue-700 font-medium flex items-center"
+                          >
+                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            Таблиця розмірів
+                          </button>
                         </div>
                       )}
                     </div>
@@ -296,7 +344,7 @@ export default function ProductPage() {
                 {product.videoUrl && (
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
-                      {t('product.video')}
+                      Відео огляд
                     </h2>
                     {isYouTubeVideo(product.videoUrl) ? (
                       <div className="aspect-video rounded-lg overflow-hidden">
@@ -320,7 +368,7 @@ export default function ProductPage() {
                   </div>
                 )}
 
-                {/* Умови покупки */}
+                {/* ✅ ДОДАНО: Умови покупки з лінком на popup */}
                 <div className="mb-6">
                   <label className="flex items-start cursor-pointer">
                     <input
@@ -330,16 +378,15 @@ export default function ProductPage() {
                       className="mt-1 mr-3 w-4 h-4"
                     />
                     <span className="text-sm text-gray-600">
-                      Я приймаю умови покупки{' '}
-                      {product.termsAndConditions && (
-                        <button
-                          type="button"
-                          onClick={() => setShowTermsModal(true)}
-                          className="text-blue-600 hover:underline"
-                        >
-                          ({t('common.viewDetails')})
-                        </button>
-                      )}
+                      Я приймаю{' '}
+                      <button
+                        type="button"
+                        onClick={() => setShowTermsModal(true)}
+                        className="text-blue-600 hover:underline font-medium"
+                      >
+                        умови
+                      </button>
+                      {' '}покупки
                     </span>
                   </label>
                 </div>
@@ -350,11 +397,11 @@ export default function ProductPage() {
                   disabled={isOrdering || !acceptedTerms}
                   className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  {isOrdering ? t('product.processing') : t('product.buyNow')}
+                  {isOrdering ? 'Обробка...' : 'Купити зараз'}
                 </button>
 
                 <p className="mt-4 text-sm text-gray-500 text-center">
-                  {t('product.securePayment')}
+                  🔒 Захищено платіжною системою LiqPay
                 </p>
               </div>
             </div>
@@ -362,19 +409,54 @@ export default function ProductPage() {
         </main>
       </div>
 
-      {/* Modal з умовами покупки */}
-      {showTermsModal && product.termsAndConditions && (
+      {/* ✅ ДОДАНО: Modal таблиці розмірів */}
+      {showSizeChartModal && product.sizeChartUrl && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowSizeChartModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Таблиця розмірів</h2>
+            <div className="flex justify-center">
+              <img 
+                src={product.sizeChartUrl} 
+                alt="Таблиця розмірів"
+                className="max-w-full h-auto rounded-lg"
+              />
+            </div>
+            <button
+              onClick={() => setShowSizeChartModal(false)}
+              className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            >
+              Закрити
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ✅ ДОДАНО: Modal умов покупки */}
+      {showTermsModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-4">{t('product.terms')}</h2>
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[80vh] overflow-y-auto relative">
+            <button
+              onClick={() => setShowTermsModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <h2 className="text-2xl font-bold mb-4">Умови покупки</h2>
             <div className="text-gray-700 whitespace-pre-wrap">
-              {product.termsAndConditions}
+              {/* Показуємо специфічні умови товару або глобальні */}
+              {product.termsAndConditions || purchaseTerms || 'Умови покупки не вказано'}
             </div>
             <button
               onClick={() => setShowTermsModal(false)}
               className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
             >
-              {t('common.close')}
+              Закрити
             </button>
           </div>
         </div>

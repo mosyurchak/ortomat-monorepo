@@ -2,7 +2,7 @@ export interface Ortomat {
   id: string;
   name: string;
   address: string;
-  city?: string; // ✅ ДОДАНО
+  city?: string;
   totalCells: number;
   status: 'active' | 'inactive';
   createdAt?: string;
@@ -17,22 +17,40 @@ export interface Product {
   size?: string;
   price: number;
   
-  // ✅ ДОДАНО: Нові поля для карточки товару
-  images?: string[]; // Масив URL зображень (до 6)
+  // Зображення
+  mainImage?: string;
+  images?: string[];
+  imageUrl?: string; // Для зворотної сумісності
+  
+  // Відео
+  videoUrl?: string;
+  
+  // ✅ Характеристики (існуючі)
   color?: string;
   material?: string;
   manufacturer?: string;
-  videoUrl?: string;
-  termsAndConditions?: string;
   
-  // Старе поле для зворотної сумісності
-  imageUrl?: string;
+  // ✅ Характеристики (нові)
+  country?: string; // Країна виробника
+  type?: string; // Тип товару
+  sizeChartUrl?: string; // URL картинки таблиці розмірів
+  
+  // Умови
+  termsAndConditions?: string; // Специфічні умови для товару
   
   attributes?: any;
   
-  // ✅ Додаткові поля які можуть прийти з API
-  quantity?: number; // Для каталогу
-  availableCells?: number[]; // Для каталогу
+  // Додаткові поля які можуть прийти з API
+  quantity?: number;
+  availableCells?: number[];
+}
+
+// ✅ НОВИЙ інтерфейс для глобальних налаштувань
+export interface Settings {
+  id: string;
+  purchaseTerms: string; // Загальні умови покупки
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Cell {
@@ -40,7 +58,7 @@ export interface Cell {
   number: number;
   ortomatId: string;
   productId?: string | null;
-  isAvailable: boolean; // true = порожня (червона), false = заповнена (зелена)
+  isAvailable: boolean; // true = порожня (синя), false = заповнена (зелена)
   lastRefillDate?: string | null;
   courierId?: string | null;
   product?: Product | null;
