@@ -181,7 +181,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <button
             onClick={() => router.push('/admin/ortomats')}
             className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
@@ -227,10 +227,9 @@ export default function AdminDashboard() {
             </p>
           </button>
 
-          {/* ✅ ДОДАНО: Кнопка логів */}
           <button
             onClick={() => router.push('/admin/logs')}
-            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left border-2 border-blue-200"
+            className="bg-white rounded-lg shadow p-6 hover:shadow-lg transition-shadow text-left"
           >
             <div className="flex items-center mb-3">
               <span className="text-3xl mr-3">📊</span>
@@ -240,6 +239,22 @@ export default function AdminDashboard() {
             </div>
             <p className="text-gray-600 text-sm">
               Моніторинг подій системи
+            </p>
+          </button>
+
+          {/* ✅ ДОДАНО: Кнопка Settings */}
+          <button
+            onClick={() => router.push('/admin/settings')}
+            className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow p-6 hover:shadow-xl transition-all text-left border-2 border-blue-300"
+          >
+            <div className="flex items-center mb-3">
+              <span className="text-3xl mr-3">⚙️</span>
+              <h3 className="text-lg font-semibold text-white">
+                Налаштування
+              </h3>
+            </div>
+            <p className="text-blue-50 text-sm">
+              Умови покупки та інші параметри системи
             </p>
           </button>
         </div>

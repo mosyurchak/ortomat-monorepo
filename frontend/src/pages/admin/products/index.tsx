@@ -26,6 +26,13 @@ export default function AdminProductsPage() {
     mainImage: '',
     images: [] as string[],
     videoUrl: '',
+    // ✅ ДОДАНО: Нові поля характеристик
+    manufacturer: '',
+    country: '',
+    material: '',
+    color: '',
+    type: '',
+    sizeChartUrl: '',
   });
 
   // Захист роуту
@@ -89,6 +96,12 @@ export default function AdminProductsPage() {
       mainImage: '',
       images: [],
       videoUrl: '',
+      manufacturer: '',
+      country: '',
+      material: '',
+      color: '',
+      type: '',
+      sizeChartUrl: '',
     });
   };
 
@@ -103,6 +116,13 @@ export default function AdminProductsPage() {
       mainImage: product.mainImage || '',
       images: product.images || [],
       videoUrl: product.videoUrl || '',
+      // ✅ ДОДАНО: Завантажуємо нові поля
+      manufacturer: product.manufacturer || '',
+      country: product.country || '',
+      material: product.material || '',
+      color: product.color || '',
+      type: product.type || '',
+      sizeChartUrl: product.sizeChartUrl || '',
     });
     setShowModal(true);
   };
@@ -119,6 +139,13 @@ export default function AdminProductsPage() {
       mainImage: formData.mainImage,
       images: formData.images.filter(img => img.trim() !== ''),
       videoUrl: formData.videoUrl || null,
+      // ✅ ДОДАНО: Відправляємо нові поля
+      manufacturer: formData.manufacturer || null,
+      country: formData.country || null,
+      material: formData.material || null,
+      color: formData.color || null,
+      type: formData.type || null,
+      sizeChartUrl: formData.sizeChartUrl || null,
     };
 
     if (editingProduct) {
@@ -230,7 +257,6 @@ export default function AdminProductsPage() {
                     <span className="text-xs text-gray-500 ml-2">{product.sku}</span>
                   </div>
                   
-                  {/* Опис з HTML */}
                   {product.description && (
                     <div 
                       className="text-sm text-gray-600 mb-2 line-clamp-2"
@@ -242,10 +268,12 @@ export default function AdminProductsPage() {
                     {product.size && (
                       <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded">{product.size}</span>
                     )}
+                    {product.manufacturer && (
+                      <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded">{product.manufacturer}</span>
+                    )}
                   </div>
                   <p className="text-xl font-bold text-blue-600 mb-2">{product.price} грн</p>
                   
-                  {/* Відео */}
                   {product.videoUrl && (
                     <div className="mb-3">
                       <video 
@@ -471,8 +499,101 @@ export default function AdminProductsPage() {
                   />
                 </div>
 
+                {/* ✅ СЕКЦІЯ ХАРАКТЕРИСТИК */}
+                <div className="md:col-span-2 border-t pt-6 mt-4">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Характеристики товару</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Виробник */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Виробник
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.manufacturer}
+                        onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+                        placeholder="OrtoPro"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Країна */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Країна
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.country}
+                        onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                        placeholder="Німеччина"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Матеріал */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Матеріал
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.material}
+                        onChange={(e) => setFormData({ ...formData, material: e.target.value })}
+                        placeholder="Memory Foam"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Колір */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Колір
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.color}
+                        onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                        placeholder="Чорний"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Тип */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Тип товару
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.type}
+                        onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                        placeholder="Ортопедичні устілки"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+
+                    {/* Таблиця розмірів */}
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        URL таблиці розмірів
+                      </label>
+                      <input
+                        type="url"
+                        value={formData.sizeChartUrl}
+                        onChange={(e) => setFormData({ ...formData, sizeChartUrl: e.target.value })}
+                        placeholder="https://example.com/size-chart.jpg"
+                        className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">
+                        Картинка з таблицею розмірів (показується у popup на карточці товару)
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Опис з HTML */}
-                <div className="md:col-span-2">
+                <div className="md:col-span-2 border-t pt-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Опис (підтримується HTML)
                   </label>
@@ -497,16 +618,16 @@ export default function AdminProductsPage() {
                     type="url"
                     value={formData.videoUrl}
                     onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
-                    placeholder="https://example.com/video.mp4"
+                    placeholder="https://example.com/video.mp4 або YouTube URL"
                     className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Введіть пряме посилання на відео файл (.mp4, .webm)
+                    Підтримується YouTube або пряме посилання на відео (.mp4, .webm)
                   </p>
                 </div>
               </div>
 
-              <div className="mt-6 flex gap-3 justify-end">
+              <div className="mt-6 flex gap-3 justify-end border-t pt-6">
                 <button
                   type="button"
                   onClick={resetForm}
