@@ -1,9 +1,9 @@
 // frontend/src/pages/payment/index.tsx
-
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { createPayment, openLiqPayWidget } from '../../lib/liqpay';
+import { useQuery } from '@tanstack/react-query';
 import axios from 'axios';
+import Head from 'next/head';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -11,8 +11,16 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  description: string;
+  description?: string;
+  size?: string;
+  mainImage?: string;
   imageUrl?: string;
+  // Характеристики
+  manufacturer?: string;
+  country?: string;
+  material?: string;
+  color?: string;
+  type?: string;
 }
 
 interface Ortomat {
@@ -25,216 +33,78 @@ interface Ortomat {
 export default function PaymentPage() {
   const router = useRouter();
   const { productId, ortomatId, doctorRef } = router.query;
-  
-  const [product, setProduct] = useState<Product | null>(null);
-  const [ortomat, setOrtomat] = useState<Ortomat | null>(null);
-  const [cellNumber, setCellNumber] = useState<number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const { data: product, isLoading: productLoading } = useQuery({
+    queryKey: ['product', productId],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/api/products/${productId}`);
+      return response.data;
+    },
+    enabled: !!productId,
+  });
+
+  const { data: ortomat, isLoading: ortomatLoading } = useQuery({
+    queryKey: ['ortomat', ortomatId],
+    queryFn: async () => {
+      const response = await axios.get(`${API_URL}/api/ortomats/${ortomatId}`);
+      return response.data;
+    },
+    enabled: !!ortomatId,
+  });
 
   useEffect(() => {
-    console.log('=== PAYMENT PAGE LOADED ===');
-    console.log('Query params:', { productId, ortomatId, doctorRef });
-    console.log('API_URL:', API_URL);
-  }, []);
-
-  useEffect(() => {
-    if (productId && ortomatId) {
-      console.log('🔄 Starting to load data...');
-      loadData();
-    } else {
-      console.log('⚠️ Missing params:', { productId, ortomatId });
-      if (!productId) setError('Не вказано ID товару');
-      else if (!ortomatId) setError('Не вказано ID ортомату');
-      setLoading(false);
+    if (!productId || !ortomatId) {
+      console.error('❌ Missing productId or ortomatId');
+      router.push('/');
     }
-  }, [productId, ortomatId]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      console.log('📦 Loading product:', productId);
-      
-      // Завантажуємо товар
-      const productResponse = await axios.get(`${API_URL}/api/products/${productId}`);
-      console.log('✅ Product loaded:', productResponse.data);
-      setProduct(productResponse.data);
-      
-      console.log('🏢 Loading ortomat:', ortomatId);
-      
-      // Завантажуємо ортомат
-      const ortomatResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}`);
-      console.log('✅ Ortomat loaded:', ortomatResponse.data);
-      setOrtomat(ortomatResponse.data);
-      
-      // ✅ ВИПРАВЛЕНО: Знаходимо номер комірки (шукаємо ЗАПОВНЕНУ комірку)
-      console.log('🔍 Finding cell number for product...');
-      try {
-        const inventoryResponse = await axios.get(`${API_URL}/api/ortomats/${ortomatId}/inventory`);
-        console.log('✅ Inventory loaded:', inventoryResponse.data);
-        console.log('Inventory type:', Array.isArray(inventoryResponse.data) ? 'Array' : typeof inventoryResponse.data);
-        
-        // ✅ ВИПРАВЛЕНО: Витягуємо масив комірок - може бути напряму в data або в data.cells
-        const cells = Array.isArray(inventoryResponse.data) 
-          ? inventoryResponse.data 
-          : (inventoryResponse.data.cells || []);
-        
-        console.log(`📊 Found ${cells.length} cells in inventory`);
-        
-        // Знаходимо комірку з цим товаром що ЗАПОВНЕНА (готова до продажу)
-        const cell = cells.find((c: any) => {
-          const matchesProduct = c.productId === productId;
-          const isFilled = c.isAvailable === false; // ✅ false = зелена (заповнена)
-          
-          console.log(`Cell ${c.number}: productId=${c.productId}, matches=${matchesProduct}, filled=${isFilled}`);
-          
-          return matchesProduct && isFilled; // ✅ Шукаємо заповнену комірку!
-        });
-        
-        if (cell) {
-          setCellNumber(cell.number);
-          console.log(`✅ Cell number found: ${cell.number}`);
-        } else {
-          console.warn('⚠️ No filled cell found with this product');
-          
-          // Показуємо доступні комірки для діагностики
-          const availableCells = cells
-            .filter((c: any) => c.productId === productId)
-            .map((c: any) => ({
-              number: c.number,
-              productId: c.productId,
-              isAvailable: c.isAvailable,
-              status: c.isAvailable ? 'empty/синя' : 'filled/зелена'
-            }));
-          
-          console.warn('📋 Cells with this product:', availableCells);
-          
-          if (availableCells.length === 0) {
-            setError('Товар відсутній в цьому автоматі');
-          } else {
-            setError('Товар закінчився в автоматі (всі комірки порожні)');
-          }
-        }
-      } catch (err) {
-        console.error('❌ Error loading inventory:', err);
-        setError('Помилка завантаження інвентарю');
-      }
-      
-      console.log('✅ All data loaded successfully!');
-      setLoading(false);
-    } catch (err: any) {
-      console.error('❌ Error loading data:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
-      });
-      
-      if (err.response?.status === 404) {
-        setError('Товар або ортомат не знайдено');
-      } else if (err.response?.status === 500) {
-        setError('Помилка сервера. Спробуйте пізніше.');
-      } else {
-        setError('Помилка завантаження даних. Перевірте підключення до інтернету.');
-      }
-      setLoading(false);
-    }
-  };
+  }, [productId, ortomatId, router]);
 
   const handlePayment = async () => {
-    console.log('💳 Payment button clicked!');
-    
-    if (!product || !ortomat) {
-      console.error('❌ Missing data:', { product, ortomat });
-      setError('Дані про товар або ортомат не завантажені');
+    if (!customerPhone || customerPhone.length < 10) {
+      alert('Будь ласка, введіть коректний номер телефону');
       return;
     }
 
-    // ✅ ДОДАНО: Попередження якщо немає cellNumber
-    if (cellNumber === null) {
-      console.warn('⚠️ Cell number is missing, payment will proceed without it');
-      setError('Не вдалося знайти комірку з товаром. Товар може бути відсутній.');
-      return;
-    }
+    setIsProcessing(true);
 
     try {
-      setLoading(true);
-      console.log('🔄 Creating payment...');
-      
-      // Генеруємо унікальний ID замовлення
-      const orderId = `ORD_${Date.now()}`;
-      console.log('🆔 Order ID:', orderId);
-      
-      // Підготовка даних для платежу
-      const paymentParams = {
-        orderId: orderId,
-        amount: product.price,
-        description: `Товар: ${product.name}, Ортомат: ${ortomat.name}`,
-        doctorId: doctorRef as string,
-        productId: product.id,
-        ortomatId: ortomat.id,
-        cellNumber: cellNumber,
-      };
-      
-      console.log('📋 Payment params:', paymentParams);
-      console.log(`✅ Cell number: ${cellNumber}`);
-      
-      // Створюємо платіж
-      console.log('🌐 Calling createPayment API...');
-      const paymentData = await createPayment(paymentParams);
-      console.log('✅ Payment data received:', paymentData);
-      
-      // Відкриваємо форму оплати LiqPay
-      console.log('🚀 Opening LiqPay widget...');
-      openLiqPayWidget(paymentData);
-      console.log('✅ LiqPay widget opened!');
-      
-    } catch (err: any) {
-      console.error('❌ Payment error:', err);
-      console.error('Error details:', {
-        message: err.message,
-        response: err.response?.data,
-        status: err.response?.status,
+      console.log('🚀 Creating payment with params:', {
+        productId,
+        ortomatId,
+        customerPhone,
+        doctorRef,
       });
-      
-      if (err.response?.status === 400) {
-        setError('Невірні дані платежу. Перевірте правильність інформації.');
-      } else if (err.response?.status === 500) {
-        setError('Помилка створення платежу на сервері.');
-      } else if (err.message?.includes('Network')) {
-        setError('Помилка підключення. Перевірте інтернет.');
+
+      const response = await axios.post(`${API_URL}/api/payments/create`, {
+        productId,
+        ortomatId,
+        customerPhone,
+        referralCode: doctorRef || undefined,
+      });
+
+      console.log('✅ Payment response:', response.data);
+
+      if (response.data.paymentUrl) {
+        console.log('🔗 Redirecting to LiqPay:', response.data.paymentUrl);
+        window.location.href = response.data.paymentUrl;
       } else {
-        setError('Помилка створення платежу. Спробуйте ще раз.');
+        throw new Error('No payment URL received');
       }
-      setLoading(false);
+    } catch (error: any) {
+      console.error('❌ Payment error:', error);
+      alert('Помилка створення платежу: ' + (error.response?.data?.message || error.message));
+      setIsProcessing(false);
     }
   };
 
-  // Loading/Error states...
-  if (loading) {
+  if (productLoading || ortomatLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Завантаження...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Помилка</h2>
-          <p className="text-red-500 text-lg mb-6">{error}</p>
-          <button
-            onClick={() => router.back()}
-            className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Повернутися назад
-          </button>
         </div>
       </div>
     );
@@ -242,100 +112,232 @@ export default function PaymentPage() {
 
   if (!product || !ortomat) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600 text-xl mb-4">Товар або ортомат не знайдено</p>
+          <p className="text-gray-600">Товар або ортомат не знайдено</p>
           <button
             onClick={() => router.push('/')}
-            className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="mt-4 text-blue-600 hover:text-blue-700"
           >
-            На головну
+            Повернутися на головну
           </button>
         </div>
       </div>
     );
   }
 
-  // Main payment page
+  // ✅ ДОДАНО: Перевірка наявності характеристик
+  const hasCharacteristics = !!(
+    product.manufacturer ||
+    product.country ||
+    product.material ||
+    product.color ||
+    product.type ||
+    product.size
+  );
+
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="bg-blue-500 text-white py-6 px-8">
-            <h1 className="text-2xl font-bold">Оплата товару</h1>
+    <div>
+      <Head>
+        <title>Оплата - {product.name}</title>
+      </Head>
+
+      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              💳 Оплата товару
+            </h1>
+            <p className="text-gray-600">
+              Заповніть дані для завершення покупки
+            </p>
           </div>
 
-          <div className="p-8">
-            {product.imageUrl && (
+          {/* Main Card */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+            {/* Product Info */}
+            <div className="p-6 border-b">
+              <div className="flex items-start gap-6">
+                {/* Product Image */}
+                <div className="flex-shrink-0">
+                  {product.mainImage || product.imageUrl ? (
+                    <img
+                      src={product.mainImage || product.imageUrl}
+                      alt={product.name}
+                      className="w-32 h-32 object-cover rounded-lg"
+                    />
+                  ) : (
+                    <div className="w-32 h-32 bg-gray-200 rounded-lg flex items-center justify-center">
+                      <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                    </div>
+                  )}
+                </div>
+
+                {/* Product Details */}
+                <div className="flex-1">
+                  <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                    {product.name}
+                  </h2>
+                  <p className="text-3xl font-bold text-blue-600 mb-4">
+                    {product.price} ₴
+                  </p>
+
+                  {/* ✅ ОНОВЛЕНО: Показуємо характеристики замість опису */}
+                  {hasCharacteristics && (
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      <h3 className="text-sm font-semibold text-gray-700 mb-3">
+                        Характеристики:
+                      </h3>
+                      <div className="space-y-2 text-sm">
+                        {product.manufacturer && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Виробник:</span>
+                            <span className="font-medium text-gray-900">{product.manufacturer}</span>
+                          </div>
+                        )}
+                        {product.country && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Країна:</span>
+                            <span className="font-medium text-gray-900">{product.country}</span>
+                          </div>
+                        )}
+                        {product.material && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Матеріал:</span>
+                            <span className="font-medium text-gray-900">{product.material}</span>
+                          </div>
+                        )}
+                        {product.color && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Колір:</span>
+                            <span className="font-medium text-gray-900">{product.color}</span>
+                          </div>
+                        )}
+                        {product.type && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Тип:</span>
+                            <span className="font-medium text-gray-900">{product.type}</span>
+                          </div>
+                        )}
+                        {product.size && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Розмір:</span>
+                            <span className="font-medium text-gray-900">{product.size}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Ortomat Info */}
+            <div className="p-6 bg-blue-50 border-b">
+              <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                📍 Пункт видачі
+              </h3>
+              <div className="space-y-2">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-blue-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                  <div>
+                    <p className="font-medium text-gray-900">{ortomat.name}</p>
+                    <p className="text-sm text-gray-600">{ortomat.address}</p>
+                    {ortomat.city && (
+                      <p className="text-sm text-gray-600">{ortomat.city}</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Form */}
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                📱 Ваші контактні дані
+              </h3>
+              
               <div className="mb-6">
-                <img 
-                  src={product.imageUrl} 
-                  alt={product.name}
-                  className="w-full h-64 object-cover rounded-lg"
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Номер телефону *
+                </label>
+                <input
+                  type="tel"
+                  value={customerPhone}
+                  onChange={(e) => setCustomerPhone(e.target.value)}
+                  placeholder="+380XXXXXXXXX"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
                 />
-              </div>
-            )}
-
-            <div className="mb-6 pb-6 border-b">
-              <h2 className="text-sm text-gray-500 mb-2">Товар</h2>
-              <p className="text-xl font-semibold">{product.name}</p>
-              {product.description && (
-                <p className="text-gray-600 mt-1">{product.description}</p>
-              )}
-            </div>
-
-            <div className="mb-6 pb-6 border-b">
-              <h2 className="text-sm text-gray-500 mb-2">Ортомат</h2>
-              <p className="text-xl font-semibold">{ortomat.name}</p>
-              <p className="text-gray-600 mt-1">
-                {ortomat.address}
-                {ortomat.city && `, ${ortomat.city}`}
-              </p>
-              {cellNumber !== null && (
-                <p className="text-sm text-green-600 mt-2">
-                  📦 Комірка №{cellNumber}
-                </p>
-              )}
-            </div>
-
-            <div className="mb-8">
-              <h2 className="text-sm text-gray-500 mb-2">Сума до сплати</h2>
-              <p className="text-3xl font-bold text-blue-600">
-                {product.price} ₴
-              </p>
-            </div>
-
-            <button
-              onClick={handlePayment}
-              disabled={loading || cellNumber === null}
-              className="w-full bg-blue-500 text-white py-4 rounded-lg text-lg font-semibold hover:bg-blue-600 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
-            >
-              {loading ? 'Обробка...' : cellNumber === null ? 'Товар недоступний' : 'Оплатити'}
-            </button>
-
-            {cellNumber === null && (
-              <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  ⚠️ Товар тимчасово недоступний. Оберіть інший товар або спробуйте пізніше.
+                <p className="mt-2 text-sm text-gray-500">
+                  На цей номер надійде SMS з кодом доступу до комірки
                 </p>
               </div>
-            )}
 
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>🔒 Захищено платіжною системою LiqPay</p>
+              {/* Payment Info */}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+                <div className="flex items-start">
+                  <svg className="w-5 h-5 text-yellow-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <div className="text-sm text-yellow-800">
+                    <p className="font-medium mb-1">Важлива інформація:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Оплата здійснюється через LiqPay</li>
+                      <li>Після оплати ви отримаєте SMS з кодом доступу</li>
+                      <li>Товар необхідно забрати протягом 24 годин</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Button */}
+              <button
+                onClick={handlePayment}
+                disabled={isProcessing || !customerPhone}
+                className="w-full bg-blue-600 text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+              >
+                {isProcessing ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Обробка...
+                  </>
+                ) : (
+                  <>
+                    🔒 Оплатити {product.price} ₴
+                  </>
+                )}
+              </button>
+
+              <p className="mt-4 text-sm text-center text-gray-500">
+                Натискаючи "Оплатити", ви будете перенаправлені на сторінку LiqPay
+              </p>
             </div>
           </div>
-        </div>
 
-        <div className="mt-6 text-center">
-          <button
-            onClick={() => router.back()}
-            className="text-blue-500 hover:text-blue-600 underline"
-          >
-            ← Повернутися до вибору товару
-          </button>
+          {/* Back Button */}
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => router.back()}
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              ← Повернутися назад
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
+}
+
+export async function getServerSideProps() {
+  return { props: {} };
 }
