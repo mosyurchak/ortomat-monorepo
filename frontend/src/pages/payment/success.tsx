@@ -9,6 +9,7 @@ export default function PaymentSuccessPage() {
   const [loading, setLoading] = useState(true);
   const [openingCell, setOpeningCell] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
+  const [checkingPayment, setCheckingPayment] = useState(false);
 
   useEffect(() => {
     if (!orderId) return;
@@ -85,6 +86,36 @@ export default function PaymentSuccessPage() {
       alert(`Помилка: ${message}`);
     } finally {
       setOpeningCell(false);
+    }
+  };
+
+  const handleManualCheck = async () => {
+    if (!orderId) return;
+
+    try {
+      setCheckingPayment(true);
+      console.log('🔍 Manually checking payment status...');
+
+      const result = await api.checkPaymentStatus(orderId as string);
+      console.log('✅ Manual check result:', result);
+
+      if (result.status === 'completed') {
+        // Перезавантажуємо дані замовлення
+        const orderData = await api.getOrder(orderId as string);
+        setOrder(orderData);
+        alert('✅ Оплата підтверджена! Замовлення завершено.');
+      } else if (result.status === 'failed') {
+        const orderData = await api.getOrder(orderId as string);
+        setOrder(orderData);
+        alert('❌ Оплата не пройшла');
+      } else {
+        alert('⏳ Оплата ще обробляється. Спробуйте через декілька секунд.');
+      }
+    } catch (error: any) {
+      console.error('❌ Error checking payment:', error);
+      alert(`Помилка перевірки: ${error.message}`);
+    } finally {
+      setCheckingPayment(false);
     }
   };
 
@@ -208,6 +239,24 @@ export default function PaymentSuccessPage() {
                 Автоматична перевірка: {checkCount}/10
               </p>
             </div>
+
+            <button
+              onClick={handleManualCheck}
+              disabled={checkingPayment}
+              className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-semibold mb-3 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center justify-center"
+            >
+              {checkingPayment ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Перевірка...
+                </>
+              ) : (
+                <>🔍 Перевірити статус оплати вручну</>
+              )}
+            </button>
 
             <button
               onClick={() => router.push('/')}

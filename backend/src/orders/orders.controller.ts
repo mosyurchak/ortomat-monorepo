@@ -99,4 +99,17 @@ export class OrdersController {
   openCell(@Param('id') id: string) {
     return this.ordersService.openCell(id);
   }
+
+  /**
+   * Ручна перевірка статусу оплати в Monobank
+   * POST /api/orders/:id/check-payment-status
+   *
+   * Використовується якщо webhook не спрацював
+   * Перевіряє статус напряму в Monobank API і завершує замовлення якщо оплачено
+   */
+  @Post(':id/check-payment-status')
+  @HttpCode(HttpStatus.OK)
+  async checkPaymentStatus(@Param('id') orderId: string) {
+    return this.ordersService.checkPaymentStatus(orderId);
+  }
 }

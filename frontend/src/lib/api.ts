@@ -199,6 +199,15 @@ class ApiClient {
     return this.request(`/api/mono-payment/status/${invoiceId}`);
   }
 
+  /**
+   * Ручна перевірка статусу оплати (fallback якщо webhook не спрацював)
+   */
+  async checkPaymentStatus(orderId: string) {
+    return this.request(`/api/orders/${orderId}/check-payment-status`, {
+      method: 'POST',
+    });
+  }
+
   // ==================== AUTH ====================
   
   async login(email: string, password: string) {

@@ -569,4 +569,131 @@ export class OrdersService {
       };
     }
   }
+
+  /**
+   * Ручна перевірка статусу оплати в Monobank
+   * Використовується якщо webhook не спрацював
+   */
+  async checkPaymentStatus(orderId: string) {
+    console.log(`🔍 Manually checking payment status for order: ${orderId}`);
+
+    // Знаходимо замовлення та платіж
+    const sale = await this.prisma.sale.findUnique({
+      where: { id: orderId },
+      include: {
+        product: true,
+        ortomat: true,
+        payments: {
+          where: { paymentProvider: 'mono' },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!sale) {
+      throw new Error('Order not found');
+    }
+
+    if (sale.status === 'completed') {
+      return {
+        success: true,
+        message: 'Order already completed',
+        status: 'completed',
+      };
+    }
+
+    const payment = sale.payments[0];
+    if (!payment || !payment.invoiceId) {
+      throw new Error('Payment not found or no invoice ID');
+    }
+
+    console.log(`📄 Checking Monobank invoice: ${payment.invoiceId}`);
+
+    // Перевіряємо статус в Monobank API
+    try {
+      const invoiceStatus = await this.monoPaymentService.getInvoiceStatus(payment.invoiceId);
+      console.log('✅ Invoice status from Monobank:', invoiceStatus);
+
+      if (invoiceStatus.status === 'success') {
+        console.log('💰 Payment confirmed! Completing order...');
+
+        // Оновлюємо статуси
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: {
+            status: 'completed',
+            monoStatus: invoiceStatus.status,
+            monoData: invoiceStatus as any,
+          },
+        });
+
+        await this.prisma.sale.update({
+          where: { id: sale.id },
+          data: { status: 'completed' },
+        });
+
+        // Логування
+        await this.logsService.createLog({
+          type: 'PAYMENT_SUCCESS',
+          category: 'payment',
+          message: `Payment manually confirmed for order ${sale.orderNumber}`,
+          ortomatId: sale.ortomatId,
+          metadata: {
+            orderId: sale.id,
+            invoiceId: payment.invoiceId,
+            amount: sale.amount,
+            manualCheck: true,
+          },
+          severity: 'INFO',
+        });
+
+        // Відкриваємо комірку
+        try {
+          console.log(`🔓 Opening cell #${sale.cellNumber}...`);
+          await this.ortomatsGateway.openCell(sale.ortomatId, sale.cellNumber);
+          console.log('✅ Cell opened successfully');
+        } catch (error) {
+          console.error('❌ Failed to open cell:', error.message);
+        }
+
+        return {
+          success: true,
+          message: 'Payment confirmed and order completed',
+          status: 'completed',
+          cellNumber: sale.cellNumber,
+        };
+      } else if (invoiceStatus.status === 'failure') {
+        console.log('❌ Payment failed according to Monobank');
+
+        await this.prisma.payment.update({
+          where: { id: payment.id },
+          data: { status: 'failed', monoStatus: invoiceStatus.status },
+        });
+
+        await this.prisma.sale.update({
+          where: { id: sale.id },
+          data: { status: 'failed' },
+        });
+
+        return {
+          success: false,
+          message: 'Payment failed',
+          status: 'failed',
+        };
+      } else {
+        console.log(`ℹ️ Payment still pending: ${invoiceStatus.status}`);
+
+        return {
+          success: true,
+          message: 'Payment still pending',
+          status: 'pending',
+          monoStatus: invoiceStatus.status,
+        };
+      }
+    } catch (error) {
+      console.error('❌ Error checking Monobank status:', error.message);
+      throw new Error(`Failed to check payment status: ${error.message}`);
+    }
+  }
 }
