@@ -2,7 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from '../ortomats/ortomats.service';
 import { OrtomatsGateway } from '../ortomats/ortomats.gateway';
-import { LogsService } from '../logs/logs.service'; // ✅ ДОДАНО
+import { LogsService } from '../logs/logs.service';
+import { MonoPaymentService } from '../mono-payment/mono-payment.service';
 
 @Injectable()
 export class OrdersService {
@@ -10,7 +11,8 @@ export class OrdersService {
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
     private ortomatsGateway: OrtomatsGateway,
-    private logsService: LogsService, // ✅ ДОДАНО
+    private logsService: LogsService,
+    private monoPaymentService: MonoPaymentService, // Додано Monobank сервіс
   ) {}
 
   async createOrder(data: {
@@ -334,5 +336,237 @@ export class OrdersService {
       mode: 'production',
       product: order.product.name,
     };
+  }
+
+  /**
+   * Створення Monobank платежу для замовлення
+   * Викликається з frontend після створення замовлення
+   */
+  async createMonoPayment(orderId: string) {
+    console.log('💳 Creating Monobank payment for order:', orderId);
+
+    // Отримуємо замовлення
+    const sale = await this.prisma.sale.findUnique({
+      where: { id: orderId },
+      include: {
+        product: true,
+        ortomat: true,
+      },
+    });
+
+    if (!sale) {
+      throw new Error('Order not found');
+    }
+
+    if (sale.status === 'completed') {
+      throw new Error('Order already completed');
+    }
+
+    // Створюємо invoice в Monobank
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3001';
+
+    const { invoiceId, pageUrl } = await this.monoPaymentService.createInvoice({
+      amount: Math.round(sale.amount * 100), // Конвертуємо в копійки
+      ccy: 980, // UAH
+      merchantPaymInfo: {
+        reference: sale.orderNumber,
+        destination: `Оплата: ${sale.product.name}`,
+        basketOrder: [
+          {
+            name: sale.product.name,
+            qty: 1,
+            sum: Math.round(sale.amount * 100),
+          },
+        ],
+      },
+      redirectUrl: `${frontendUrl}/payment/success?orderId=${sale.id}`,
+      webHookUrl: `${backendUrl}/api/orders/mono-webhook`,
+    });
+
+    console.log('✅ Monobank invoice created:', invoiceId);
+
+    // Зберігаємо Payment запис
+    await this.prisma.payment.create({
+      data: {
+        orderId: sale.id,
+        amount: sale.amount,
+        status: 'pending',
+        paymentProvider: 'mono',
+        invoiceId: invoiceId,
+        pageUrl: pageUrl,
+        description: `Оплата: ${sale.product.name}`,
+      },
+    });
+
+    console.log('✅ Payment record saved to database');
+
+    // Логування
+    await this.logsService.createLog({
+      type: 'PAYMENT_INITIATED',
+      category: 'payment',
+      message: `Monobank invoice created for order ${sale.orderNumber}`,
+      ortomatId: sale.ortomatId,
+      metadata: {
+        orderId: sale.id,
+        invoiceId,
+        amount: sale.amount,
+      },
+      severity: 'INFO',
+    });
+
+    return {
+      success: true,
+      invoiceId,
+      pageUrl, // URL для перенаправлення користувача
+      orderNumber: sale.orderNumber,
+      amount: sale.amount,
+    };
+  }
+
+  /**
+   * Обробка webhook від Monobank
+   * Викликається автоматично Monobank при зміні статусу платежу
+   */
+  async handleMonoWebhook(webhookData: any, signature: string, rawBody: string | Buffer) {
+    console.log('📞 Monobank webhook received for invoice:', webhookData.invoiceId);
+
+    // Перевіряємо підпис webhook
+    const validatedData = await this.monoPaymentService.handleWebhook(
+      webhookData,
+      signature,
+      rawBody,
+    );
+
+    console.log('✅ Webhook signature verified');
+
+    // Знаходимо платіж за invoiceId
+    const payment = await this.prisma.payment.findUnique({
+      where: { invoiceId: validatedData.invoiceId },
+      include: {
+        sales: {
+          include: {
+            product: true,
+            ortomat: true,
+          },
+        },
+      },
+    });
+
+    if (!payment) {
+      console.error('❌ Payment not found for invoice:', validatedData.invoiceId);
+      throw new Error('Payment not found');
+    }
+
+    const sale = payment.sales[0]; // Отримуємо перше (і єдине) замовлення
+
+    if (!sale) {
+      console.error('❌ Sale not found for payment:', payment.id);
+      throw new Error('Sale not found');
+    }
+
+    // Оновлюємо Payment запис
+    await this.prisma.payment.update({
+      where: { id: payment.id },
+      data: {
+        monoStatus: validatedData.status,
+        monoData: validatedData as any,
+        updatedAt: new Date(),
+      },
+    });
+
+    // Обробляємо різні статуси
+    if (validatedData.status === 'success') {
+      console.log('✅ Payment successful! Processing order...');
+
+      // Оновлюємо статус платежу
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: {
+          status: 'success',
+          transactionId: validatedData.invoiceId,
+        },
+      });
+
+      // Оновлюємо статус замовлення
+      await this.prisma.sale.update({
+        where: { id: sale.id },
+        data: {
+          status: 'completed',
+          paymentId: payment.id,
+          completedAt: new Date(),
+        },
+      });
+
+      // Звільняємо комірку
+      await this.ortomatsService.updateCellProduct(
+        sale.ortomatId,
+        sale.cellNumber,
+        null,
+      );
+
+      // Логування успішної оплати
+      await this.logsService.logPaymentSuccess({
+        orderId: sale.id,
+        amount: sale.amount,
+        ortomatId: sale.ortomatId,
+      });
+
+      // Відкриваємо комірку автоматично
+      try {
+        await this.openCell(sale.id);
+        console.log('✅ Cell opened automatically after payment');
+      } catch (error) {
+        console.error('❌ Failed to open cell:', error.message);
+        // Не кидаємо помилку, щоб не блокувати webhook
+      }
+
+      console.log('✅ Order completed successfully');
+
+      return {
+        success: true,
+        message: 'Payment processed and cell opened',
+        orderNumber: sale.orderNumber,
+        cellNumber: sale.cellNumber,
+      };
+    } else if (validatedData.status === 'failure') {
+      console.log('❌ Payment failed');
+
+      // Оновлюємо статуси на failed
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: 'failed' },
+      });
+
+      await this.prisma.sale.update({
+        where: { id: sale.id },
+        data: { status: 'failed' },
+      });
+
+      // Логування
+      await this.logsService.createLog({
+        type: 'PAYMENT_FAILED',
+        category: 'payment',
+        message: `Payment failed for order ${sale.orderNumber}`,
+        ortomatId: sale.ortomatId,
+        metadata: {
+          orderId: sale.id,
+          reason: validatedData.failureReason || 'Unknown',
+        },
+        severity: 'WARNING',
+      });
+
+      return {
+        success: false,
+        message: 'Payment failed',
+      };
+    } else {
+      console.log(`ℹ️ Payment status: ${validatedData.status}`);
+
+      return {
+        success: true,
+        message: `Payment status updated to ${validatedData.status}`,
+      };
+    }
   }
 }
