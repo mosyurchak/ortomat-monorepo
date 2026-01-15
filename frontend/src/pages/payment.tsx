@@ -17,16 +17,22 @@ export default function PaymentPage() {
     enabled: !!orderId,
   });
 
-  // ✅ Обробка оплати
+  // ✅ Створення Monobank платежу
   const paymentMutation = useMutation({
-    mutationFn: (orderId: string) => api.processPayment(orderId),
-    onSuccess: () => {
-      // Stub оплата завжди успішна
-      setTimeout(() => {
-        router.push(`/success?orderId=${orderId}`);
-      }, 1000);
+    mutationFn: (orderId: string) => api.createMonoPayment(orderId),
+    onSuccess: (data) => {
+      console.log('Monobank payment created:', data);
+
+      // Перенаправляємо користувача на сторінку оплати Monobank
+      if (data.pageUrl) {
+        window.location.href = data.pageUrl;
+      } else {
+        alert('Помилка: не отримано URL для оплати');
+        setProcessing(false);
+      }
     },
     onError: (error: any) => {
+      console.error('Payment creation error:', error);
       alert(`${t('payment.paymentError')}: ${error.message}`);
       setProcessing(false);
     },
@@ -34,13 +40,11 @@ export default function PaymentPage() {
 
   const handlePayment = () => {
     if (!orderId) return;
-    
+
     setProcessing(true);
-    
-    // Stub: симулюємо оплату через LiqPay
-    setTimeout(() => {
-      paymentMutation.mutate(orderId as string);
-    }, 1500);
+
+    // Створюємо Monobank платіж
+    paymentMutation.mutate(orderId as string);
   };
 
   if (isLoading) {
@@ -135,7 +139,7 @@ export default function PaymentPage() {
           </button>
 
           <p className="text-center text-sm text-gray-500 mt-4">
-            {t('payment.testMode')}
+            🏦 Оплата через Monobank (Plata by Mono)
           </p>
 
           <div className="mt-6 text-center">

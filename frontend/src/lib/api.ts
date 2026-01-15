@@ -181,6 +181,24 @@ class ApiClient {
     });
   }
 
+  /**
+   * Створення Monobank платежу
+   * Викликається після створення замовлення
+   * Повертає pageUrl для перенаправлення користувача
+   */
+  async createMonoPayment(orderId: string) {
+    return this.request(`/api/orders/${orderId}/create-mono-payment`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Перевірка статусу Monobank invoice
+   */
+  async getMonoInvoiceStatus(invoiceId: string) {
+    return this.request(`/api/mono-payment/status/${invoiceId}`);
+  }
+
   // ==================== AUTH ====================
   
   async login(email: string, password: string) {

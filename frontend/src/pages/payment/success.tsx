@@ -1,150 +1,88 @@
-// frontend/src/pages/payment/success.tsx
-
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+import { api } from '../../lib/api';
 
 export default function PaymentSuccessPage() {
   const router = useRouter();
-  const { order } = router.query;
-  const [payment, setPayment] = useState<any>(null);
+  const { orderId } = router.query;
+  const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
-  const [autoRetrying, setAutoRetrying] = useState(false);
   const [openingCell, setOpeningCell] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
 
   useEffect(() => {
-    if (!order) return;
+    if (!orderId) return;
 
-    const checkPaymentStatus = async () => {
+    // Функція перевірки статусу замовлення
+    const checkOrderStatus = async () => {
       try {
-        console.log('🔍 Checking payment status for:', order);
-        const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
-        console.log('✅ Payment status:', response.data);
-        setPayment(response.data);
+        console.log('🔍 Checking order status:', orderId);
+        const orderData = await api.getOrder(orderId as string);
+        console.log('✅ Order status:', orderData);
+        setOrder(orderData);
+        setLoading(false);
 
-        if (response.data.status === 'PENDING' && retryCount === 0 && !autoRetrying) {
-          console.log('⏳ Payment is PENDING, attempting auto-retry...');
-          setAutoRetrying(true);
-          await autoRetryCallback(order as string);
+        // Якщо статус completed, зупиняємо перевірку
+        if (orderData.status === 'completed') {
+          return true;
         }
-
-        setLoading(false);
+        return false;
       } catch (error) {
-        console.error('❌ Error checking payment:', error);
+        console.error('❌ Error checking order:', error);
         setLoading(false);
+        return false;
       }
     };
 
-    checkPaymentStatus();
+    // Перша перевірка одразу
+    checkOrderStatus();
 
-    const interval = setInterval(() => {
-      if (retryCount < 10) {
-        checkPaymentStatus();
-        setRetryCount(prev => prev + 1);
-      } else {
+    // Періодична перевірка статусу (кожні 3 секунди, максимум 10 разів)
+    const interval = setInterval(async () => {
+      if (checkCount >= 10) {
+        clearInterval(interval);
+        return;
+      }
+
+      const isCompleted = await checkOrderStatus();
+      setCheckCount(prev => prev + 1);
+
+      if (isCompleted) {
         clearInterval(interval);
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [order, retryCount]);
+  }, [orderId, checkCount]);
 
-  const autoRetryCallback = async (orderId: string) => {
-    try {
-      console.log('🔄 Auto-retrying callback for:', orderId);
-      await axios.post(`${API_URL}/api/liqpay/test-callback/${orderId}`);
-      console.log('✅ Auto-retry successful');
-      
-      setTimeout(async () => {
-        const response = await axios.get(`${API_URL}/api/liqpay/status/${orderId}`);
-        setPayment(response.data);
-        setAutoRetrying(false);
-      }, 2000);
-    } catch (error) {
-      console.error('❌ Auto-retry failed:', error);
-      setAutoRetrying(false);
-    }
-  };
-
-  const handleManualRetry = async () => {
-    if (!order) return;
-    
-    try {
-      setLoading(true);
-      console.log('🔄 Manual retry for:', order);
-      await axios.post(`${API_URL}/api/liqpay/test-callback/${order}`);
-      
-      setTimeout(async () => {
-        const response = await axios.get(`${API_URL}/api/liqpay/status/${order}`);
-        setPayment(response.data);
-        setLoading(false);
-      }, 2000);
-    } catch (error) {
-      console.error('❌ Manual retry failed:', error);
-      setLoading(false);
-    }
-  };
-
-  // ✅ ВИПРАВЛЕНО: Функція відкриття комірки використовує правильний endpoint
   const handleOpenCell = async () => {
-    if (!payment || !payment.sales || payment.sales.length === 0) {
-      alert('Помилка: інформація про продаж не знайдена');
-      return;
-    }
-
-    const sale = payment.sales[0];
-    
-    if (!sale.id) {
-      alert('Помилка: ID замовлення не знайдено');
-      console.error('Missing sale ID:', sale);
-      return;
-    }
-
-    if (sale.cellNumber === null || sale.cellNumber === undefined) {
-      alert('Помилка: невідомо яку комірку відкрити. Зверніться до адміністратора.');
-      console.error('Missing cell number:', { saleId: sale.id, cellNumber: sale.cellNumber });
+    if (!order || !order.id) {
+      alert('Помилка: інформація про замовлення не знайдена');
       return;
     }
 
     try {
       setOpeningCell(true);
-      console.log('🔓 Opening cell for sale:', sale.id);
+      console.log('🔓 Opening cell for order:', order.id);
 
-      // ✅ ВИПРАВЛЕНО: Використовуємо правильний endpoint
-      const response = await axios.post(
-        `${API_URL}/api/orders/${sale.id}/open-cell`
-      );
+      const response = await api.openCell(order.id);
+      console.log('✅ Cell opened:', response);
 
-      console.log('✅ Cell opened successfully:', response.data);
-      
-      // Показуємо повідомлення про успіх
-      const message = response.data.mode === 'demo' 
-        ? `🎭 DEMO MODE: Комірка #${response.data.cellNumber} відкрита!\n\n${response.data.note}`
-        : `🔓 Комірка #${response.data.cellNumber} відкрита!\n\nЗаберіть свій товар: ${response.data.product}`;
-      
+      const message = response.mode === 'demo'
+        ? `🎭 DEMO MODE: Комірка #${response.cellNumber} відкрита!\\n\\n${response.note}`
+        : `🔓 Комірка #${response.cellNumber} відкрита!\\n\\nЗаберіть свій товар: ${response.product}`;
+
       alert(message);
-      
-      // Перенаправляємо на головну через 3 секунди
+
+      // Перенаправляємо на головну
       setTimeout(() => {
         router.push('/');
-      }, 3000);
+      }, 2000);
 
     } catch (error: any) {
       console.error('❌ Error opening cell:', error);
-      
-      if (error.response?.status === 404) {
-        alert('Помилка: замовлення не знайдено. Зверніться до адміністратора.');
-      } else if (error.response?.status === 400) {
-        const message = error.response.data?.message || 'Невірні дані';
-        alert(`Помилка: ${message}`);
-      } else if (error.response?.data?.message) {
-        alert(`Помилка: ${error.response.data.message}`);
-      } else {
-        alert('Помилка відкриття комірки. Спробуйте ще раз або зверніться до підтримки.');
-      }
+      const message = error.response?.data?.message || 'Помилка відкриття комірки';
+      alert(`Помилка: ${message}`);
     } finally {
       setOpeningCell(false);
     }
@@ -155,12 +93,10 @@ export default function PaymentSuccessPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-lg text-gray-600">
-            {autoRetrying ? '🔄 Автоматична перевірка платежу...' : 'Завантаження...'}
-          </p>
-          {retryCount > 0 && (
+          <p className="text-lg text-gray-600">Перевірка статусу оплати...</p>
+          {checkCount > 0 && (
             <p className="text-sm text-gray-400 mt-2">
-              Перевірка {retryCount}/10
+              Перевірка {checkCount}/10
             </p>
           )}
         </div>
@@ -168,11 +104,11 @@ export default function PaymentSuccessPage() {
     );
   }
 
-  if (!payment) {
+  if (!order) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Платіж не знайдено</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Замовлення не знайдено</h1>
           <button
             onClick={() => router.push('/')}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -188,7 +124,7 @@ export default function PaymentSuccessPage() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         {/* SUCCESS */}
-        {payment.status === 'SUCCESS' && (
+        {order.status === 'completed' && (
           <>
             <div className="text-center mb-6">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-4">
@@ -197,25 +133,29 @@ export default function PaymentSuccessPage() {
                 </svg>
               </div>
               <h1 className="text-2xl font-bold text-gray-900 mb-2">✅ Оплата успішна!</h1>
-              <p className="text-gray-600 mb-4">Дякуємо за покупку</p>
+              <p className="text-gray-600 mb-4">Дякуємо за покупку через Monobank</p>
+
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
-                <p className="text-sm text-gray-500">Сума платежу</p>
+                <p className="text-sm text-gray-500">Товар</p>
+                <p className="text-lg font-semibold text-gray-900">{order.product?.name || 'N/A'}</p>
+
+                <p className="text-sm text-gray-500 mt-3">Сума платежу</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(payment.amount)}
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(order.amount)}
                 </p>
-                <p className="text-xs text-gray-400 mt-2">Order: {payment.orderId}</p>
-                
-                {/* ✅ Показати номер комірки */}
-                {payment.sales && payment.sales.length > 0 && payment.sales[0].cellNumber !== null && (
+
+                <p className="text-xs text-gray-400 mt-2">Замовлення: {order.orderNumber}</p>
+
+                {order.cellNumber !== null && (
                   <p className="text-sm text-green-600 mt-2">
-                    📦 Комірка #{payment.sales[0].cellNumber}
+                    📦 Комірка #{order.cellNumber}
                   </p>
                 )}
               </div>
             </div>
 
-            {/* ✅ ВИПРАВЛЕНО: Кнопка відкрити комірку */}
-            {payment.sales && payment.sales.length > 0 && payment.sales[0].cellNumber !== null && (
+            {/* Кнопка відкрити комірку */}
+            {order.cellNumber !== null && (
               <button
                 onClick={handleOpenCell}
                 disabled={openingCell}
@@ -245,7 +185,7 @@ export default function PaymentSuccessPage() {
         )}
 
         {/* PENDING */}
-        {payment.status === 'PENDING' && (
+        {order.status === 'pending' && (
           <>
             <div className="text-center mb-6">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
@@ -254,39 +194,32 @@ export default function PaymentSuccessPage() {
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">⏳ Платіж в обробці</h1>
-              <p className="text-gray-600 mb-4">Будь ласка, зачекайте...</p>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">⏳ Очікування оплати</h1>
+              <p className="text-gray-600 mb-4">Платіж обробляється Monobank...</p>
+
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-500">Сума платежу</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(payment.amount)}
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(order.amount)}
                 </p>
               </div>
 
-              {retryCount > 5 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                  <p className="text-sm text-yellow-800 mb-2">
-                    ⚠️ Платіж ще обробляється. Спробуйте оновити вручну:
-                  </p>
-                  <button
-                    onClick={handleManualRetry}
-                    disabled={loading}
-                    className="w-full px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-50"
-                  >
-                    🔄 Оновити статус
-                  </button>
-                </div>
-              )}
-
               <p className="text-xs text-gray-400">
-                Автоматична перевірка: {retryCount}/10
+                Автоматична перевірка: {checkCount}/10
               </p>
             </div>
+
+            <button
+              onClick={() => router.push('/')}
+              className="w-full px-6 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"
+            >
+              На головну
+            </button>
           </>
         )}
 
         {/* FAILED */}
-        {payment.status === 'FAILED' && (
+        {order.status === 'failed' && (
           <>
             <div className="text-center mb-6">
               <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-4">
