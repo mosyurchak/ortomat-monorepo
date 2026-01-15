@@ -226,7 +226,7 @@ async function main() {
         number: i,
         ortomatId: ortomat1.id,
         productId: productIndex !== null ? products[productIndex].id : null,
-        isAvailable: productIndex !== null,
+        isAvailable: productIndex === null, // true = порожня (доступна для заповнення), false = заповнена товаром
       },
     });
   }
