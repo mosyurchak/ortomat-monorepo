@@ -12,7 +12,6 @@ import { LogsModule } from './logs/logs.module';
 import { EmailModule } from './email/email.module';
 import { InviteModule } from './invite/invite.module';
 import { CourierModule } from './courier/courier.module';
-import { LiqPayModule } from './liqpay/liqpay.module';
 import { MonoPaymentModule } from './mono-payment/mono-payment.module';
 import { SettingsModule } from './settings/settings.module';
 
@@ -33,7 +32,6 @@ import { SettingsModule } from './settings/settings.module';
     EmailModule,
     InviteModule,
     CourierModule,
-    LiqPayModule,
     MonoPaymentModule,
     SettingsModule,
   ],
