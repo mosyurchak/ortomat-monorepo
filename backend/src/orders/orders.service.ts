@@ -583,11 +583,7 @@ export class OrdersService {
       include: {
         product: true,
         ortomat: true,
-        payments: {
-          where: { paymentProvider: 'mono' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
+        payment: true, // Одне поле payment, не масив
       },
     });
 
@@ -603,9 +599,14 @@ export class OrdersService {
       };
     }
 
-    const payment = sale.payments[0];
+    const payment = sale.payment;
     if (!payment || !payment.invoiceId) {
       throw new Error('Payment not found or no invoice ID');
+    }
+
+    // Перевіряємо що це Monobank платіж
+    if (payment.paymentProvider !== 'mono') {
+      throw new Error('This is not a Monobank payment');
     }
 
     console.log(`📄 Checking Monobank invoice: ${payment.invoiceId}`);
@@ -651,7 +652,7 @@ export class OrdersService {
         // Відкриваємо комірку
         try {
           console.log(`🔓 Opening cell #${sale.cellNumber}...`);
-          await this.ortomatsGateway.openCell(sale.ortomatId, sale.cellNumber);
+          await this.ortomatsGateway.openCell(sale.ortomatId, sale.cellNumber, sale.id);
           console.log('✅ Cell opened successfully');
         } catch (error) {
           console.error('❌ Failed to open cell:', error.message);
