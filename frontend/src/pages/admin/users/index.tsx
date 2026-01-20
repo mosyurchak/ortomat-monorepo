@@ -6,6 +6,87 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 type Tab = 'doctors' | 'couriers';
 
+// Helper функції для форматування телефону
+const formatPhoneNumber = (value: string): string => {
+  // Видаляємо всі нецифрові символи крім +
+  const digits = value.replace(/[^\d]/g, '');
+
+  // Якщо починається з 380, видаляємо 38
+  let phoneDigits = digits;
+  if (digits.startsWith('380')) {
+    phoneDigits = digits.slice(2); // Видаляємо 38, залишаємо 0...
+  } else if (digits.startsWith('38')) {
+    phoneDigits = digits.slice(2);
+  } else if (!digits.startsWith('0')) {
+    phoneDigits = '0' + digits;
+  }
+
+  // Обмежуємо до 10 цифр (0 + 9 цифр)
+  phoneDigits = phoneDigits.slice(0, 10);
+
+  // Форматуємо: +38 (0XX) XXX-XX-XX
+  if (phoneDigits.length === 0) return '';
+
+  let formatted = '+38 (';
+
+  if (phoneDigits.length >= 1) {
+    formatted += phoneDigits[0]; // 0
+  }
+  if (phoneDigits.length >= 2) {
+    formatted += phoneDigits.slice(1, 3); // XX
+  }
+  if (phoneDigits.length >= 3) {
+    formatted += ') ';
+    formatted += phoneDigits.slice(3, 6); // XXX
+  }
+  if (phoneDigits.length >= 6) {
+    formatted += '-';
+    formatted += phoneDigits.slice(6, 8); // XX
+  }
+  if (phoneDigits.length >= 8) {
+    formatted += '-';
+    formatted += phoneDigits.slice(8, 10); // XX
+  }
+
+  return formatted;
+};
+
+const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string } => {
+  const digits = phone.replace(/[^\d]/g, '');
+
+  if (digits.length === 0) {
+    return { isValid: false, error: 'Введіть номер телефону' };
+  }
+
+  // Перевіряємо що є 10 цифр (0XXXXXXXXX)
+  if (digits.length < 10) {
+    return {
+      isValid: false,
+      error: `Введено ${digits.length} з 10 цифр. Формат: +38 (0XX) XXX-XX-XX`
+    };
+  }
+
+  if (digits.length > 10) {
+    return { isValid: false, error: 'Занадто багато цифр' };
+  }
+
+  // Перевіряємо що починається з 0
+  if (!digits.startsWith('0')) {
+    return { isValid: false, error: 'Номер має починатися з 0' };
+  }
+
+  return { isValid: true };
+};
+
+// Конвертує форматований телефон в +380XXXXXXXXX для відправки на backend
+const phoneToBackendFormat = (formattedPhone: string): string => {
+  const digits = formattedPhone.replace(/[^\d]/g, '');
+  if (digits.length === 10 && digits.startsWith('0')) {
+    return '+38' + digits;
+  }
+  return formattedPhone; // Повертаємо як є якщо щось не так
+};
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -38,6 +119,12 @@ export default function AdminUsersPage() {
     phone: '',
     ortomatId: '',
     commissionPercent: 10,
+  });
+
+  // Phone validation errors
+  const [phoneErrors, setPhoneErrors] = useState({
+    doctor: '',
+    courier: '',
   });
 
   // Захист роуту
@@ -128,7 +215,7 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       setShowCourierModal(false);
-      resetForm();
+      resetCourierForm();
       alert('Кур\'єр успішно створений');
     },
     onError: (error: any) => {
@@ -138,14 +225,14 @@ export default function AdminUsersPage() {
 
   // Оновлення кур'єра
   const updateCourierMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       api.updateCourier(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       setShowCourierModal(false);
       setEditingCourier(null);
-      resetForm();
+      resetCourierForm();
       alert('Кур\'єр успішно оновлений');
     },
     onError: (error: any) => {
@@ -184,8 +271,16 @@ export default function AdminUsersPage() {
   const handleDoctorSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Валідація телефону перед відправкою
+    const phoneValidation = validatePhoneNumber(doctorFormData.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneErrors(prev => ({ ...prev, doctor: phoneValidation.error || '' }));
+      return;
+    }
+
     const submitData = {
       ...doctorFormData,
+      phone: phoneToBackendFormat(doctorFormData.phone), // Конвертуємо в +380XXXXXXXXX
       middleName: doctorFormData.middleName || undefined,
       ortomatId: doctorFormData.ortomatId || undefined,
     };
@@ -209,10 +304,11 @@ export default function AdminUsersPage() {
       firstName: doctor.firstName,
       lastName: doctor.lastName,
       middleName: doctor.middleName || '',
-      phone: doctor.phone,
+      phone: formatPhoneNumber(doctor.phone || ''), // Форматуємо телефон з БД
       ortomatId: doctor.doctorOrtomats?.[0]?.ortomatId || '',
       commissionPercent: doctor.doctorOrtomats?.[0]?.commissionPercent || 10,
     });
+    setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
     setShowDoctorModal(true);
   };
 
@@ -226,6 +322,7 @@ export default function AdminUsersPage() {
     setShowDoctorModal(false);
     setEditingDoctor(null);
     resetDoctorForm();
+    setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
   };
 
   // ==================== COURIER HANDLERS ====================
@@ -245,8 +342,16 @@ export default function AdminUsersPage() {
   const handleCourierSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Валідація телефону перед відправкою
+    const phoneValidation = validatePhoneNumber(courierFormData.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneErrors(prev => ({ ...prev, courier: phoneValidation.error || '' }));
+      return;
+    }
+
     const submitData = {
       ...courierFormData,
+      phone: phoneToBackendFormat(courierFormData.phone), // Конвертуємо в +380XXXXXXXXX
       middleName: courierFormData.middleName || undefined,
       ortomatIds: courierFormData.ortomatIds.length > 0 ? courierFormData.ortomatIds : undefined,
     };
@@ -270,9 +375,10 @@ export default function AdminUsersPage() {
       firstName: courier.firstName,
       lastName: courier.lastName,
       middleName: courier.middleName || '',
-      phone: courier.phone,
+      phone: formatPhoneNumber(courier.phone || ''), // Форматуємо телефон з БД
       ortomatIds: courier.ortomats?.map((o: any) => o.id) || [],
     });
+    setPhoneErrors(prev => ({ ...prev, courier: '' })); // Очищаємо помилки
     setShowCourierModal(true);
   };
 
@@ -286,6 +392,7 @@ export default function AdminUsersPage() {
     setShowCourierModal(false);
     setEditingCourier(null);
     resetCourierForm();
+    setPhoneErrors(prev => ({ ...prev, courier: '' })); // Очищаємо помилки
   };
 
   const toggleCourierOrtomat = (ortomatId: string) => {
@@ -589,10 +696,22 @@ export default function AdminUsersPage() {
                   type="tel"
                   required
                   value={courierFormData.phone}
-                  onChange={(e) => setCourierFormData({ ...courierFormData, phone: e.target.value })}
-                  placeholder="+380501234567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    setCourierFormData({ ...courierFormData, phone: formatted });
+                    // Очищаємо помилку при введенні
+                    if (phoneErrors.courier) {
+                      setPhoneErrors(prev => ({ ...prev, courier: '' }));
+                    }
+                  }}
+                  placeholder="+38 (0XX) XXX-XX-XX"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    phoneErrors.courier ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {phoneErrors.courier && (
+                  <p className="mt-1 text-sm text-red-600">{phoneErrors.courier}</p>
+                )}
               </div>
 
               <div className="mb-4">
@@ -744,10 +863,22 @@ export default function AdminUsersPage() {
                   type="tel"
                   required
                   value={doctorFormData.phone}
-                  onChange={(e) => setDoctorFormData({ ...doctorFormData, phone: e.target.value })}
-                  placeholder="+380501234567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    setDoctorFormData({ ...doctorFormData, phone: formatted });
+                    // Очищаємо помилку при введенні
+                    if (phoneErrors.doctor) {
+                      setPhoneErrors(prev => ({ ...prev, doctor: '' }));
+                    }
+                  }}
+                  placeholder="+38 (0XX) XXX-XX-XX"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    phoneErrors.doctor ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {phoneErrors.doctor && (
+                  <p className="mt-1 text-sm text-red-600">{phoneErrors.doctor}</p>
+                )}
               </div>
 
               <div className="mb-4">
