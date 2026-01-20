@@ -577,13 +577,12 @@ export class OrdersService {
   async checkPaymentStatus(orderId: string) {
     console.log(`🔍 Manually checking payment status for order: ${orderId}`);
 
-    // Знаходимо замовлення та платіж
+    // Знаходимо замовлення
     const sale = await this.prisma.sale.findUnique({
       where: { id: orderId },
       include: {
         product: true,
         ortomat: true,
-        payment: true, // Одне поле payment, не масив
       },
     });
 
@@ -599,7 +598,14 @@ export class OrdersService {
       };
     }
 
-    const payment = sale.payment;
+    // Шукаємо Payment по orderId (не через sale.payment, бо може не бути прив'язки)
+    const payment = await this.prisma.payment.findFirst({
+      where: { orderId: orderId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    console.log('💳 Found payment:', payment);
+
     if (!payment || !payment.invoiceId) {
       throw new Error('Payment not found or no invoice ID');
     }
