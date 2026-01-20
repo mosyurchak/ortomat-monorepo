@@ -281,10 +281,26 @@ export class OrdersService {
     console.log('🔍 Checking if device online:', deviceId);
 
     const isOnline = this.ortomatsGateway.isDeviceOnline(deviceId);
-    
+
     if (!isOnline) {
       console.log('⚠️ Device offline, using DEMO mode');
-      
+
+      // Оновлюємо статус комірки - видаляємо товар
+      await this.prisma.cell.update({
+        where: {
+          ortomatId_number: {
+            ortomatId: order.ortomatId,
+            number: order.cellNumber,
+          },
+        },
+        data: {
+          productId: null,
+          isAvailable: true, // true = порожня (доступна для заповнення)
+        },
+      });
+
+      console.log(`✅ Cell #${order.cellNumber} cleared from inventory`);
+
       return {
         success: true,
         message: `Cell ${order.cellNumber} opened successfully`,
@@ -326,6 +342,22 @@ export class OrdersService {
       },
       severity: 'INFO',
     });
+
+    // Оновлюємо статус комірки - видаляємо товар
+    await this.prisma.cell.update({
+      where: {
+        ortomatId_number: {
+          ortomatId: order.ortomatId,
+          number: order.cellNumber,
+        },
+      },
+      data: {
+        productId: null,
+        isAvailable: true, // true = порожня (доступна для заповнення)
+      },
+    });
+
+    console.log(`✅ Cell #${order.cellNumber} cleared from inventory`);
 
     return {
       success: true,
