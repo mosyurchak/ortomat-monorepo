@@ -8,7 +8,7 @@ type Tab = 'doctors' | 'couriers';
 
 // Helper функції для форматування телефону
 const formatPhoneNumber = (value: string): string => {
-  // Видаляємо всі нецифрові символи крім +
+  // Видаляємо всі нецифрові символи
   const digits = value.replace(/[^\d]/g, '');
 
   // Якщо починається з 380, видаляємо 38
@@ -17,8 +17,6 @@ const formatPhoneNumber = (value: string): string => {
     phoneDigits = digits.slice(2); // Видаляємо 38, залишаємо 0...
   } else if (digits.startsWith('38')) {
     phoneDigits = digits.slice(2);
-  } else if (!digits.startsWith('0')) {
-    phoneDigits = '0' + digits;
   }
 
   // Обмежуємо до 10 цифр (0 + 9 цифр)
@@ -72,7 +70,7 @@ const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string 
 
   // Перевіряємо що починається з 0
   if (!digits.startsWith('0')) {
-    return { isValid: false, error: 'Номер має починатися з 0' };
+    return { isValid: false, error: 'Введіть будь ласка коректний номер телефону' };
   }
 
   return { isValid: true };
