@@ -28,6 +28,20 @@ export class UsersController {
     return this.usersService.findOne(req.user.userId);
   }
 
+  // ⭐ Get all doctors
+  @UseGuards(AuthGuard('jwt'))
+  @Get('doctors')
+  getDoctors() {
+    return this.usersService.getDoctors();
+  }
+
+  // ⭐ Get all couriers
+  @UseGuards(AuthGuard('jwt'))
+  @Get('couriers')
+  getCouriers() {
+    return this.usersService.getCouriers();
+  }
+
   // ⭐ Admin stats endpoint
   @Get('admin/stats')
   getAdminStats() {

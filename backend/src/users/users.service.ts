@@ -370,4 +370,85 @@ export class UsersService {
       ortomats: ortomatStats,
     };
   }
+
+  /**
+   * Отримати всіх лікарів з їх ортоматами
+   */
+  async getDoctors() {
+    const doctors = await this.prisma.user.findMany({
+      where: {
+        role: 'DOCTOR',
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
+        phone: true,
+        isVerified: true,
+        createdAt: true,
+        doctorOrtomats: {
+          include: {
+            ortomat: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                city: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    return doctors;
+  }
+
+  /**
+   * Отримати всіх кур'єрів з їх ортоматами
+   */
+  async getCouriers() {
+    const couriers = await this.prisma.user.findMany({
+      where: {
+        role: 'COURIER',
+      },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        middleName: true,
+        phone: true,
+        isVerified: true,
+        createdAt: true,
+        courierOrtomats: {
+          include: {
+            ortomat: {
+              select: {
+                id: true,
+                name: true,
+                address: true,
+                city: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    // Перетворюємо courierOrtomats в ortomats для сумісності з frontend
+    return couriers.map(courier => ({
+      ...courier,
+      ortomats: courier.courierOrtomats.map(co => co.ortomat),
+      courierOrtomats: undefined, // Видаляємо оригінальне поле
+    }));
+  }
 }
