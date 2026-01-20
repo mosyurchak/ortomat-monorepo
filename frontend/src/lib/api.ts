@@ -256,6 +256,26 @@ class ApiClient {
     return this.request('/api/users/doctors');
   }
 
+  async createDoctor(data: any) {
+    return this.request('/api/users/doctors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDoctor(id: string, data: any) {
+    return this.request(`/api/users/doctors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDoctor(id: string) {
+    return this.request(`/api/users/doctors/${id}`, {
+      method: 'DELETE',
+    });
+  }
+
   async updateUser(id: string, data: any) {
     return this.request(`/api/users/${id}`, {
       method: 'PATCH',
