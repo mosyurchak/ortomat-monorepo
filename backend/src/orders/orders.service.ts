@@ -285,7 +285,7 @@ export class OrdersService {
     if (!isOnline) {
       console.log('⚠️ Device offline, using DEMO mode');
 
-      // Оновлюємо статус комірки - видаляємо товар
+      // Оновлюємо статус комірки - залишаємо productId, але позначаємо як порожню
       await this.prisma.cell.update({
         where: {
           ortomatId_number: {
@@ -294,12 +294,13 @@ export class OrdersService {
           },
         },
         data: {
-          productId: null,
-          isAvailable: true, // true = порожня (доступна для заповнення)
+          // productId залишається (не видаляємо!) - товар все ще призначений комірці
+          isAvailable: true, // true = порожня (синя - товар призначений, але комірка порожня)
         },
       });
 
-      console.log(`✅ Cell #${order.cellNumber} cleared from inventory`);
+      console.log(`✅ Cell #${order.cellNumber} marked as empty (product dispensed)`);
+
 
       return {
         success: true,
@@ -343,7 +344,7 @@ export class OrdersService {
       severity: 'INFO',
     });
 
-    // Оновлюємо статус комірки - видаляємо товар
+    // Оновлюємо статус комірки - залишаємо productId, але позначаємо як порожню
     await this.prisma.cell.update({
       where: {
         ortomatId_number: {
@@ -352,12 +353,12 @@ export class OrdersService {
         },
       },
       data: {
-        productId: null,
-        isAvailable: true, // true = порожня (доступна для заповнення)
+        // productId залишається (не видаляємо!) - товар все ще призначений комірці
+        isAvailable: true, // true = порожня (синя - товар призначений, але комірка порожня)
       },
     });
 
-    console.log(`✅ Cell #${order.cellNumber} cleared from inventory`);
+    console.log(`✅ Cell #${order.cellNumber} marked as empty (product dispensed)`);
 
     return {
       success: true,
