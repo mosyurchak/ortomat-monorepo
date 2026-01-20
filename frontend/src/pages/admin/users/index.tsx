@@ -17,6 +17,9 @@ const formatPhoneNumber = (value: string): string => {
     phoneDigits = digits.slice(2); // Видаляємо 38, залишаємо 0...
   } else if (digits.startsWith('38')) {
     phoneDigits = digits.slice(2);
+  } else if (digits.length > 0 && !digits.startsWith('0')) {
+    // Автоматично додаємо 0 на початку
+    phoneDigits = '0' + digits;
   }
 
   // Обмежуємо до 10 цифр (0 + 9 цифр)
@@ -47,6 +50,36 @@ const formatPhoneNumber = (value: string): string => {
   }
 
   return formatted;
+};
+
+// Обробник для Backspace - автоматично перескакує через ), -, пробіли
+const handlePhoneKeyDown = (
+  e: React.KeyboardEvent<HTMLInputElement>,
+  value: string,
+  setValue: (value: string) => void
+) => {
+  if (e.key === 'Backspace') {
+    const input = e.currentTarget;
+    const cursorPos = input.selectionStart || 0;
+
+    // Якщо курсор на спеціальному символі (дужка, дефіс, пробіл), переміщуємо на 1 символ назад
+    const charBeforeCursor = value[cursorPos - 1];
+    if (charBeforeCursor === ')' || charBeforeCursor === '-' || charBeforeCursor === ' ' || charBeforeCursor === '(') {
+      e.preventDefault();
+
+      // Видаляємо цифру перед спеціальним символом
+      const digits = value.replace(/[^\d]/g, '');
+      const newDigits = digits.slice(0, -1);
+      const formatted = formatPhoneNumber(newDigits);
+      setValue(formatted);
+
+      // Встановлюємо курсор в правильну позицію після форматування
+      setTimeout(() => {
+        const newCursorPos = formatted.length;
+        input.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }
+  }
 };
 
 const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string } => {
@@ -702,6 +735,9 @@ export default function AdminUsersPage() {
                       setPhoneErrors(prev => ({ ...prev, courier: '' }));
                     }
                   }}
+                  onKeyDown={(e) => handlePhoneKeyDown(e, courierFormData.phone, (value) =>
+                    setCourierFormData({ ...courierFormData, phone: value })
+                  )}
                   placeholder="+38 (0XX) XXX-XX-XX"
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
                     phoneErrors.courier ? 'border-red-500' : 'border-gray-300'
@@ -869,6 +905,9 @@ export default function AdminUsersPage() {
                       setPhoneErrors(prev => ({ ...prev, doctor: '' }));
                     }
                   }}
+                  onKeyDown={(e) => handlePhoneKeyDown(e, doctorFormData.phone, (value) =>
+                    setDoctorFormData({ ...doctorFormData, phone: value })
+                  )}
                   placeholder="+38 (0XX) XXX-XX-XX"
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
                     phoneErrors.doctor ? 'border-red-500' : 'border-gray-300'
