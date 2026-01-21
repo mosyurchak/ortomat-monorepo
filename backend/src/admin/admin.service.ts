@@ -38,9 +38,6 @@ export class AdminService {
         // Комірки
         cells: await this.prisma.cell.findMany(),
 
-        // Замовлення
-        orders: await this.prisma.order.findMany(),
-
         // Платежі
         payments: await this.prisma.payment.findMany(),
 
@@ -51,19 +48,19 @@ export class AdminService {
         courierOrtomats: await this.prisma.courierOrtomat.findMany(),
 
         // Запрошення
-        invites: await this.prisma.invite.findMany(),
+        invites: await this.prisma.ortomatInvite.findMany(),
 
         // Продажі
         sales: await this.prisma.sale.findMany(),
 
         // Логи
-        logs: await this.prisma.log.findMany({
+        logs: await this.prisma.activityLog.findMany({
           take: 10000, // Обмежуємо до останніх 10000 логів
-          orderBy: { timestamp: 'desc' },
+          orderBy: { createdAt: 'desc' },
         }),
 
         // Налаштування
-        settings: await this.prisma.setting.findMany(),
+        settings: await this.prisma.settings.findMany(),
       },
     };
 
@@ -73,7 +70,7 @@ export class AdminService {
       - Ortomats: ${backup.data.ortomats.length}
       - Products: ${backup.data.products.length}
       - Cells: ${backup.data.cells.length}
-      - Orders: ${backup.data.orders.length}
+      - Sales: ${backup.data.sales.length}
       - Payments: ${backup.data.payments.length}
       - Logs: ${backup.data.logs.length}
     `);
@@ -95,17 +92,16 @@ export class AdminService {
     // Порядок важливий через foreign keys
     console.log('⚠️  Clearing existing data...');
 
-    await this.prisma.log.deleteMany({});
+    await this.prisma.activityLog.deleteMany({});
     await this.prisma.sale.deleteMany({});
     await this.prisma.payment.deleteMany({});
-    await this.prisma.order.deleteMany({});
     await this.prisma.cell.deleteMany({});
-    await this.prisma.invite.deleteMany({});
+    await this.prisma.ortomatInvite.deleteMany({});
     await this.prisma.courierOrtomat.deleteMany({});
     await this.prisma.doctorOrtomat.deleteMany({});
     await this.prisma.product.deleteMany({});
     await this.prisma.ortomat.deleteMany({});
-    await this.prisma.setting.deleteMany({});
+    await this.prisma.settings.deleteMany({});
     await this.prisma.user.deleteMany({});
 
     console.log('✅ Existing data cleared');
@@ -161,37 +157,31 @@ export class AdminService {
 
     // 7. Запрошення
     if (data.invites?.length) {
-      await this.prisma.invite.createMany({ data: data.invites });
+      await this.prisma.ortomatInvite.createMany({ data: data.invites });
       console.log(`  ✓ Invites restored: ${data.invites.length}`);
     }
 
-    // 8. Замовлення
-    if (data.orders?.length) {
-      await this.prisma.order.createMany({ data: data.orders });
-      console.log(`  ✓ Orders restored: ${data.orders.length}`);
-    }
-
-    // 9. Платежі
+    // 8. Платежі
     if (data.payments?.length) {
       await this.prisma.payment.createMany({ data: data.payments });
       console.log(`  ✓ Payments restored: ${data.payments.length}`);
     }
 
-    // 10. Продажі
+    // 9. Продажі
     if (data.sales?.length) {
       await this.prisma.sale.createMany({ data: data.sales });
       console.log(`  ✓ Sales restored: ${data.sales.length}`);
     }
 
-    // 11. Логи
+    // 10. Логи
     if (data.logs?.length) {
-      await this.prisma.log.createMany({ data: data.logs });
+      await this.prisma.activityLog.createMany({ data: data.logs });
       console.log(`  ✓ Logs restored: ${data.logs.length}`);
     }
 
-    // 12. Налаштування
+    // 11. Налаштування
     if (data.settings?.length) {
-      await this.prisma.setting.createMany({ data: data.settings });
+      await this.prisma.settings.createMany({ data: data.settings });
       console.log(`  ✓ Settings restored: ${data.settings.length}`);
     }
 
