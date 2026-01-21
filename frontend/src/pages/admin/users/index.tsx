@@ -17,12 +17,17 @@ const formatPhoneNumber = (value: string): string => {
     phoneDigits = digits.slice(2); // Видаляємо 38, залишаємо 0...
   } else if (digits.startsWith('38')) {
     phoneDigits = digits.slice(2);
-  } else if (digits.length > 0 && !digits.startsWith('0')) {
-    // Автоматично додаємо 0 на початку
-    phoneDigits = '0' + digits;
   }
 
-  // Обмежуємо до 10 цифр (0 + 9 цифр)
+  // Обмежуємо до 10 цифр ПЕРЕД додаванням 0
+  phoneDigits = phoneDigits.slice(0, 10);
+
+  // Автоматично додаємо 0 на початку ТІЛЬКИ якщо цифр менше 10 і не починається з 0
+  if (phoneDigits.length > 0 && phoneDigits.length < 10 && !phoneDigits.startsWith('0')) {
+    phoneDigits = '0' + phoneDigits;
+  }
+
+  // Гарантуємо що не більше 10 цифр після всіх операцій
   phoneDigits = phoneDigits.slice(0, 10);
 
   // Форматуємо: +38 (0XX) XXX-XX-XX
