@@ -105,7 +105,15 @@ const handlePhoneFocus = (
 };
 
 const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string } => {
-  const digits = phone.replace(/[^\d]/g, '');
+  // Видаляємо всі нецифрові символи
+  let digits = phone.replace(/[^\d]/g, '');
+
+  // Якщо починається з 380 або 38, видаляємо префікс (так само як у formatPhoneNumber)
+  if (digits.startsWith('380')) {
+    digits = digits.slice(2); // Видаляємо 38, залишаємо 0...
+  } else if (digits.startsWith('38')) {
+    digits = digits.slice(2);
+  }
 
   if (digits.length === 0) {
     return { isValid: false, error: 'Введіть номер телефону' };
