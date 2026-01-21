@@ -5,8 +5,10 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server } from 'ws';
-import { Logger } from '@nestjs/common';
+import { Logger, Injectable } from '@nestjs/common';
 import * as WebSocket from 'ws';
+import { PrismaService } from '../prisma/prisma.service';
+import { LogsService } from '../logs/logs.service';
 
 interface OrtomatDevice {
   deviceId: string;
@@ -20,6 +22,7 @@ interface OrtomatDevice {
   };
 }
 
+@Injectable()
 @WebSocketGateway({
   path: '/ws',
 })
@@ -29,6 +32,11 @@ export class OrtomatsGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   private readonly logger = new Logger(OrtomatsGateway.name);
   private devices: Map<string, OrtomatDevice> = new Map();
+
+  constructor(
+    private prisma: PrismaService,
+    private logsService: LogsService,
+  ) {}
 
   // ==================== GATEWAY EVENTS ====================
 
@@ -147,25 +155,158 @@ export class OrtomatsGateway implements OnGatewayConnection, OnGatewayDisconnect
     }
   }
 
-  private handleAck(deviceId: string, data: any) {
+  private async handleAck(deviceId: string, data: any) {
     this.logger.log(`✅ ACK from ${deviceId} for cmd: ${data.cmd_id}`);
-    // TODO: Оновити статус замовлення в БД
+
+    const { cmd_id } = data;
+
+    if (!cmd_id) {
+      this.logger.warn('⚠️ ACK received without cmd_id');
+      return;
+    }
+
+    try {
+      // Оновлюємо статус замовлення на "processing" коли ESP32 підтвердив отримання команди
+      const sale = await this.prisma.sale.updateMany({
+        where: {
+          orderNumber: cmd_id,
+          status: 'pending'
+        },
+        data: {
+          status: 'processing'
+        }
+      });
+
+      if (sale.count > 0) {
+        this.logger.log(`📝 Sale ${cmd_id} status updated to PROCESSING`);
+
+        // Логуємо зміну статусу
+        await this.logsService.createLog({
+          type: 'PAYMENT_INITIATED',
+          category: 'orders',
+          message: `Замовлення ${cmd_id} підтверджено пристроєм ${deviceId}`,
+          metadata: {
+            orderNumber: cmd_id,
+            deviceId,
+            status: 'processing',
+          },
+          severity: 'INFO',
+        });
+      } else {
+        this.logger.warn(`⚠️ Sale ${cmd_id} not found or already processed`);
+      }
+    } catch (error) {
+      this.logger.error(`❌ Failed to update sale ${cmd_id}: ${error.message}`);
+    }
   }
 
-  private handleState(deviceId: string, data: any) {
+  private async handleState(deviceId: string, data: any) {
     const { cmd_id, cell, result, sensor } = data;
-    
+
     this.logger.log(
       `🔍 State from ${deviceId}: Cell ${cell}, Result: ${result}, Sensor: ${sensor}`,
     );
-    
-    // TODO: Оновити статус в БД
-    // if (result === 'opened') {
-    //   await this.prisma.sale.update({
-    //     where: { orderNumber: cmd_id },
-    //     data: { status: 'COMPLETED' }
-    //   });
-    // }
+
+    if (!cmd_id) {
+      this.logger.warn('⚠️ State received without cmd_id');
+      return;
+    }
+
+    try {
+      // Коли комірка успішно відкрилась - позначаємо замовлення як виконане
+      if (result === 'opened') {
+        const sale = await this.prisma.sale.updateMany({
+          where: {
+            orderNumber: cmd_id,
+            status: { in: ['pending', 'processing'] }
+          },
+          data: {
+            status: 'completed',
+            completedAt: new Date()
+          }
+        });
+
+        if (sale.count > 0) {
+          this.logger.log(`✅ Sale ${cmd_id} COMPLETED - Cell ${cell} opened successfully`);
+
+          // Логуємо успішне завершення замовлення
+          const saleData = await this.prisma.sale.findUnique({
+            where: { orderNumber: cmd_id },
+            include: {
+              ortomat: { select: { id: true, name: true } },
+              product: { select: { name: true } },
+            },
+          });
+
+          if (saleData) {
+            await this.logsService.createLog({
+              type: 'ORDER_COMPLETED',
+              category: 'orders',
+              message: `Замовлення ${cmd_id} виконано: ${saleData.product?.name || 'товар'} з комірки ${cell}`,
+              ortomatId: saleData.ortomatId,
+              cellNumber: cell,
+              metadata: {
+                orderNumber: cmd_id,
+                deviceId,
+                cellNumber: cell,
+                productName: saleData.product?.name,
+                amount: saleData.amount,
+                sensor,
+              },
+              severity: 'INFO',
+            });
+          }
+        } else {
+          this.logger.warn(`⚠️ Sale ${cmd_id} not found or already completed`);
+        }
+      } else if (result === 'failed' || result === 'error') {
+        // Якщо відкриття не вдалось - позначаємо як невдале
+        const sale = await this.prisma.sale.updateMany({
+          where: {
+            orderNumber: cmd_id,
+            status: { in: ['pending', 'processing'] }
+          },
+          data: {
+            status: 'failed'
+          }
+        });
+
+        if (sale.count > 0) {
+          this.logger.error(`❌ Sale ${cmd_id} FAILED - Cell ${cell} could not be opened`);
+
+          // Логуємо невдале виконання замовлення
+          const saleData = await this.prisma.sale.findUnique({
+            where: { orderNumber: cmd_id },
+            include: {
+              ortomat: { select: { id: true, name: true } },
+              product: { select: { name: true } },
+            },
+          });
+
+          if (saleData) {
+            await this.logsService.createLog({
+              type: 'ORDER_CANCELLED',
+              category: 'orders',
+              message: `Замовлення ${cmd_id} не виконано: помилка відкриття комірки ${cell}`,
+              ortomatId: saleData.ortomatId,
+              cellNumber: cell,
+              metadata: {
+                orderNumber: cmd_id,
+                deviceId,
+                cellNumber: cell,
+                productName: saleData.product?.name,
+                result,
+                sensor,
+                reason: 'cell_open_failed',
+              },
+              severity: 'ERROR',
+            });
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`❌ Failed to update sale ${cmd_id}: ${error.message}`);
+    }
   }
 
   // ==================== PUBLIC API ====================
