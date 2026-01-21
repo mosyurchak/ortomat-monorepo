@@ -82,6 +82,23 @@ const handlePhoneKeyDown = (
   }
 };
 
+// Обробник для фокусу - автоматично додає +38 (0 якщо поле порожнє
+const handlePhoneFocus = (
+  e: React.FocusEvent<HTMLInputElement>,
+  value: string,
+  setValue: (value: string) => void
+) => {
+  if (!value || value.trim() === '') {
+    const formatted = '+38 (0';
+    setValue(formatted);
+
+    // Встановлюємо курсор після 0
+    setTimeout(() => {
+      e.target.setSelectionRange(7, 7); // позиція після "+38 (0"
+    }, 0);
+  }
+};
+
 const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string } => {
   const digits = phone.replace(/[^\d]/g, '');
 
@@ -735,6 +752,9 @@ export default function AdminUsersPage() {
                       setPhoneErrors(prev => ({ ...prev, courier: '' }));
                     }
                   }}
+                  onFocus={(e) => handlePhoneFocus(e, courierFormData.phone, (value) =>
+                    setCourierFormData({ ...courierFormData, phone: value })
+                  )}
                   onKeyDown={(e) => handlePhoneKeyDown(e, courierFormData.phone, (value) =>
                     setCourierFormData({ ...courierFormData, phone: value })
                   )}
@@ -905,6 +925,9 @@ export default function AdminUsersPage() {
                       setPhoneErrors(prev => ({ ...prev, doctor: '' }));
                     }
                   }}
+                  onFocus={(e) => handlePhoneFocus(e, doctorFormData.phone, (value) =>
+                    setDoctorFormData({ ...doctorFormData, phone: value })
+                  )}
                   onKeyDown={(e) => handlePhoneKeyDown(e, doctorFormData.phone, (value) =>
                     setDoctorFormData({ ...doctorFormData, phone: value })
                   )}
