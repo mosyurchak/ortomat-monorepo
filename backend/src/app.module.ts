@@ -14,6 +14,7 @@ import { InviteModule } from './invite/invite.module';
 import { CourierModule } from './courier/courier.module';
 import { MonoPaymentModule } from './mono-payment/mono-payment.module';
 import { SettingsModule } from './settings/settings.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { SettingsModule } from './settings/settings.module';
     CourierModule,
     MonoPaymentModule,
     SettingsModule,
+    AdminModule,
   ],
 })
 export class AppModule {}

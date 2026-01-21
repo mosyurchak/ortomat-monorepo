@@ -434,6 +434,43 @@ class ApiClient {
   async getAvailableOrtomats() {
     return this.request('/api/courier/available/ortomats');
   }
+
+  // ==================== ADMIN BACKUP ====================
+
+  // Експорт даних - завантажує файл бекапу
+  async exportBackup() {
+    const url = `${this.baseURL}/api/admin/backup`;
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('token')
+      : null;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Помилка створення бекапу');
+    }
+
+    // Отримуємо blob та ім'я файлу з headers
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : 'ortomat-backup.json';
+
+    return { blob, filename };
+  }
+
+  // Імпорт даних з файлу бекапу
+  async importBackup(backupData: any) {
+    return this.request('/api/admin/restore', {
+      method: 'POST',
+      body: JSON.stringify(backupData),
+    });
+  }
 }
 
 export const api = new ApiClient();
