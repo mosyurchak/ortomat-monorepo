@@ -151,7 +151,7 @@ const phoneToBackendFormat = (formattedPhone: string): string => {
 export default function AdminUsersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('doctors');
 
@@ -497,29 +497,38 @@ export default function AdminUsersPage() {
             </h1>
           </div>
 
-          {activeTab === 'doctors' && (
-            <button
-              onClick={() => setShowDoctorModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Створити лікаря
-            </button>
-          )}
+          <div className="flex items-center space-x-3">
+            {activeTab === 'doctors' && (
+              <button
+                onClick={() => setShowDoctorModal(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Створити лікаря
+              </button>
+            )}
 
-          {activeTab === 'couriers' && (
+            {activeTab === 'couriers' && (
+              <button
+                onClick={() => setShowCourierModal(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Створити кур'єра
+              </button>
+            )}
+
             <button
-              onClick={() => setShowCourierModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              onClick={logout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Створити кур'єра
+              Вийти
             </button>
-          )}
+          </div>
         </div>
 
         {/* Tabs */}

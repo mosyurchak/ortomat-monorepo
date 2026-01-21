@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useAuth } from '@/contexts/AuthContext';
 import { api } from '@/lib/api';
 import QRCode from 'qrcode';
 
 export default function OrtomatDetailPage() {
   const router = useRouter();
   const { id } = router.query;
+  const { logout } = useAuth();
 
   const [ortomat, setOrtomat] = useState<any>(null);
   const [inviteQR, setInviteQR] = useState<string | null>(null);
@@ -102,17 +104,25 @@ export default function OrtomatDetailPage() {
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <button
+              onClick={() => router.push('/admin/ortomats')}
+              className="text-blue-600 hover:text-blue-700 mb-4 flex items-center"
+            >
+              ← Назад до списку
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900">
+              {ortomat?.name}
+            </h1>
+            <p className="text-gray-600 mt-2">{ortomat?.address}</p>
+          </div>
           <button
-            onClick={() => router.push('/admin/ortomats')}
-            className="text-blue-600 hover:text-blue-700 mb-4 flex items-center"
+            onClick={logout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
           >
-            ← Назад до списку
+            Вийти
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {ortomat?.name}
-          </h1>
-          <p className="text-gray-600 mt-2">{ortomat?.address}</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

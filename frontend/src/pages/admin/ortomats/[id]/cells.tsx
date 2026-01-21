@@ -10,7 +10,7 @@ export default function AdminCellsManagementPage() {
   const router = useRouter();
   const { id } = router.query;
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const { t } = useTranslation();
   
   const [showModal, setShowModal] = useState(false);
@@ -204,21 +204,29 @@ export default function AdminCellsManagementPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="mb-8">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <button
+              onClick={() => router.push('/admin/ortomats')}
+              className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
+            >
+              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Назад
+            </button>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Управління комірками</h1>
+            <p className="text-gray-600">
+              {ortomat.name} - {ortomat.address}
+              {ortomat.city && `, ${ortomat.city}`}
+            </p>
+          </div>
           <button
-            onClick={() => router.push('/admin/ortomats')}
-            className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
+            onClick={logout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
           >
-            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Назад
+            Вийти
           </button>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Управління комірками</h1>
-          <p className="text-gray-600">
-            {ortomat.name} - {ortomat.address}
-            {ortomat.city && `, ${ortomat.city}`}
-          </p>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6 mb-8">

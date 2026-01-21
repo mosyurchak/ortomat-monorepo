@@ -7,7 +7,7 @@ import axios from 'axios';
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default function AdminSettings() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
   
   const [purchaseTerms, setPurchaseTerms] = useState('');
@@ -101,6 +101,12 @@ export default function AdminSettings() {
               Редагування глобальних налаштувань
             </p>
           </div>
+          <button
+            onClick={logout}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+          >
+            Вийти
+          </button>
         </div>
 
         {/* Settings Form */}
