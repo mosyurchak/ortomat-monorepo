@@ -169,10 +169,6 @@ export default function PaymentPage() {
             )}
           </button>
 
-          <p className="text-center text-sm text-gray-500 mt-4">
-            🏦 Оплата через Monobank (Plata by Mono)
-          </p>
-
           <div className="mt-6 text-center">
             <button
               onClick={() => router.back()}
