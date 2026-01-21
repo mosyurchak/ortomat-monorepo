@@ -234,19 +234,27 @@ model OrtomatInvite {
 }
 
 model Payment {
-  id              String   @id @default(uuid())
-  orderId         String   @unique
-  amount          Float
-  status          String
-  transactionId   String?
-  doctorId        String?
-  description     String?
-  paymentDetails  Json?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  id               String   @id @default(uuid())
+  orderId          String   @unique
+  amount           Float
+  status           String
+  transactionId    String?
 
-  doctor          User?    @relation(fields: [doctorId], references: [id])
-  sales           Sale[]
+  // Monobank Payment fields
+  paymentProvider  String   @default("liqpay") // "liqpay" or "mono"
+  invoiceId        String?  @unique // Monobank invoice ID
+  pageUrl          String?  // Monobank payment page URL
+  monoStatus       String?  // Monobank specific status
+  monoData         Json?    // Additional Monobank webhook data
+
+  doctorId         String?
+  description      String?
+  paymentDetails   Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  doctor           User?    @relation(fields: [doctorId], references: [id])
+  sales            Sale[]
 
   @@map("payments")
 }
@@ -298,6 +306,7 @@ enum LogType {
   CELL_PRODUCT_ASSIGNED
   CELL_ERROR
   ORDER_CREATED
+  PAYMENT_INITIATED
   PAYMENT_SUCCESS
   PAYMENT_FAILED
   ORDER_COMPLETED

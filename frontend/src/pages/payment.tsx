@@ -7,51 +7,86 @@ import { useTranslation } from '../hooks/useTranslation';
 export default function PaymentPage() {
   const router = useRouter();
   const { t } = useTranslation();
-  const { orderId } = router.query;
+  const { orderId, productId, ortomatId, ref } = router.query;
   const [processing, setProcessing] = useState(false);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+
+  // Якщо є productId та ortomatId, але немає orderId - створюємо замовлення
+  const createOrderMutation = useMutation({
+    mutationFn: () => api.createOrder({
+      productId: productId as string,
+      ortomatId: ortomatId as string,
+      referralCode: ref as string | undefined,
+    }),
+    onSuccess: (data) => {
+      console.log('Order created:', data);
+      setCreatedOrderId(data.id);
+    },
+    onError: (error: any) => {
+      console.error('Order creation error:', error);
+    },
+  });
+
+  // Створюємо замовлення автоматично при завантаженні сторінки
+  useEffect(() => {
+    if (!orderId && productId && ortomatId && !createdOrderId && !createOrderMutation.isPending) {
+      console.log('Creating order automatically...');
+      createOrderMutation.mutate();
+    }
+  }, [orderId, productId, ortomatId, createdOrderId]);
+
+  // Визначаємо який orderId використовувати
+  const activeOrderId = (orderId || createdOrderId) as string;
 
   // ✅ Завантажити дані замовлення
   const { data: order, isLoading, error } = useQuery({
-    queryKey: ['order', orderId],
-    queryFn: () => api.getOrder(orderId as string),
-    enabled: !!orderId,
+    queryKey: ['order', activeOrderId],
+    queryFn: () => api.getOrder(activeOrderId),
+    enabled: !!activeOrderId,
   });
 
-  // ✅ Обробка оплати
+  // ✅ Створення Monobank платежу
   const paymentMutation = useMutation({
-    mutationFn: (orderId: string) => api.processPayment(orderId),
-    onSuccess: () => {
-      // Stub оплата завжди успішна
-      setTimeout(() => {
-        router.push(`/success?orderId=${orderId}`);
-      }, 1000);
+    mutationFn: (orderId: string) => api.createMonoPayment(orderId),
+    onSuccess: (data) => {
+      console.log('Monobank payment created:', data);
+
+      // Перенаправляємо користувача на сторінку оплати Monobank
+      if (data.pageUrl) {
+        window.location.href = data.pageUrl;
+      } else {
+        alert('Помилка: не отримано URL для оплати');
+        setProcessing(false);
+      }
     },
     onError: (error: any) => {
+      console.error('Payment creation error:', error);
       alert(`${t('payment.paymentError')}: ${error.message}`);
       setProcessing(false);
     },
   });
 
   const handlePayment = () => {
-    if (!orderId) return;
-    
+    if (!activeOrderId) return;
+
     setProcessing(true);
-    
-    // Stub: симулюємо оплату через LiqPay
-    setTimeout(() => {
-      paymentMutation.mutate(orderId as string);
-    }, 1500);
+
+    // Створюємо Monobank платіж
+    paymentMutation.mutate(activeOrderId);
   };
 
-  if (isLoading) {
+  // Показуємо завантаження якщо створюється замовлення або завантажуються дані
+  if (createOrderMutation.isPending || isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">{t('payment.loadingOrder')}</div>
+        <div className="text-xl">
+          {createOrderMutation.isPending ? 'Створення замовлення...' : t('payment.loadingOrder')}
+        </div>
       </div>
     );
   }
 
-  if (error || !order) {
+  if (createOrderMutation.isError || error || !order) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -133,10 +168,6 @@ export default function PaymentPage() {
               </>
             )}
           </button>
-
-          <p className="text-center text-sm text-gray-500 mt-4">
-            {t('payment.testMode')}
-          </p>
 
           <div className="mt-6 text-center">
             <button

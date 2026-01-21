@@ -399,10 +399,6 @@ export default function ProductPage() {
                 >
                   {isOrdering ? 'Обробка...' : 'Купити зараз'}
                 </button>
-
-                <p className="mt-4 text-sm text-gray-500 text-center">
-                  🔒 Захищено платіжною системою LiqPay
-                </p>
               </div>
             </div>
           </div>

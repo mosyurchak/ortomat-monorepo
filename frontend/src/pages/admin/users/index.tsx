@@ -6,15 +6,159 @@ import { useAuth } from '../../../contexts/AuthContext';
 
 type Tab = 'doctors' | 'couriers';
 
+// Helper функції для форматування телефону
+const formatPhoneNumber = (value: string): string => {
+  // Видаляємо всі нецифрові символи
+  const digits = value.replace(/[^\d]/g, '');
+
+  // Якщо починається з 380, видаляємо 38
+  let phoneDigits = digits;
+  if (digits.startsWith('380')) {
+    phoneDigits = digits.slice(2); // Видаляємо 38, залишаємо 0...
+  } else if (digits.startsWith('38')) {
+    phoneDigits = digits.slice(2);
+  }
+
+  // Обмежуємо до 10 цифр ПЕРЕД додаванням 0
+  phoneDigits = phoneDigits.slice(0, 10);
+
+  // Автоматично додаємо 0 на початку ТІЛЬКИ якщо цифр менше 10 і не починається з 0
+  if (phoneDigits.length > 0 && phoneDigits.length < 10 && !phoneDigits.startsWith('0')) {
+    phoneDigits = '0' + phoneDigits;
+  }
+
+  // Гарантуємо що не більше 10 цифр після всіх операцій
+  phoneDigits = phoneDigits.slice(0, 10);
+
+  // Форматуємо: +38 (0XX) XXX-XX-XX
+  if (phoneDigits.length === 0) return '';
+
+  let formatted = '+38 (';
+
+  if (phoneDigits.length >= 1) {
+    formatted += phoneDigits[0]; // 0
+  }
+  if (phoneDigits.length >= 2) {
+    formatted += phoneDigits.slice(1, 3); // XX
+  }
+  if (phoneDigits.length >= 3) {
+    formatted += ') ';
+    formatted += phoneDigits.slice(3, 6); // XXX
+  }
+  if (phoneDigits.length >= 6) {
+    formatted += '-';
+    formatted += phoneDigits.slice(6, 8); // XX
+  }
+  if (phoneDigits.length >= 8) {
+    formatted += '-';
+    formatted += phoneDigits.slice(8, 10); // XX
+  }
+
+  return formatted;
+};
+
+// Обробник для Backspace - автоматично перескакує через ), -, пробіли
+const handlePhoneKeyDown = (
+  e: React.KeyboardEvent<HTMLInputElement>,
+  value: string,
+  setValue: (value: string) => void
+) => {
+  if (e.key === 'Backspace') {
+    const input = e.currentTarget;
+    const cursorPos = input.selectionStart || 0;
+
+    // Якщо курсор на спеціальному символі (дужка, дефіс, пробіл), переміщуємо на 1 символ назад
+    const charBeforeCursor = value[cursorPos - 1];
+    if (charBeforeCursor === ')' || charBeforeCursor === '-' || charBeforeCursor === ' ' || charBeforeCursor === '(') {
+      e.preventDefault();
+
+      // Видаляємо цифру перед спеціальним символом
+      const digits = value.replace(/[^\d]/g, '');
+      const newDigits = digits.slice(0, -1);
+      const formatted = formatPhoneNumber(newDigits);
+      setValue(formatted);
+
+      // Встановлюємо курсор в правильну позицію після форматування
+      setTimeout(() => {
+        const newCursorPos = formatted.length;
+        input.setSelectionRange(newCursorPos, newCursorPos);
+      }, 0);
+    }
+  }
+};
+
+// Обробник для фокусу - автоматично додає +38 (0 якщо поле порожнє
+const handlePhoneFocus = (
+  e: React.FocusEvent<HTMLInputElement>,
+  value: string,
+  setValue: (value: string) => void
+) => {
+  if (!value || value.trim() === '') {
+    const formatted = '+38 (0';
+    setValue(formatted);
+
+    // Встановлюємо курсор після 0
+    setTimeout(() => {
+      e.target.setSelectionRange(7, 7); // позиція після "+38 (0"
+    }, 0);
+  }
+};
+
+const validatePhoneNumber = (phone: string): { isValid: boolean; error?: string } => {
+  // Видаляємо всі нецифрові символи
+  let digits = phone.replace(/[^\d]/g, '');
+
+  // Якщо починається з 380 або 38, видаляємо префікс (так само як у formatPhoneNumber)
+  if (digits.startsWith('380')) {
+    digits = digits.slice(2); // Видаляємо 38, залишаємо 0...
+  } else if (digits.startsWith('38')) {
+    digits = digits.slice(2);
+  }
+
+  if (digits.length === 0) {
+    return { isValid: false, error: 'Введіть номер телефону' };
+  }
+
+  // Перевіряємо що є 10 цифр (0XXXXXXXXX)
+  if (digits.length < 10) {
+    return {
+      isValid: false,
+      error: `Введено ${digits.length} з 10 цифр. Формат: +38 (0XX) XXX-XX-XX`
+    };
+  }
+
+  if (digits.length > 10) {
+    return { isValid: false, error: 'Занадто багато цифр' };
+  }
+
+  // Перевіряємо що починається з 0
+  if (!digits.startsWith('0')) {
+    return { isValid: false, error: 'Введіть будь ласка коректний номер телефону' };
+  }
+
+  return { isValid: true };
+};
+
+// Конвертує форматований телефон в +380XXXXXXXXX для відправки на backend
+const phoneToBackendFormat = (formattedPhone: string): string => {
+  const digits = formattedPhone.replace(/[^\d]/g, '');
+  if (digits.length === 10 && digits.startsWith('0')) {
+    return '+38' + digits;
+  }
+  return formattedPhone; // Повертаємо як є якщо щось не так
+};
+
 export default function AdminUsersPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
-  
+  const { user, isLoading: authLoading, logout } = useAuth();
+
   const [activeTab, setActiveTab] = useState<Tab>('doctors');
+
+  // Courier state
   const [showCourierModal, setShowCourierModal] = useState(false);
   const [editingCourier, setEditingCourier] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [courierFormData, setCourierFormData] = useState({
     email: '',
     password: '',
     firstName: '',
@@ -22,6 +166,26 @@ export default function AdminUsersPage() {
     middleName: '',
     phone: '',
     ortomatIds: [] as string[],
+  });
+
+  // Doctor state
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [editingDoctor, setEditingDoctor] = useState<any>(null);
+  const [doctorFormData, setDoctorFormData] = useState({
+    email: '',
+    password: '',
+    firstName: '',
+    lastName: '',
+    middleName: '',
+    phone: '',
+    ortomatId: '',
+    commissionPercent: 10,
+  });
+
+  // Phone validation errors
+  const [phoneErrors, setPhoneErrors] = useState({
+    doctor: '',
+    courier: '',
   });
 
   // Захист роуту
@@ -56,8 +220,54 @@ export default function AdminUsersPage() {
   const { data: allOrtomats } = useQuery({
     queryKey: ['ortomats'],
     queryFn: () => api.getOrtomats(),
-    enabled: showCourierModal && !!editingCourier,
+    enabled: (showCourierModal && !!editingCourier) || showDoctorModal,
   });
+
+  // ==================== DOCTOR MUTATIONS ====================
+
+  // Створення лікаря
+  const createDoctorMutation = useMutation({
+    mutationFn: (data: any) => api.createDoctor(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      setShowDoctorModal(false);
+      resetDoctorForm();
+      alert('Лікар успішно створений');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // Оновлення лікаря
+  const updateDoctorMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
+      api.updateDoctor(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      setShowDoctorModal(false);
+      setEditingDoctor(null);
+      resetDoctorForm();
+      alert('Лікар успішно оновлений');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // Видалення лікаря
+  const deleteDoctorMutation = useMutation({
+    mutationFn: (id: string) => api.deleteDoctor(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      alert('Лікар видалений');
+    },
+    onError: (error: any) => {
+      alert(`Помилка: ${error.message}`);
+    },
+  });
+
+  // ==================== COURIER MUTATIONS ====================
 
   // Створення кур'єра
   const createCourierMutation = useMutation({
@@ -66,7 +276,7 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       setShowCourierModal(false);
-      resetForm();
+      resetCourierForm();
       alert('Кур\'єр успішно створений');
     },
     onError: (error: any) => {
@@ -76,14 +286,14 @@ export default function AdminUsersPage() {
 
   // Оновлення кур'єра
   const updateCourierMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       api.updateCourier(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       setShowCourierModal(false);
       setEditingCourier(null);
-      resetForm();
+      resetCourierForm();
       alert('Кур\'єр успішно оновлений');
     },
     onError: (error: any) => {
@@ -104,8 +314,82 @@ export default function AdminUsersPage() {
     },
   });
 
-  const resetForm = () => {
-    setFormData({
+  // ==================== DOCTOR HANDLERS ====================
+
+  const resetDoctorForm = () => {
+    setDoctorFormData({
+      email: '',
+      password: '',
+      firstName: '',
+      lastName: '',
+      middleName: '',
+      phone: '',
+      ortomatId: '',
+      commissionPercent: 10,
+    });
+  };
+
+  const handleDoctorSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Валідація телефону перед відправкою
+    const phoneValidation = validatePhoneNumber(doctorFormData.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneErrors(prev => ({ ...prev, doctor: phoneValidation.error || '' }));
+      return;
+    }
+
+    const submitData = {
+      ...doctorFormData,
+      phone: phoneToBackendFormat(doctorFormData.phone), // Конвертуємо в +380XXXXXXXXX
+      middleName: doctorFormData.middleName || undefined,
+      ortomatId: doctorFormData.ortomatId || undefined,
+    };
+
+    if (editingDoctor) {
+      const updateData: any = { ...submitData };
+      if (!doctorFormData.password) {
+        delete updateData.password;
+      }
+      updateDoctorMutation.mutate({ id: editingDoctor.id, data: updateData });
+    } else {
+      createDoctorMutation.mutate(submitData);
+    }
+  };
+
+  const handleEditDoctor = (doctor: any) => {
+    setEditingDoctor(doctor);
+    setDoctorFormData({
+      email: doctor.email,
+      password: '',
+      firstName: doctor.firstName,
+      lastName: doctor.lastName,
+      middleName: doctor.middleName || '',
+      phone: formatPhoneNumber(doctor.phone || ''), // Форматуємо телефон з БД
+      ortomatId: doctor.doctorOrtomats?.[0]?.ortomatId || '',
+      commissionPercent: doctor.doctorOrtomats?.[0]?.commissionPercent || 10,
+    });
+    setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
+    setShowDoctorModal(true);
+  };
+
+  const handleDeleteDoctor = (id: string) => {
+    if (confirm('Видалити цього лікаря?')) {
+      deleteDoctorMutation.mutate(id);
+    }
+  };
+
+  const handleCloseDoctorModal = () => {
+    setShowDoctorModal(false);
+    setEditingDoctor(null);
+    resetDoctorForm();
+    setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
+  };
+
+  // ==================== COURIER HANDLERS ====================
+
+  const resetCourierForm = () => {
+    setCourierFormData({
       email: '',
       password: '',
       firstName: '',
@@ -116,19 +400,26 @@ export default function AdminUsersPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleCourierSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    // Валідація телефону перед відправкою
+    const phoneValidation = validatePhoneNumber(courierFormData.phone);
+    if (!phoneValidation.isValid) {
+      setPhoneErrors(prev => ({ ...prev, courier: phoneValidation.error || '' }));
+      return;
+    }
+
     const submitData = {
-      ...formData,
-      middleName: formData.middleName || undefined,
-      ortomatIds: formData.ortomatIds.length > 0 ? formData.ortomatIds : undefined,
+      ...courierFormData,
+      phone: phoneToBackendFormat(courierFormData.phone), // Конвертуємо в +380XXXXXXXXX
+      middleName: courierFormData.middleName || undefined,
+      ortomatIds: courierFormData.ortomatIds.length > 0 ? courierFormData.ortomatIds : undefined,
     };
 
-    // Якщо редагуємо - не відправляємо пароль якщо він порожній
     if (editingCourier) {
       const updateData: any = { ...submitData };
-      if (!formData.password) {
+      if (!courierFormData.password) {
         delete updateData.password;
       }
       updateCourierMutation.mutate({ id: editingCourier.id, data: updateData });
@@ -139,15 +430,16 @@ export default function AdminUsersPage() {
 
   const handleEditCourier = (courier: any) => {
     setEditingCourier(courier);
-    setFormData({
+    setCourierFormData({
       email: courier.email,
       password: '',
       firstName: courier.firstName,
       lastName: courier.lastName,
       middleName: courier.middleName || '',
-      phone: courier.phone,
+      phone: formatPhoneNumber(courier.phone || ''), // Форматуємо телефон з БД
       ortomatIds: courier.ortomats?.map((o: any) => o.id) || [],
     });
+    setPhoneErrors(prev => ({ ...prev, courier: '' })); // Очищаємо помилки
     setShowCourierModal(true);
   };
 
@@ -157,14 +449,15 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleCloseModal = () => {
+  const handleCloseCourierModal = () => {
     setShowCourierModal(false);
     setEditingCourier(null);
-    resetForm();
+    resetCourierForm();
+    setPhoneErrors(prev => ({ ...prev, courier: '' })); // Очищаємо помилки
   };
 
-  const toggleOrtomat = (ortomatId: string) => {
-    setFormData(prev => ({
+  const toggleCourierOrtomat = (ortomatId: string) => {
+    setCourierFormData(prev => ({
       ...prev,
       ortomatIds: prev.ortomatIds.includes(ortomatId)
         ? prev.ortomatIds.filter(id => id !== ortomatId)
@@ -203,18 +496,39 @@ export default function AdminUsersPage() {
               Управління користувачами
             </h1>
           </div>
-          
-          {activeTab === 'couriers' && (
+
+          <div className="flex items-center space-x-3">
+            {activeTab === 'doctors' && (
+              <button
+                onClick={() => setShowDoctorModal(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Додати лікаря
+              </button>
+            )}
+
+            {activeTab === 'couriers' && (
+              <button
+                onClick={() => setShowCourierModal(true)}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Додати кур'єра
+              </button>
+            )}
+
             <button
-              onClick={() => setShowCourierModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+              onClick={logout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Створити кур'єра
+              Вийти
             </button>
-          )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -254,6 +568,7 @@ export default function AdminUsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verified</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -277,12 +592,26 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        doctor.isVerified 
-                          ? 'bg-green-100 text-green-800' 
+                        doctor.isVerified
+                          ? 'bg-green-100 text-green-800'
                           : 'bg-yellow-100 text-yellow-800'
                       }`}>
                         {doctor.isVerified ? '✓ Так' : '⏳ Ні'}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => handleEditDoctor(doctor)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        Редагувати
+                      </button>
+                      <button
+                        onClick={() => handleDeleteDoctor(doctor.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Видалити
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -375,7 +704,7 @@ export default function AdminUsersPage() {
               {editingCourier ? 'Редагувати кур\'єра' : 'Новий кур\'єр'}
             </h2>
             
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleCourierSubmit}>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -384,8 +713,8 @@ export default function AdminUsersPage() {
                   <input
                     type="text"
                     required
-                    value={formData.lastName}
-                    onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                    value={courierFormData.lastName}
+                    onChange={(e) => setCourierFormData({ ...courierFormData, lastName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -397,8 +726,8 @@ export default function AdminUsersPage() {
                   <input
                     type="text"
                     required
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                    value={courierFormData.firstName}
+                    onChange={(e) => setCourierFormData({ ...courierFormData, firstName: e.target.value })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -410,8 +739,8 @@ export default function AdminUsersPage() {
                 </label>
                 <input
                   type="text"
-                  value={formData.middleName}
-                  onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
+                  value={courierFormData.middleName}
+                  onChange={(e) => setCourierFormData({ ...courierFormData, middleName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -423,8 +752,8 @@ export default function AdminUsersPage() {
                 <input
                   type="email"
                   required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={courierFormData.email}
+                  onChange={(e) => setCourierFormData({ ...courierFormData, email: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>
@@ -436,11 +765,29 @@ export default function AdminUsersPage() {
                 <input
                   type="tel"
                   required
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="+380501234567"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  value={courierFormData.phone}
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    setCourierFormData({ ...courierFormData, phone: formatted });
+                    // Очищаємо помилку при введенні
+                    if (phoneErrors.courier) {
+                      setPhoneErrors(prev => ({ ...prev, courier: '' }));
+                    }
+                  }}
+                  onFocus={(e) => handlePhoneFocus(e, courierFormData.phone, (value) =>
+                    setCourierFormData({ ...courierFormData, phone: value })
+                  )}
+                  onKeyDown={(e) => handlePhoneKeyDown(e, courierFormData.phone, (value) =>
+                    setCourierFormData({ ...courierFormData, phone: value })
+                  )}
+                  placeholder="+38 (0XX) XXX-XX-XX"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    phoneErrors.courier ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 />
+                {phoneErrors.courier && (
+                  <p className="mt-1 text-sm text-red-600">{phoneErrors.courier}</p>
+                )}
               </div>
 
               <div className="mb-4">
@@ -451,8 +798,8 @@ export default function AdminUsersPage() {
                   type="password"
                   required={!editingCourier}
                   minLength={6}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  value={courierFormData.password}
+                  onChange={(e) => setCourierFormData({ ...courierFormData, password: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 />
                 <p className="text-xs text-gray-500 mt-1">Мінімум 6 символів</p>
@@ -464,7 +811,7 @@ export default function AdminUsersPage() {
                 </label>
                 <div className="border border-gray-300 rounded-md p-4 max-h-48 overflow-y-auto">
                   {(editingCourier ? allOrtomats : availableOrtomats)?.map((ortomat: any) => {
-                    const isAssigned = formData.ortomatIds.includes(ortomat.id);
+                    const isAssigned = courierFormData.ortomatIds.includes(ortomat.id);
                     const isOccupied = editingCourier && 
                       !isAssigned && 
                       !availableOrtomats?.some((o: any) => o.id === ortomat.id);
@@ -480,7 +827,7 @@ export default function AdminUsersPage() {
                           type="checkbox"
                           checked={isAssigned}
                           disabled={isOccupied}
-                          onChange={() => toggleOrtomat(ortomat.id)}
+                          onChange={() => toggleCourierOrtomat(ortomat.id)}
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                         />
                         <span className="ml-2 text-sm text-gray-700">
@@ -500,7 +847,7 @@ export default function AdminUsersPage() {
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={handleCloseModal}
+                  onClick={handleCloseCourierModal}
                   className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                 >
                   Скасувати
@@ -513,6 +860,173 @@ export default function AdminUsersPage() {
                   {createCourierMutation.isPending || updateCourierMutation.isPending
                     ? 'Збереження...'
                     : editingCourier
+                    ? 'Оновити'
+                    : 'Створити'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Doctor Modal */}
+      {showDoctorModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+            <h2 className="text-2xl font-bold mb-4">
+              {editingDoctor ? 'Редагувати лікаря' : 'Новий лікар'}
+            </h2>
+
+            <form onSubmit={handleDoctorSubmit}>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Прізвище *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={doctorFormData.lastName}
+                    onChange={(e) => setDoctorFormData({ ...doctorFormData, lastName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Ім'я *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={doctorFormData.firstName}
+                    onChange={(e) => setDoctorFormData({ ...doctorFormData, firstName: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  По батькові
+                </label>
+                <input
+                  type="text"
+                  value={doctorFormData.middleName}
+                  onChange={(e) => setDoctorFormData({ ...doctorFormData, middleName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email *
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={doctorFormData.email}
+                  onChange={(e) => setDoctorFormData({ ...doctorFormData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Телефон *
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={doctorFormData.phone}
+                  onChange={(e) => {
+                    const formatted = formatPhoneNumber(e.target.value);
+                    setDoctorFormData({ ...doctorFormData, phone: formatted });
+                    // Очищаємо помилку при введенні
+                    if (phoneErrors.doctor) {
+                      setPhoneErrors(prev => ({ ...prev, doctor: '' }));
+                    }
+                  }}
+                  onFocus={(e) => handlePhoneFocus(e, doctorFormData.phone, (value) =>
+                    setDoctorFormData({ ...doctorFormData, phone: value })
+                  )}
+                  onKeyDown={(e) => handlePhoneKeyDown(e, doctorFormData.phone, (value) =>
+                    setDoctorFormData({ ...doctorFormData, phone: value })
+                  )}
+                  placeholder="+38 (0XX) XXX-XX-XX"
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 ${
+                    phoneErrors.doctor ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                />
+                {phoneErrors.doctor && (
+                  <p className="mt-1 text-sm text-red-600">{phoneErrors.doctor}</p>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Пароль {editingDoctor && '(залиште порожнім щоб не змінювати)'}
+                </label>
+                <input
+                  type="password"
+                  required={!editingDoctor}
+                  minLength={6}
+                  value={doctorFormData.password}
+                  onChange={(e) => setDoctorFormData({ ...doctorFormData, password: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Мінімум 6 символів</p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Призначити ортомат
+                </label>
+                <select
+                  value={doctorFormData.ortomatId}
+                  onChange={(e) => setDoctorFormData({ ...doctorFormData, ortomatId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Не призначено</option>
+                  {allOrtomats?.map((ortomat: any) => (
+                    <option key={ortomat.id} value={ortomat.id}>
+                      {ortomat.name} - {ortomat.address}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Комісія (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={doctorFormData.commissionPercent}
+                  onChange={(e) => setDoctorFormData({ ...doctorFormData, commissionPercent: Number(e.target.value) })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">Відсоток комісії від продажів (0-100)</p>
+              </div>
+
+              <div className="flex justify-end space-x-3">
+                <button
+                  type="button"
+                  onClick={handleCloseDoctorModal}
+                  className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                >
+                  Скасувати
+                </button>
+                <button
+                  type="submit"
+                  disabled={createDoctorMutation.isPending || updateDoctorMutation.isPending}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {createDoctorMutation.isPending || updateDoctorMutation.isPending
+                    ? 'Збереження...'
+                    : editingDoctor
                     ? 'Оновити'
                     : 'Створити'}
                 </button>

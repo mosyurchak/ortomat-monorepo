@@ -181,6 +181,33 @@ class ApiClient {
     });
   }
 
+  /**
+   * Створення Monobank платежу
+   * Викликається після створення замовлення
+   * Повертає pageUrl для перенаправлення користувача
+   */
+  async createMonoPayment(orderId: string) {
+    return this.request(`/api/orders/${orderId}/create-mono-payment`, {
+      method: 'POST',
+    });
+  }
+
+  /**
+   * Перевірка статусу Monobank invoice
+   */
+  async getMonoInvoiceStatus(invoiceId: string) {
+    return this.request(`/api/mono-payment/status/${invoiceId}`);
+  }
+
+  /**
+   * Ручна перевірка статусу оплати (fallback якщо webhook не спрацював)
+   */
+  async checkPaymentStatus(orderId: string) {
+    return this.request(`/api/orders/${orderId}/check-payment-status`, {
+      method: 'POST',
+    });
+  }
+
   // ==================== AUTH ====================
   
   async login(email: string, password: string) {
@@ -227,6 +254,26 @@ class ApiClient {
 
   async getDoctors() {
     return this.request('/api/users/doctors');
+  }
+
+  async createDoctor(data: any) {
+    return this.request('/api/users/doctors', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateDoctor(id: string, data: any) {
+    return this.request(`/api/users/doctors/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteDoctor(id: string) {
+    return this.request(`/api/users/doctors/${id}`, {
+      method: 'DELETE',
+    });
   }
 
   async updateUser(id: string, data: any) {
@@ -386,6 +433,43 @@ class ApiClient {
 
   async getAvailableOrtomats() {
     return this.request('/api/courier/available/ortomats');
+  }
+
+  // ==================== ADMIN BACKUP ====================
+
+  // Експорт даних - завантажує файл бекапу
+  async exportBackup() {
+    const url = `${this.baseURL}/api/admin/backup`;
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('token')
+      : null;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Помилка створення бекапу');
+    }
+
+    // Отримуємо blob та ім'я файлу з headers
+    const blob = await response.blob();
+    const contentDisposition = response.headers.get('Content-Disposition');
+    const filenameMatch = contentDisposition?.match(/filename="(.+)"/);
+    const filename = filenameMatch ? filenameMatch[1] : 'ortomat-backup.json';
+
+    return { blob, filename };
+  }
+
+  // Імпорт даних з файлу бекапу
+  async importBackup(backupData: any) {
+    return this.request('/api/admin/restore', {
+      method: 'POST',
+      body: JSON.stringify(backupData),
+    });
   }
 }
 

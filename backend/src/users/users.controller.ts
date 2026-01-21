@@ -28,6 +28,41 @@ export class UsersController {
     return this.usersService.findOne(req.user.userId);
   }
 
+  // ⭐ Get all doctors
+  @UseGuards(AuthGuard('jwt'))
+  @Get('doctors')
+  getDoctors() {
+    return this.usersService.getDoctors();
+  }
+
+  // ⭐ Get all couriers
+  @UseGuards(AuthGuard('jwt'))
+  @Get('couriers')
+  getCouriers() {
+    return this.usersService.getCouriers();
+  }
+
+  // ⭐ Create doctor
+  @UseGuards(AuthGuard('jwt'))
+  @Post('doctors')
+  createDoctor(@Body() data: any) {
+    return this.usersService.createDoctor(data);
+  }
+
+  // ⭐ Update doctor
+  @UseGuards(AuthGuard('jwt'))
+  @Patch('doctors/:id')
+  updateDoctor(@Param('id') id: string, @Body() data: any) {
+    return this.usersService.updateDoctor(id, data);
+  }
+
+  // ⭐ Delete doctor
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('doctors/:id')
+  deleteDoctor(@Param('id') id: string) {
+    return this.usersService.deleteDoctor(id);
+  }
+
   // ⭐ Admin stats endpoint
   @Get('admin/stats')
   getAdminStats() {

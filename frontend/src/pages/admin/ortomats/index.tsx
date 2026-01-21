@@ -8,7 +8,7 @@ import { useTranslation } from '../../../hooks/useTranslation';
 export default function AdminOrtomatsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const { t } = useTranslation();
   
   const [showModal, setShowModal] = useState(false);
@@ -152,15 +152,23 @@ export default function AdminOrtomatsPage() {
               {t('admin.manageOrtomats')}
             </h1>
           </div>
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            {t('admin.addOrtomat')}
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              {t('admin.addOrtomat')}
+            </button>
+            <button
+              onClick={logout}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            >
+              Вийти
+            </button>
+          </div>
         </div>
 
         {/* Ortomats List */}

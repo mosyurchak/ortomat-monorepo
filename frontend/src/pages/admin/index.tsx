@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function AdminDashboard() {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const router = useRouter();
   const { t } = useTranslation();
 
@@ -99,10 +99,7 @@ export default function AdminDashboard() {
             </p>
           </div>
           <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              router.push('/login');
-            }}
+            onClick={logout}
             className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
           >
             {t('auth.logout')}
