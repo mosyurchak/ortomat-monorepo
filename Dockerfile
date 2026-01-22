@@ -48,6 +48,10 @@ COPY --from=builder /app/backend/dist ./dist
 COPY backend/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
+# Force cache invalidation for CMD layer
+ARG CACHEBUST=1
+RUN echo "Cache bust: $CACHEBUST"
+
 # NOTE: We keep prisma CLI (devDependency) for runtime migrations
 # DO NOT run "npm prune --production" here!
 
