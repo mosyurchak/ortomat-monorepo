@@ -38,8 +38,15 @@ RUN npm install --legacy-peer-deps
 COPY backend/prisma ./prisma
 RUN npx prisma generate
 
+# Copy migrations
+COPY backend/prisma/migrations ./prisma/migrations
+
 # Copy built application from builder
 COPY --from=builder /app/backend/dist ./dist
+
+# Copy entrypoint script
+COPY backend/entrypoint.sh ./entrypoint.sh
+RUN chmod +x ./entrypoint.sh
 
 # Remove dev dependencies after prisma generate
 RUN npm prune --production
@@ -47,5 +54,5 @@ RUN npm prune --production
 # Expose port
 EXPOSE 3001
 
-# Start application
-CMD ["node", "dist/src/main.js"]
+# Start application with migrations
+CMD ["sh", "entrypoint.sh"]
