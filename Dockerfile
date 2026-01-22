@@ -48,8 +48,8 @@ COPY --from=builder /app/backend/dist ./dist
 COPY backend/entrypoint.sh ./entrypoint.sh
 RUN chmod +x ./entrypoint.sh
 
-# Remove dev dependencies after prisma generate
-RUN npm prune --production
+# NOTE: We keep prisma CLI (devDependency) for runtime migrations
+# DO NOT run "npm prune --production" here!
 
 # Expose port
 EXPOSE 3001
