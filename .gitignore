@@ -6,3 +6,6 @@ dist/
 postgres_data/
 *.log
 .DS_Store
+
+# Railway credentials and sensitive docs
+RAILWAY_DATABASE_URL_FIX.md
