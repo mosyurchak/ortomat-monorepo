@@ -13,6 +13,7 @@ Error: P2021
 2. Railway використовував **Dockerfile** замість nixpacks.toml
 3. Dockerfile мав невірний CMD path: `dist/src/main.js` замість `dist/main.js`
 4. Dockerfile НЕ запускав migrations перед стартом
+5. **КРИТИЧНО:** `npm prune --production` видаляв Prisma CLI який потрібен для runtime migrations!
 
 ---
 
@@ -50,7 +51,36 @@ RUN chmod +x ./entrypoint.sh
 CMD ["sh", "entrypoint.sh"]  # ✅ Запускає migrations + правильний path
 ```
 
-### 3. Оновлено Nixpacks Config (fallback)
+### 3. Видалено npm prune (КРИТИЧНЕ ВИПРАВЛЕННЯ!)
+
+**Проблема:**
+```dockerfile
+RUN npm prune --production  # ❌ Видаляє devDependencies, включно з Prisma CLI!
+```
+
+**package.json:**
+```json
+"devDependencies": {
+  "prisma": "^5.9.0"  ← Prisma CLI в devDependencies!
+}
+```
+
+**Що відбувалося:**
+1. Dockerfile встановлював всі dependencies (включно з prisma CLI)
+2. Dockerfile копіював entrypoint.sh
+3. Dockerfile запускав `npm prune --production` → **ВИДАЛИВ prisma CLI**
+4. Runtime: `entrypoint.sh` намагався запустити `npx prisma migrate deploy`
+5. Помилка: `prisma: command not found` → migrations не виконувалися!
+
+**Виправлення:**
+```dockerfile
+# NOTE: We keep prisma CLI (devDependency) for runtime migrations
+# DO NOT run "npm prune --production" here!
+```
+
+Тепер Prisma CLI залишається в Docker image для виконання migrations під час runtime! ✅
+
+### 4. Оновлено Nixpacks Config (fallback)
 
 **backend/nixpacks.toml** - якщо Railway перемкнеться на nixpacks:
 ```toml
@@ -162,6 +192,7 @@ migrations/
 2. ✅ **Migrations в Dockerfile** - тепер виконуються автоматично
 3. ✅ **Детальна діагностика** - entrypoint.sh показує кожен крок
 4. ✅ **Копіювання migrations** - Dockerfile тепер копіює всі migrations
+5. ✅ **npm prune проблема** - видалено `npm prune --production` щоб залишити Prisma CLI для migrations
 
 ---
 
@@ -169,7 +200,11 @@ migrations/
 - `f735e56` - fix: Додано explicit schema path для Prisma migrations
 - `c5595ac` - fix: Створено детальний entrypoint script з діагностикою
 - `554154d` - fix: Виправлено Dockerfile - додано migrations та змінено CMD
+- `5a34041` - fix: Видалено npm prune щоб залишити Prisma CLI для runtime migrations ⭐ **КРИТИЧНЕ**
 
 **ETA після merge:** 3-5 хвилин
 
-**Найважливіше:** Railway використовує Dockerfile, тому тепер він ТОЧНО запустить migrations! 🚀
+**Найважливіше:**
+- Railway використовує Dockerfile ✅
+- Prisma CLI тепер залишається для runtime migrations ✅
+- Migrations ТОЧНО запустяться! 🚀
