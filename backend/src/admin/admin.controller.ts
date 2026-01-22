@@ -33,8 +33,14 @@ export class AdminController {
       // Відправляємо файл для завантаження
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-      res.send(JSON.stringify(backupData, null, 2));
+      res.send(JSON.stringify(backupData));
     } catch (error) {
+      console.error('❌ Backup creation failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+      });
       throw new HttpException(
         `Помилка створення бекапу: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
