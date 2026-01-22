@@ -9,3 +9,4 @@ postgres_data/
 
 # Railway credentials and sensitive docs
 RAILWAY_DATABASE_URL_FIX.md
+BACKEND_VARIABLES.txt
