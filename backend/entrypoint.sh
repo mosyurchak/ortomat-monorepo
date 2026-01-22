@@ -6,13 +6,23 @@ echo "NODE_ENV: ${NODE_ENV}"
 echo "DATABASE_URL: ${DATABASE_URL:0:30}..." # Show only first 30 chars
 
 echo ""
-echo "🔍 Checking if dist/main.js exists..."
-if [ ! -f "dist/main.js" ]; then
-  echo "❌ ERROR: dist/main.js not found!"
-  ls -la dist/ || echo "dist/ folder not found!"
+echo "🔍 Checking dist/ structure..."
+ls -la dist/
+echo ""
+
+# Check for main.js in common locations
+if [ -f "dist/main.js" ]; then
+  MAIN_JS_PATH="dist/main.js"
+  echo "✅ Found: dist/main.js"
+elif [ -f "dist/src/main.js" ]; then
+  MAIN_JS_PATH="dist/src/main.js"
+  echo "✅ Found: dist/src/main.js"
+else
+  echo "❌ ERROR: main.js not found in dist/ or dist/src/"
+  echo "Searching for main.js..."
+  find dist/ -name "main.js" -type f || echo "No main.js found anywhere in dist/"
   exit 1
 fi
-echo "✅ dist/main.js found"
 
 echo ""
 echo "🗄️ Running Prisma migrations..."
@@ -40,4 +50,5 @@ fi
 
 echo ""
 echo "🚀 Starting application..."
-exec node dist/main.js
+echo "Using: $MAIN_JS_PATH"
+exec node $MAIN_JS_PATH
