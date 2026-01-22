@@ -58,5 +58,5 @@ RUN echo "Cache bust: $CACHEBUST"
 # Expose port
 EXPOSE 3001
 
-# Start application with migrations
-CMD ["sh", "entrypoint.sh"]
+# Start application with migrations (v2 - force rebuild)
+CMD ["sh", "-c", "./entrypoint.sh"]
