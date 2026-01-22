@@ -10,9 +10,10 @@ cmds = [
 cmds = [
   "npx prisma generate",
   "npm run build",
-  "chmod +x start.sh",
-  "ls -la dist/"
+  "chmod +x entrypoint.sh",
+  "ls -la dist/",
+  "ls -la prisma/ | head -20"
 ]
 
 [start]
-cmd = "npx prisma migrate deploy --schema=./prisma/schema.prisma && node dist/main.js"
+cmd = "sh entrypoint.sh"
