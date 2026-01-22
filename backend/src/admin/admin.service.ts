@@ -55,7 +55,7 @@ export class AdminService {
 
         // Логи
         logs: await this.prisma.activityLog.findMany({
-          take: 10000, // Обмежуємо до останніх 10000 логів
+          take: 1000, // Обмежуємо до останніх 1000 логів (для швидкості та розміру)
           orderBy: { createdAt: 'desc' },
         }),
 
