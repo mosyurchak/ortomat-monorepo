@@ -58,5 +58,5 @@ RUN echo "Cache bust: $CACHEBUST"
 # Expose port
 EXPOSE 3001
 
-# Start application with migrations (v2 - force rebuild)
-CMD ["sh", "-c", "./entrypoint.sh"]
+# Start application with migrations (inline to avoid cache issues)
+CMD ["sh", "-c", "echo '🔍 Finding main.js...' && MAIN=$(find dist -name 'main.js' -type f | head -1) && echo \"✅ Found: $MAIN\" && echo '🗄️ Running migrations...' && npx prisma migrate deploy --schema=./prisma/schema.prisma && echo '🚀 Starting app...' && exec node $MAIN"]
