@@ -375,7 +375,7 @@ export default function ProductPage() {
                       type="checkbox"
                       checked={acceptedTerms}
                       onChange={(e) => setAcceptedTerms(e.target.checked)}
-                      className="mt-1 mr-3 w-4 h-4"
+                      className="mt-1 mr-3 w-4 h-4 bg-white border-2 border-gray-800 rounded appearance-none checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
                     />
                     <span className="text-sm text-gray-600">
                       Я приймаю{' '}
