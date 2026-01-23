@@ -109,7 +109,7 @@ export class AdminService {
     console.log('📥 Restoring data...');
 
     // Генеруємо хешований дефолтний пароль для всіх користувачів
-    const DEFAULT_PASSWORD = 'admin123';
+    const DEFAULT_PASSWORD = 'password123';
     const hashedDefaultPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
     console.log(`🔐 Default password for restored users: "${DEFAULT_PASSWORD}"`);
 
@@ -192,7 +192,7 @@ export class AdminService {
     }
 
     console.log('✅ Database restore completed successfully!');
-    console.log('⚠️  ВАЖЛИВО: Всі користувачі відновлені з тимчасовим паролем "admin123"');
+    console.log('⚠️  ВАЖЛИВО: Всі користувачі відновлені з тимчасовим паролем "password123"');
     console.log('⚠️  Користувачі повинні змінити пароль після першого логіну!');
     console.log(`⚠️  Відновлено користувачів: ${data.users?.length || 0}`);
 
