@@ -125,15 +125,15 @@ export default function PaymentPage() {
           <div className="border-t border-b border-gray-200 py-4 mb-6">
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-600">{t('payment.product')}:</span>
-              <span className="font-medium">{order.product?.name || 'N/A'}</span>
+              <span className="font-medium text-gray-900">{order.product?.name || 'N/A'}</span>
             </div>
             <div className="flex items-center justify-between mb-2">
               <span className="text-gray-600">{t('payment.ortomat')}:</span>
-              <span className="font-medium">{order.ortomat?.name || 'N/A'}</span>
+              <span className="font-medium text-gray-900">{order.ortomat?.name || 'N/A'}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-gray-600">{t('payment.cell')}:</span>
-              <span className="font-medium">#{order.cellNumber}</span>
+              <span className="font-medium text-gray-900">#{order.cellNumber}</span>
             </div>
           </div>
 
