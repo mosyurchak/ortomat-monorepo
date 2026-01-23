@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AdminService {
@@ -107,6 +108,11 @@ export class AdminService {
     console.log('✅ Existing data cleared');
     console.log('📥 Restoring data...');
 
+    // Генеруємо хешований дефолтний пароль для всіх користувачів
+    const DEFAULT_PASSWORD = 'admin123';
+    const hashedDefaultPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
+    console.log(`🔐 Default password for restored users: "${DEFAULT_PASSWORD}"`);
+
     // Відновлюємо дані в правильному порядку
     // Спочатку незалежні таблиці, потім залежні
 
@@ -116,7 +122,7 @@ export class AdminService {
         await this.prisma.user.create({
           data: {
             ...user,
-            password: 'RESTORE_REQUIRED', // Тимчасовий пароль, треба змінити!
+            password: hashedDefaultPassword, // Хешований дефолтний пароль
           },
         });
       }
@@ -186,7 +192,9 @@ export class AdminService {
     }
 
     console.log('✅ Database restore completed successfully!');
-    console.log('⚠️  ВАЖЛИВО: Всі користувачі мають пароль "RESTORE_REQUIRED" - необхідно змінити!');
+    console.log('⚠️  ВАЖЛИВО: Всі користувачі відновлені з тимчасовим паролем "admin123"');
+    console.log('⚠️  Користувачі повинні змінити пароль після першого логіну!');
+    console.log(`⚠️  Відновлено користувачів: ${data.users?.length || 0}`);
 
     return { success: true };
   }
