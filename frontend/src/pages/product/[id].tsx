@@ -288,37 +288,37 @@ export default function ProductPage() {
                       {product.manufacturer && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Виробник:</span>
-                          <span className="font-medium">{product.manufacturer}</span>
+                          <span className="font-medium text-gray-900">{product.manufacturer}</span>
                         </div>
                       )}
                       {product.country && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Країна:</span>
-                          <span className="font-medium">{product.country}</span>
+                          <span className="font-medium text-gray-900">{product.country}</span>
                         </div>
                       )}
                       {product.material && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Матеріал:</span>
-                          <span className="font-medium">{product.material}</span>
+                          <span className="font-medium text-gray-900">{product.material}</span>
                         </div>
                       )}
                       {product.color && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Колір:</span>
-                          <span className="font-medium">{product.color}</span>
+                          <span className="font-medium text-gray-900">{product.color}</span>
                         </div>
                       )}
                       {product.type && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Тип:</span>
-                          <span className="font-medium">{product.type}</span>
+                          <span className="font-medium text-gray-900">{product.type}</span>
                         </div>
                       )}
                       {product.size && (
                         <div className="flex justify-between py-2 border-b">
                           <span className="text-gray-600">Розмір:</span>
-                          <span className="font-medium">{product.size}</span>
+                          <span className="font-medium text-gray-900">{product.size}</span>
                         </div>
                       )}
                       

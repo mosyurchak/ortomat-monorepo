@@ -133,12 +133,12 @@ export default function CatalogPage() {
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <span className="text-sm text-gray-500">{t('admin.category')}:</span>
-                        <p className="font-medium">{product.category}</p>
+                        <p className="font-medium text-gray-900">{product.category}</p>
                       </div>
                       {product.size && (
                         <div className="text-right">
                           <span className="text-sm text-gray-500">Розмір:</span>
-                          <p className="font-medium">{product.size}</p>
+                          <p className="font-medium text-gray-900">{product.size}</p>
                         </div>
                       )}
                     </div>
