@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import * as nodemailer from 'nodemailer';
-import { Transporter } from 'nodemailer';
+import { Resend } from 'resend';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as Handlebars from 'handlebars';
@@ -10,35 +9,19 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
-  private transporter: Transporter;
+  private resend: Resend;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    // Ініціалізуємо Nodemailer з Gmail SMTP
-    const emailUser = process.env.SMTP_USER;
-    const emailPass = process.env.SMTP_PASS;
-
-    if (emailUser && emailPass) {
-      this.transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: emailUser,
-          pass: emailPass,
-        },
-      });
-
-      // Перевіряємо з'єднання
-      this.transporter.verify((error, success) => {
-        if (error) {
-          this.logger.error('❌ SMTP connection failed:', error);
-        } else {
-          this.logger.log('✅ SMTP server ready to send emails');
-        }
-      });
+    // Ініціалізуємо Resend
+    const apiKey = process.env.RESEND_API_KEY;
+    if (apiKey) {
+      this.resend = new Resend(apiKey);
+      this.logger.log('✅ Resend initialized');
     } else {
-      this.logger.warn('⚠️ SMTP_USER or SMTP_PASS not set');
+      this.logger.warn('⚠️ RESEND_API_KEY not set');
     }
   }
 
@@ -59,19 +42,23 @@ export class EmailService {
   }
 
   /**
-   * Відправляє email через Nodemailer (Gmail SMTP)
+   * Відправляє email через Resend API
    */
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const mailOptions = {
-      from: process.env.SMTP_FROM || 'noreply@ortomat.com.ua',
-      to,
-      subject,
-      html,
-    };
-
     try {
-      const info = await this.transporter.sendMail(mailOptions);
-      this.logger.log(`✅ Email sent to ${to} (Message ID: ${info.messageId})`);
+      const { data, error } = await this.resend.emails.send({
+        from: process.env.RESEND_FROM || 'Ortomat <onboarding@resend.dev>',
+        to: [to],
+        subject,
+        html,
+      });
+
+      if (error) {
+        this.logger.error(`❌ Failed to send email to ${to}:`, error);
+        throw new Error(error.message);
+      }
+
+      this.logger.log(`✅ Email sent to ${to} (ID: ${data?.id})`);
     } catch (error) {
       this.logger.error(`❌ Failed to send email to ${to}:`, error.message);
       throw error;
