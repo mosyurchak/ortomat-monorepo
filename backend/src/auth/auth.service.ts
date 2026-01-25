@@ -180,6 +180,14 @@ export class AuthService {
       };
     }
 
+    // Перевірка rate limit (максимум 3 спроби за 24 години)
+    try {
+      await this.emailService.checkPasswordResetRateLimit(user.email);
+    } catch (error) {
+      console.error('🚫 Rate limit exceeded for:', email);
+      throw new BadRequestException(error.message);
+    }
+
     try {
       await this.emailService.sendPasswordResetEmail(
         user.id,
