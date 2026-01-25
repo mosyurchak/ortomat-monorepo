@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import sgMail from '@sendgrid/mail';
+import * as nodemailer from 'nodemailer';
+import { Transporter } from 'nodemailer';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import * as Handlebars from 'handlebars';
@@ -9,18 +10,35 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class EmailService {
   private readonly logger = new Logger(EmailService.name);
+  private transporter: Transporter;
 
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
   ) {
-    // Ініціалізуємо SendGrid
-    const apiKey = process.env.SENDGRID_API_KEY;
-    if (apiKey) {
-      sgMail.setApiKey(apiKey);
-      this.logger.log('✅ SendGrid initialized');
+    // Ініціалізуємо Nodemailer з Gmail SMTP
+    const emailUser = process.env.SMTP_USER;
+    const emailPass = process.env.SMTP_PASS;
+
+    if (emailUser && emailPass) {
+      this.transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+
+      // Перевіряємо з'єднання
+      this.transporter.verify((error, success) => {
+        if (error) {
+          this.logger.error('❌ SMTP connection failed:', error);
+        } else {
+          this.logger.log('✅ SMTP server ready to send emails');
+        }
+      });
     } else {
-      this.logger.warn('⚠️ SENDGRID_API_KEY not set');
+      this.logger.warn('⚠️ SMTP_USER or SMTP_PASS not set');
     }
   }
 
@@ -41,21 +59,21 @@ export class EmailService {
   }
 
   /**
-   * Відправляє email через SendGrid API
+   * Відправляє email через Nodemailer (Gmail SMTP)
    */
   private async sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const msg = {
-      to,
+    const mailOptions = {
       from: process.env.SMTP_FROM || 'noreply@ortomat.com.ua',
+      to,
       subject,
       html,
     };
 
     try {
-      await sgMail.send(msg);
-      this.logger.log(`✅ Email sent to ${to}`);
+      const info = await this.transporter.sendMail(mailOptions);
+      this.logger.log(`✅ Email sent to ${to} (Message ID: ${info.messageId})`);
     } catch (error) {
-      this.logger.error(`❌ Failed to send email to ${to}:`, error.response?.body || error.message);
+      this.logger.error(`❌ Failed to send email to ${to}:`, error.message);
       throw error;
     }
   }
@@ -173,8 +191,34 @@ export class EmailService {
         html,
       );
 
+      // Логуємо в базу для tracking
+      await this.prisma.emailLog.create({
+        data: {
+          email,
+          type: 'PASSWORD_RESET',
+          subject: 'Скидання паролю - Ортомат',
+          status: 'SENT',
+          metadata: { userId, token: token.substring(0, 10) + '...' },
+        },
+      });
+
       this.logger.log(`✅ Password reset email sent to ${email}`);
     } catch (error) {
+      // Логуємо failed спробу
+      try {
+        await this.prisma.emailLog.create({
+          data: {
+            email,
+            type: 'PASSWORD_RESET',
+            subject: 'Скидання паролю - Ортомат',
+            status: 'FAILED',
+            errorMessage: error.message,
+          },
+        });
+      } catch (logError) {
+        this.logger.error('Failed to log email error:', logError);
+      }
+
       this.logger.error(`❌ Failed to send password reset email to ${email}:`, error);
       throw error;
     }
@@ -251,7 +295,7 @@ export class EmailService {
         <div class="content">
           <p>Шановний(а) ${data.firstName},</p>
           <p>Вітаємо! Ви отримали комісію за продаж через вашу реферальну ссилку.</p>
-          
+
           <table style="width: 100%; margin: 20px 0;">
             <tr>
               <td><strong>Номер замовлення:</strong></td>
@@ -266,9 +310,9 @@ export class EmailService {
               <td class="amount">${data.commission} ₴</td>
             </tr>
           </table>
-          
+
           <p>Комісія буде доступна для виплати згідно з умовами договору.</p>
-          
+
           <a href="${this.configService.get('FRONTEND_URL')}/doctor/earnings" class="button">
             Переглянути мої доходи
           </a>
@@ -372,14 +416,14 @@ export class EmailService {
         </div>
         <div class="content">
           <p>Ваше замовлення успішно оплачено!</p>
-          
+
           <div class="order-box">
             <h3>Деталі замовлення:</h3>
             <p><strong>Номер замовлення:</strong> ${data.orderId}</p>
             <p><strong>Сума:</strong> ${data.amount} ₴</p>
             ${data.productName ? `<p><strong>Товар:</strong> ${data.productName}</p>` : ''}
           </div>
-          
+
           ${data.ortomatAddress ? `
           <div class="order-box">
             <h3>📍 Де забрати товар:</h3>
@@ -390,15 +434,15 @@ export class EmailService {
             </p>
           </div>
           ` : ''}
-          
+
           <p style="text-align: center; margin-top: 30px;">
             <a href="${this.configService.get('FRONTEND_URL')}/orders/${data.orderId}" class="button">
               Переглянути замовлення
             </a>
           </p>
-          
+
           <p style="color: #666; font-size: 14px; margin-top: 20px;">
-            Якщо у вас виникли питання, зв'яжіться з нами за телефоном: 
+            Якщо у вас виникли питання, зв'яжіться з нами за телефоном:
             <strong>+38 (050) 123-45-67</strong>
           </p>
         </div>
@@ -442,7 +486,7 @@ export class EmailService {
     if (data.commission !== undefined) {
       return this.sendCommissionNotification(email, data);
     }
-    
+
     // Якщо це підтвердження для покупця
     if (data.orderId && data.amount) {
       return this.sendPurchaseConfirmation(email, data);

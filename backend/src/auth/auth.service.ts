@@ -189,6 +189,7 @@ export class AuthService {
       console.log('✅ Password reset email sent to:', email);
     } catch (error) {
       console.error('❌ Email sending failed:', error.message);
+      throw error; // Пробрасуємо помилку для інформування користувача
     }
 
     return {
