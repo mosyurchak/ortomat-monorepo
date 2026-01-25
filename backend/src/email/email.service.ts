@@ -143,6 +143,30 @@ export class EmailService {
   }
 
   /**
+   * Перевірка rate limit для password reset (максимум 3 спроби за 24 години)
+   */
+  async checkPasswordResetRateLimit(email: string): Promise<void> {
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const recentAttempts = await this.prisma.emailLog.count({
+      where: {
+        email,
+        type: 'PASSWORD_RESET',
+        sentAt: {
+          gte: oneDayAgo,
+        },
+      },
+    });
+
+    if (recentAttempts >= 3) {
+      this.logger.warn(`🚫 Rate limit exceeded for ${email}: ${recentAttempts} attempts in 24h`);
+      throw new Error('Занадто багато спроб відновлення паролю. Спробуйте пізніше (максимум 3 спроби на добу).');
+    }
+
+    this.logger.log(`✅ Rate limit check passed for ${email}: ${recentAttempts}/3 attempts`);
+  }
+
+  /**
    * Відправка email для скидання паролю
    */
   async sendPasswordResetEmail(
