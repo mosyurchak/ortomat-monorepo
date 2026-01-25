@@ -212,7 +212,7 @@ export class EmailService {
             type: 'PASSWORD_RESET',
             subject: 'Скидання паролю - Ортомат',
             status: 'FAILED',
-            errorMessage: error.message,
+            error: error.message,
           },
         });
       } catch (logError) {
