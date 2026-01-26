@@ -8,8 +8,11 @@
   Delete,
   UseGuards,
   Request,
+  ForbiddenException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UsersService } from './users.service';
 
 @Controller('users')
@@ -43,41 +46,56 @@ export class UsersController {
   }
 
   // ⭐ Create doctor
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Post('doctors')
   createDoctor(@Body() data: any) {
     return this.usersService.createDoctor(data);
   }
 
   // ⭐ Update doctor
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Patch('doctors/:id')
   updateDoctor(@Param('id') id: string, @Body() data: any) {
     return this.usersService.updateDoctor(id, data);
   }
 
   // ⭐ Delete doctor
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Delete('doctors/:id')
   deleteDoctor(@Param('id') id: string) {
     return this.usersService.deleteDoctor(id);
   }
 
   // ⭐ Admin stats endpoint
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles('ADMIN')
   @Get('admin/stats')
   getAdminStats() {
     return this.usersService.getAdminStats();
   }
 
-  // ⭐ Stats endpoint БЕЗ auth guard для тестування
+  // ⭐ Stats endpoint для лікарів
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id/stats')
-  getDoctorStats(@Param('id') id: string) {
+  getDoctorStats(@Param('id') id: string, @Request() req) {
+    // Лікарі можуть дивитись тільки свою статистику, адміни - будь-яку
+    if (req.user.role !== 'ADMIN' && req.user.userId !== id) {
+      throw new ForbiddenException('You can only view your own statistics');
+    }
     return this.usersService.getDoctorStats(id);
   }
 
   // ⭐ Courier ortomats endpoint
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id/courier-ortomats')
-  getCourierOrtomats(@Param('id') id: string) {
+  getCourierOrtomats(@Param('id') id: string, @Request() req) {
+    // Кур'єри можуть дивитись тільки свої ортомати, адміни - будь-які
+    if (req.user.role !== 'ADMIN' && req.user.userId !== id) {
+      throw new ForbiddenException('You can only view your own ortomats');
+    }
     return this.usersService.getCourierOrtomats(id);
   }
 

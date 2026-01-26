@@ -7,6 +7,7 @@ import { api } from '../../lib/api';
 import { ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import axios from 'axios';
+import DOMPurify from 'isomorphic-dompurify';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -271,9 +272,14 @@ export default function ProductPage() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
                       Опис товару
                     </h2>
-                    <div 
+                    <div
                       className="text-gray-600 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: product.description }}
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(product.description, {
+                          ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li', 'a'],
+                          ALLOWED_ATTR: ['href', 'target', 'rel']
+                        })
+                      }}
                     />
                   </div>
                 )}
