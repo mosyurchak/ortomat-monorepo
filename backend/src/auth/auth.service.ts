@@ -17,7 +17,7 @@ export class AuthService {
 
   async validateUser(email: string, password: string): Promise<any> {
     console.log('🔍 Validating user:', email);
-    console.log('🔑 Password from request:', password);
+    // ✅ SECURITY: Removed password logging
 
     const user = await this.usersService.findByEmail(email);
 
@@ -26,7 +26,7 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    console.log('💾 Stored password hash:', user.password);
+    // ✅ SECURITY: Removed hash logging
     console.log('🔐 Comparing passwords...');
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -76,17 +76,17 @@ export class AuthService {
    */
   async register(registerDto: RegisterDto & { inviteToken?: string }) {
     console.log('📝 Registering new doctor:', registerDto.email);
-    console.log('🔑 Password from request:', registerDto.password);
-    
+    // ✅ SECURITY: Removed password logging
+
     // Перевірка invite токену якщо є
     if (registerDto.inviteToken) {
       console.log('🎫 Validating invite token:', registerDto.inviteToken);
       const inviteValidation = await this.inviteService.validateInvite(registerDto.inviteToken);
-      
+
       if (!inviteValidation.valid) {
         throw new BadRequestException('Invalid or expired invite link');
       }
-      
+
       console.log('✅ Invite valid for ortomat:', inviteValidation.ortomatName);
     }
 
@@ -100,7 +100,7 @@ export class AuthService {
     // Хешуємо пароль
     console.log('🔐 Hashing password with bcrypt (10 rounds)...');
     const hashedPassword = await bcrypt.hash(registerDto.password, 10);
-    console.log('💾 Hashed password generated:', hashedPassword);
+    // ✅ SECURITY: Removed hash logging
 
     // Створюємо користувача
     const user = await this.usersService.create({

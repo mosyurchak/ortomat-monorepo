@@ -1,10 +1,21 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { WsAdapter } from '@nestjs/platform-ws';
+import { ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ✅ SECURITY: Global validation pipe
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true, // Strip non-DTO properties
+    forbidNonWhitelisted: true, // Throw error on extra properties
+    transform: true, // Auto-transform to DTO types
+    transformOptions: {
+      enableImplicitConversion: false, // Prevent type coercion attacks
+    },
+  }));
 
   // ✅ Payload limit для великих backup файлів
   app.use(express.json({ limit: '50mb' }));
@@ -13,9 +24,34 @@ async function bootstrap() {
   // ✅ WebSocket adapter для ESP32
   app.useWebSocketAdapter(new WsAdapter(app));
   
-  // ✅ СПРОЩЕНА CORS конфігурація (без callback функції)
+  // ✅ CORS конфігурація з whitelist дозволених origins
   app.enableCors({
-    origin: '*',
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'https://ortomat-monorepo.vercel.app',
+        'https://ortomat.com.ua',
+        'https://www.ortomat.com.ua',
+      ];
+
+      // Дозволяємо запити без origin (Postman, curl, mobile apps)
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      // Перевіряємо точні збіги
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      // Дозволяємо всі Vercel preview deployments
+      if (origin.endsWith('.vercel.app')) {
+        return callback(null, true);
+      }
+
+      // Блокуємо інші origins
+      callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
