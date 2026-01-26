@@ -11,8 +11,8 @@ import {
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminService } from './admin.service';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
 
 @Controller('admin')
 @UseGuards(AuthGuard('jwt'), RolesGuard)
