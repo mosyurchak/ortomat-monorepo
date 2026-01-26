@@ -11,6 +11,18 @@ import DOMPurify from 'isomorphic-dompurify';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+// ✅ Safe sanitization with error handling
+function safeSanitize(html: string | undefined | null, options: any): string {
+  if (!html) return '';
+  try {
+    return DOMPurify.sanitize(html, options) as string;
+  } catch (error) {
+    console.error('❌ DOMPurify sanitize error:', error);
+    // Fallback: strip all HTML tags
+    return html.replace(/<[^>]*>/g, '');
+  }
+}
+
 export default function ProductPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -275,7 +287,7 @@ export default function ProductPage() {
                     <div
                       className="text-gray-600 prose prose-sm max-w-none"
                       dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(product.description, {
+                        __html: safeSanitize(product.description, {
                           ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li', 'a'],
                           ALLOWED_ATTR: ['href', 'target', 'rel']
                         })
