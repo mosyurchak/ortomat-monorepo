@@ -1,8 +1,8 @@
 import { Controller, Post, Get, Param, Query, Body, UseGuards } from '@nestjs/common';
 import { InviteService } from './invite.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { User } from '../auth/user.decorator';
 
 @Controller('invite')
