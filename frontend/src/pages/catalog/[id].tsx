@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
+import DOMPurify from 'isomorphic-dompurify';
 
 export default function CatalogPage() {
   const { t } = useTranslation();
@@ -124,9 +125,14 @@ export default function CatalogPage() {
                     </h3>
                     
                     {product.description && (
-                      <div 
+                      <div
                         className="text-gray-600 text-sm line-clamp-2"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(product.description, {
+                            ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em'],
+                            ALLOWED_ATTR: []
+                          })
+                        }}
                       />
                     )}
 
