@@ -9,7 +9,7 @@ import DOMPurify from 'isomorphic-dompurify';
 function safeSanitize(html: string | undefined | null, options: any): string {
   if (!html) return '';
   try {
-    return DOMPurify.sanitize(html, options);
+    return DOMPurify.sanitize(html, options) as string;
   } catch (error) {
     console.error('❌ DOMPurify sanitize error:', error);
     // Fallback: strip all HTML tags
