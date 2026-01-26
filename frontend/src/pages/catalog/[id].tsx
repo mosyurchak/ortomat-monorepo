@@ -5,6 +5,18 @@ import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
 import DOMPurify from 'isomorphic-dompurify';
 
+// ✅ Safe sanitization with error handling
+function safeSanitize(html: string | undefined | null, options: any): string {
+  if (!html) return '';
+  try {
+    return DOMPurify.sanitize(html, options);
+  } catch (error) {
+    console.error('❌ DOMPurify sanitize error:', error);
+    // Fallback: strip all HTML tags
+    return html.replace(/<[^>]*>/g, '');
+  }
+}
+
 export default function CatalogPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -128,7 +140,7 @@ export default function CatalogPage() {
                       <div
                         className="text-gray-600 text-sm line-clamp-2"
                         dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(product.description, {
+                          __html: safeSanitize(product.description, {
                             ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em'],
                             ALLOWED_ATTR: []
                           })
