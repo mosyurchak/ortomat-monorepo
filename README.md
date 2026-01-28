@@ -476,14 +476,30 @@ npx prisma studio
 **Environment Variables на Railway:**
 ```
 DATABASE_URL (автоматично з PostgreSQL)
-JWT_SECRET
+JWT_SECRET (генеруйте сильний секрет - див. інструкції нижче)
 FRONTEND_URL
-SENDGRID_API_KEY
-SMTP_FROM
-LIQPAY_PUBLIC_KEY
-LIQPAY_PRIVATE_KEY
+RESEND_API_KEY
+RESEND_FROM
+MONO_TOKEN
 PORT=3001
 ```
+
+**⚠️ ВАЖЛИВО: JWT_SECRET Security**
+
+JWT_SECRET повинен бути криптографічно сильним випадковим рядком.
+
+**Згенерувати сильний JWT_SECRET:**
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+**Оновити JWT_SECRET на Railway:**
+1. Відкрийте Railway Dashboard → ваш проект → Variables
+2. Додайте/оновіть змінну `JWT_SECRET` зі згенерованим значенням
+3. Збережіть зміни - Railway автоматично перезапустить сервіс
+4. ⚠️ НІКОЛИ не використовуйте приклади з `.env.example` в production!
+
+**Примітка:** Зміна JWT_SECRET призведе до інвалідації всіх існуючих JWT токенів, тому користувачі мають перелогінитись.
 
 ### Frontend (Vercel)
 
@@ -526,11 +542,13 @@ NEXT_PUBLIC_FRONTEND_URL=https://ortomat.com.ua
 - Створювати invite посилання для лікарів
 - Переглядати всіх користувачів
 
-**Тестовий акаунт:**
+**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
 ```
 Email: admin@ortomat.ua
 Password: password123
 ```
+
+⚠️ **ВАЖЛИВО:** Ці акаунти створюються лише через `npx prisma db seed` і НЕ повинні використовуватись в production!
 
 #### 2. Doctor 👨‍⚕️
 **Доступ:** Особистий кабінет
@@ -544,7 +562,7 @@ Password: password123
 
 **Реєстрація:** Публічна через `/register`
 
-**Тестовий акаунт:**
+**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
 ```
 Email: doctor@ortomat.ua
 Password: password123
@@ -561,7 +579,7 @@ Password: password123
 
 **Реєстрація:** Тільки через Admin панель
 
-**Тестовий акаунт:**
+**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
 ```
 Email: courier@ortomat.ua
 Password: password123
@@ -719,11 +737,14 @@ npm run start:dev
 ### Проблема: JWT токен invalid
 
 ```bash
-# Перегенеруйте JWT_SECRET
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# Перегенеруйте сильний JWT_SECRET (64 bytes в base64)
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
 
-# Оновіть в .env
-JWT_SECRET=new_generated_secret
+# Оновіть в .env (локально)
+JWT_SECRET=wX8F2VpSNEGuFP2990cI6aIqhZicRX3ugaxtNFm96hsp6ZOH9IsBKD9WxaY06T1Wn6DsM5nM0oJUfR5zz9+5KQ==
+
+# Оновіть в Railway (production)
+# Railway Dashboard → Variables → JWT_SECRET → Save
 ```
 
 ### Проблема: Prisma migration failed
@@ -809,11 +830,17 @@ npm run type-check
 
 ### Рекомендації
 
-- Використовуйте strong JWT secrets (32+ символів)
-- Налаштуйте rate limiting
-- Включіть CORS тільки для trusted domains
-- Регулярно робіть backup БД
-- Моніторьте логи на підозрілу активність
+- ✅ Використовуйте strong JWT secrets (64+ bytes, base64 encoded)
+  ```bash
+  node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+  ```
+- ⚠️ Налаштуйте rate limiting для auth endpoints
+- ✅ Включіть CORS тільки для trusted domains
+- 🔒 Backend HTML sanitization для product descriptions (XSS protection)
+- 🔐 Role-based access control (RBAC) на всіх admin endpoints
+- 💾 Регулярно робіть backup БД
+- 📊 Моніторьте логи на підозрілу активність
+- 🔄 Validation pipe на всіх DTOs
 
 ---
 
