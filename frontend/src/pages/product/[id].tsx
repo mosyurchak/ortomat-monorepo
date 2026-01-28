@@ -7,7 +7,6 @@ import { api } from '../../lib/api';
 import { ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import axios from 'axios';
-import DOMPurify from 'isomorphic-dompurify';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -274,12 +273,7 @@ export default function ProductPage() {
                     </h2>
                     <div
                       className="text-gray-600 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(product.description, {
-                          ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li', 'a'],
-                          ALLOWED_ATTR: ['href', 'target', 'rel']
-                        })
-                      }}
+                      dangerouslySetInnerHTML={{ __html: product.description }}
                     />
                   </div>
                 )}

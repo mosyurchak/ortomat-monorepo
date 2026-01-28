@@ -17,10 +17,16 @@ async function bootstrap() {
   // ✅ SECURITY: Global validation pipe
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true, // Strip non-DTO properties
-    forbidNonWhitelisted: true, // Throw error on extra properties
+    forbidNonWhitelisted: false, // Allow extra properties (for debugging - change to true in production)
     transform: true, // Auto-transform to DTO types
     transformOptions: {
       enableImplicitConversion: false, // Prevent type coercion attacks
+    },
+    // Додаткове логування для діагностики
+    disableErrorMessages: false,
+    validationError: {
+      target: false,
+      value: true,
     },
   }));
 

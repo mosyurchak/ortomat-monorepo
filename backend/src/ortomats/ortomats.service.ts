@@ -226,6 +226,55 @@ export class OrtomatsService {
     return { success: true, message: `Cell ${cellNumber} opened` };
   }
 
+  // ✅ SECURITY: Відкрити комірку з перевіркою оплати
+  async openCellWithPaymentVerification(
+    ortomatId: string,
+    cellNumber: number,
+    saleId: string,
+  ) {
+    console.log(`🔓 Opening cell with payment verification: ortomat=${ortomatId}, cell=${cellNumber}, sale=${saleId}`);
+
+    // Перевіряємо що sale існує
+    const sale = await this.prisma.sale.findUnique({
+      where: { id: saleId },
+    });
+
+    if (!sale) {
+      throw new BadRequestException('Sale not found');
+    }
+
+    // Перевіряємо статус оплати
+    if (sale.status !== 'completed') {
+      throw new BadRequestException(
+        `Payment not completed. Current status: ${sale.status}. Please complete payment first.`,
+      );
+    }
+
+    // Перевіряємо що sale відповідає ортомату
+    if (sale.ortomatId !== ortomatId) {
+      throw new BadRequestException('Sale ortomat does not match requested ortomat');
+    }
+
+    // Перевіряємо що sale відповідає комірці
+    if (sale.cellNumber !== cellNumber) {
+      throw new BadRequestException('Sale cell number does not match requested cell');
+    }
+
+    console.log(`✅ Payment verified for sale ${saleId}: status=${sale.status}, amount=${sale.amount}`);
+
+    // Відкриваємо комірку
+    const result = await this.openCell(ortomatId, cellNumber);
+
+    console.log(`✅ Cell ${cellNumber} opened successfully for paid order`);
+
+    return {
+      ...result,
+      saleId,
+      orderNumber: sale.orderNumber,
+      amount: sale.amount,
+    };
+  }
+
   // ✅ ВИПРАВЛЕНО: При призначенні товару комірка стає СИНЬОЮ (пуста, але з товаром)
   async updateCellProduct(ortomatId: string, cellNumber: number, productId: string | null) {
     let cell = await this.prisma.cell.findFirst({

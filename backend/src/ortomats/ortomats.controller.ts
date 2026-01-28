@@ -8,13 +8,10 @@ import {
   Delete,
   UseGuards,
   Query,
-  UnauthorizedException,
-  BadRequestException,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from './ortomats.service';
 import { OrtomatsGateway } from './ortomats.gateway';
 import { CreateOrtomatDto, UpdateOrtomatDto } from './dto/create-ortomat.dto';
@@ -25,7 +22,6 @@ export class OrtomatsController {
   constructor(
     private readonly ortomatsService: OrtomatsService,
     private readonly ortomatsGateway: OrtomatsGateway,
-    private readonly prisma: PrismaService,
   ) {}
 
   // ==================== WebSocket Device Status ====================
@@ -149,53 +145,18 @@ export class OrtomatsController {
   ) {
     const cellNum = parseInt(cellNumber);
 
-    // ✅ SECURITY: Перевірка наявності saleId
-    if (!body.saleId) {
-      throw new BadRequestException('saleId is required for opening cells');
-    }
-
-    console.log(`🔓 Opening cell for customer: ortomat=${id}, cell=${cellNum}, sale=${body.saleId}`);
-
-    // ✅ SECURITY: Перевірка оплати
-    const sale = await this.prisma.sale.findUnique({
-      where: { id: body.saleId },
-    });
-
-    if (!sale) {
-      throw new BadRequestException('Sale not found');
-    }
-
-    // Перевіряємо статус оплати
-    if (sale.status !== 'completed') {
-      throw new UnauthorizedException(
-        `Payment not completed. Current status: ${sale.status}. Please complete payment first.`,
-      );
-    }
-
-    // Перевіряємо що sale відповідає ортомату та комірці
-    if (sale.ortomatId !== id) {
-      throw new BadRequestException('Sale ortomat does not match requested ortomat');
-    }
-
-    if (sale.cellNumber !== cellNum) {
-      throw new BadRequestException('Sale cell number does not match requested cell');
-    }
-
-    console.log(`✅ Payment verified for sale ${body.saleId}: status=${sale.status}, amount=${sale.amount}`);
-
-    // Викликаємо сервіс для відкриття
-    const result = await this.ortomatsService.openCell(id, cellNum);
-
-    // Логування успіху
-    console.log(`✅ Cell ${cellNum} opened successfully for paid order`);
+    // Викликаємо сервіс з перевіркою оплати
+    const result = await this.ortomatsService.openCellWithPaymentVerification(
+      id,
+      cellNum,
+      body.saleId,
+    );
 
     return {
       success: true,
       message: `Комірка ${cellNum} відкрита. Заберіть свій товар!`,
       cellNumber: cellNum,
       ortomatId: id,
-      saleId: body.saleId,
-      orderNumber: sale.orderNumber,
       ...result,
     };
   }
