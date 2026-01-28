@@ -3,9 +3,16 @@ import { AppModule } from './app.module';
 import { WsAdapter } from '@nestjs/platform-ws';
 import { ValidationPipe } from '@nestjs/common';
 import * as express from 'express';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ✅ SECURITY: Security headers with Helmet
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for API (frontend handles it)
+    crossOriginEmbedderPolicy: false, // Needed for CORS
+  }));
 
   // ✅ SECURITY: Global validation pipe
   app.useGlobalPipes(new ValidationPipe({

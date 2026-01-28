@@ -238,13 +238,19 @@ export class AuthService {
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      console.log('❌ User not found');
-      throw new BadRequestException('User not found');
+      // ✅ SECURITY: Don't reveal user existence - return success message
+      console.log('⚠️ User not found, but returning success message');
+      return {
+        message: 'If an account exists with this email, a verification email has been sent.',
+      };
     }
 
     if (user.isVerified) {
-      console.log('⚠️ Email already verified');
-      throw new BadRequestException('Email already verified');
+      // ✅ SECURITY: Don't reveal verification status - return generic message
+      console.log('⚠️ Email already verified, returning generic message');
+      return {
+        message: 'If an account exists with this email, a verification email has been sent.',
+      };
     }
 
     try {
@@ -256,11 +262,14 @@ export class AuthService {
       console.log('✅ Verification email resent to:', email);
     } catch (error) {
       console.error('❌ Email sending failed:', error.message);
-      throw new BadRequestException('Failed to send verification email');
+      // ✅ SECURITY: Don't expose internal errors
+      return {
+        message: 'If an account exists with this email, a verification email has been sent.',
+      };
     }
 
     return {
-      message: 'Verification email sent. Please check your inbox.',
+      message: 'If an account exists with this email, a verification email has been sent.',
     };
   }
 }
