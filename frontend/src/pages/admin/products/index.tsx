@@ -83,7 +83,7 @@ export default function AdminProducts() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<Product> }) => {
       const token = localStorage.getItem('token');
-      const response = await axios.put(`${API_URL}/api/products/${id}`, data, {
+      const response = await axios.patch(`${API_URL}/api/products/${id}`, data, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data;
