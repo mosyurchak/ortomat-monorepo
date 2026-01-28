@@ -3,6 +3,9 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
 import { RegisterDto } from './dto/register.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -56,65 +59,36 @@ export class AuthController {
    * 📧 Повторна відправка email верифікації
    * POST /auth/resend-verification
    * Body: { email: "user@example.com" }
+   * ✅ SECURITY: Email validation through DTO
    */
   @Post('resend-verification')
   @HttpCode(200)
-  async resendVerification(@Body('email') email: string) {
-    if (!email) {
-      return {
-        success: false,
-        message: 'Email is required',
-      };
-    }
-
-    return this.authService.resendVerificationEmail(email);
+  async resendVerification(@Body() dto: ResendVerificationDto) {
+    return this.authService.resendVerificationEmail(dto.email);
   }
 
   /**
    * 🔑 Запит на відновлення паролю
    * POST /auth/forgot-password
    * Body: { email: "user@example.com" }
-   * ✅ SECURITY: Rate limited to 3 attempts per 15 minutes
+   * ✅ SECURITY: Rate limited to 3 attempts per 15 minutes + Email validation through DTO
    */
   @Throttle({ default: { limit: 3, ttl: 900000 } }) // 3 per 15 minutes
   @Post('forgot-password')
   @HttpCode(200)
-  async forgotPassword(@Body('email') email: string) {
-    if (!email) {
-      return {
-        success: false,
-        message: 'Email is required',
-      };
-    }
-
-    return this.authService.forgotPassword(email);
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto.email);
   }
 
   /**
    * 🔐 Скидання паролю
    * POST /auth/reset-password
    * Body: { token: "xxx", newPassword: "xxx" }
+   * ✅ SECURITY: Password validation through DTO (MinLength 8, MaxLength 128)
    */
   @Post('reset-password')
   @HttpCode(200)
-  async resetPassword(
-    @Body('token') token: string,
-    @Body('newPassword') newPassword: string,
-  ) {
-    if (!token || !newPassword) {
-      return {
-        success: false,
-        message: 'Token and new password are required',
-      };
-    }
-
-    if (newPassword.length < 8) {
-      return {
-        success: false,
-        message: 'Password must be at least 8 characters long',
-      };
-    }
-
-    return this.authService.resetPassword(token, newPassword);
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 }
