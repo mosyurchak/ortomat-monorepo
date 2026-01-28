@@ -4,12 +4,6 @@ import Link from 'next/link';
 import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
 
-// Strip HTML tags safely (no external dependency needed)
-function stripHtml(html: string | undefined | null): string {
-  if (!html) return '';
-  return html.replace(/<[^>]*>/g, '');
-}
-
 export default function CatalogPage() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -130,9 +124,10 @@ export default function CatalogPage() {
                     </h3>
                     
                     {product.description && (
-                      <p className="text-gray-600 text-sm line-clamp-2">
-                        {stripHtml(product.description)}
-                      </p>
+                      <div
+                        className="text-gray-600 text-sm line-clamp-2"
+                        dangerouslySetInnerHTML={{ __html: product.description }}
+                      />
                     )}
 
                     <div className="flex items-center justify-between mb-4">

@@ -1,12 +1,13 @@
 ﻿// backend/src/products/products.service.ts
-import { 
-  Injectable, 
-  NotFoundException, 
+import {
+  Injectable,
+  NotFoundException,
   ConflictException,
-  BadRequestException 
+  BadRequestException
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto/create-product.dto';
+import { SanitizerUtil } from '../common/sanitizer.util';
 
 @Injectable()
 export class ProductsService {
@@ -28,11 +29,14 @@ export class ProductsService {
       throw new BadRequestException('Максимум 4 додаткових зображення');
     }
 
+    // ✅ SECURITY: Sanitize HTML description before saving
+    const sanitizedDescription = SanitizerUtil.sanitizeProductDescription(createProductDto.description);
+
     return this.prisma.product.create({
       data: {
         name: createProductDto.name,
         sku: createProductDto.sku,
-        description: createProductDto.description,
+        description: sanitizedDescription,
         size: createProductDto.size,
         price: createProductDto.price,
         mainImage: createProductDto.mainImage,
@@ -114,12 +118,17 @@ export class ProductsService {
       updateProductDto.images = images;
     }
 
+    // ✅ SECURITY: Sanitize HTML description before updating
+    if (updateProductDto.description) {
+      updateProductDto.description = SanitizerUtil.sanitizeProductDescription(updateProductDto.description);
+    }
+
     return this.prisma.product.update({
       where: { id },
       data: {
         ...updateProductDto,
-        ...(updateProductDto.mainImage && { 
-          imageUrl: updateProductDto.mainImage 
+        ...(updateProductDto.mainImage && {
+          imageUrl: updateProductDto.mainImage
         }),
       },
       include: {
