@@ -3,19 +3,11 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
-import DOMPurify from 'isomorphic-dompurify';
 
-// ✅ Safe sanitization with error handling
-function safeSanitize(html: string | undefined | null, options: any): string {
+// Strip HTML tags safely (no external dependency needed)
+function stripHtml(html: string | undefined | null): string {
   if (!html) return '';
-  try {
-    // DOMPurify.sanitize returns TrustedHTML, convert to string
-    return String(DOMPurify.sanitize(html, options));
-  } catch (error) {
-    console.error('❌ DOMPurify sanitize error:', error);
-    // Fallback: strip all HTML tags
-    return html.replace(/<[^>]*>/g, '');
-  }
+  return html.replace(/<[^>]*>/g, '');
 }
 
 export default function CatalogPage() {
@@ -138,15 +130,9 @@ export default function CatalogPage() {
                     </h3>
                     
                     {product.description && (
-                      <div
-                        className="text-gray-600 text-sm line-clamp-2"
-                        dangerouslySetInnerHTML={{
-                          __html: safeSanitize(product.description, {
-                            ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em'],
-                            ALLOWED_ATTR: []
-                          })
-                        }}
-                      />
+                      <p className="text-gray-600 text-sm line-clamp-2">
+                        {stripHtml(product.description)}
+                      </p>
                     )}
 
                     <div className="flex items-center justify-between mb-4">

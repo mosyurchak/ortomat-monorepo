@@ -7,21 +7,13 @@ import { api } from '../../lib/api';
 import { ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
 import axios from 'axios';
-import DOMPurify from 'isomorphic-dompurify';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// ✅ Safe sanitization with error handling
-function safeSanitize(html: string | undefined | null, options: any): string {
+// Strip HTML tags safely (no external dependency needed)
+function stripHtml(html: string | undefined | null): string {
   if (!html) return '';
-  try {
-    // DOMPurify.sanitize returns TrustedHTML, convert to string
-    return String(DOMPurify.sanitize(html, options));
-  } catch (error) {
-    console.error('❌ DOMPurify sanitize error:', error);
-    // Fallback: strip all HTML tags
-    return html.replace(/<[^>]*>/g, '');
-  }
+  return html.replace(/<[^>]*>/g, '');
 }
 
 export default function ProductPage() {
@@ -285,15 +277,9 @@ export default function ProductPage() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
                       Опис товару
                     </h2>
-                    <div
-                      className="text-gray-600 prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{
-                        __html: safeSanitize(product.description, {
-                          ALLOWED_TAGS: ['p', 'br', 'b', 'i', 'u', 'strong', 'em', 'ul', 'ol', 'li', 'a'],
-                          ALLOWED_ATTR: ['href', 'target', 'rel']
-                        })
-                      }}
-                    />
+                    <p className="text-gray-600">
+                      {stripHtml(product.description)}
+                    </p>
                   </div>
                 )}
 
