@@ -10,12 +10,6 @@ import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// Strip HTML tags safely (no external dependency needed)
-function stripHtml(html: string | undefined | null): string {
-  if (!html) return '';
-  return html.replace(/<[^>]*>/g, '');
-}
-
 export default function ProductPage() {
   const router = useRouter();
   const { t } = useTranslation();
@@ -277,9 +271,10 @@ export default function ProductPage() {
                     <h2 className="text-lg font-semibold text-gray-900 mb-3">
                       Опис товару
                     </h2>
-                    <p className="text-gray-600">
-                      {stripHtml(product.description)}
-                    </p>
+                    <div
+                      className="text-gray-600 prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: product.description }}
+                    />
                   </div>
                 )}
 
