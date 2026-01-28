@@ -1,4 +1,5 @@
 ﻿import { Controller, Post, Body, UseGuards, Request, Get, Query, HttpCode } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
 import { RegisterDto } from './dto/register.dto';
@@ -9,7 +10,9 @@ export class AuthController {
 
   /**
    * 📝 Реєстрація (тільки для лікарів)
+   * ✅ SECURITY: Rate limited to 3 requests per hour to prevent spam
    */
+  @Throttle({ default: { limit: 3, ttl: 3600000 } }) // 3 per hour
   @Post('register')
   async register(@Body() registerDto: RegisterDto) {
     return this.authService.register(registerDto);
@@ -17,7 +20,9 @@ export class AuthController {
 
   /**
    * 🔐 Логін
+   * ✅ SECURITY: Rate limited to 5 attempts per minute to prevent brute force
    */
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per minute
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(200)
@@ -69,7 +74,9 @@ export class AuthController {
    * 🔑 Запит на відновлення паролю
    * POST /auth/forgot-password
    * Body: { email: "user@example.com" }
+   * ✅ SECURITY: Rate limited to 3 attempts per 15 minutes
    */
+  @Throttle({ default: { limit: 3, ttl: 900000 } }) // 3 per 15 minutes
   @Post('forgot-password')
   @HttpCode(200)
   async forgotPassword(@Body('email') email: string) {

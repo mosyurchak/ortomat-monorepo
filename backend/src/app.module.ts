@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { OrtomatsModule } from './ortomats/ortomats.module';
@@ -21,6 +23,14 @@ import { AdminModule } from './admin/admin.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    // ✅ SECURITY: Rate limiting to prevent brute force attacks
+    ThrottlerModule.forRoot([
+      {
+        name: 'default',
+        ttl: 60000, // 60 seconds
+        limit: 20, // 20 requests per minute (default for all endpoints)
+      },
+    ]),
     PrismaModule,
     AuthModule,
     UsersModule,
@@ -36,6 +46,13 @@ import { AdminModule } from './admin/admin.module';
     MonoPaymentModule,
     SettingsModule,
     AdminModule,
+  ],
+  providers: [
+    // ✅ SECURITY: Apply ThrottlerGuard globally
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
   ],
 })
 export class AppModule {}

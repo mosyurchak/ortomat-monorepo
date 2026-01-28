@@ -1,23 +1,29 @@
-import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
+import { IsString, IsNumber, IsOptional, Min, MaxLength, IsNotEmpty, IsIn } from 'class-validator';
 
 export class CreateOrtomatDto {
-  @IsString()
+  @IsString({ message: 'Назва має бути рядком' })
+  @IsNotEmpty({ message: 'Назва обов\'язкова' })
+  @MaxLength(255, { message: 'Назва занадто довга' })
   name: string;
 
-  @IsString()
+  @IsString({ message: 'Адреса має бути рядком' })
+  @IsNotEmpty({ message: 'Адреса обов\'язкова' })
+  @MaxLength(500, { message: 'Адреса занадто довга' })
   address: string;
 
   @IsOptional()
   @IsString()
-  city?: string; // ✅ ДОДАНО: Місто
+  @MaxLength(100, { message: 'Назва міста занадто довга' })
+  city?: string;
 
   @IsOptional()
-  @IsNumber()
-  @Min(1)
+  @IsNumber({}, { message: 'Кількість комірок має бути числом' })
+  @Min(1, { message: 'Мінімум 1 комірка' })
   totalCells?: number;
 
   @IsOptional()
   @IsString()
+  @IsIn(['active', 'inactive', 'maintenance'], { message: 'Статус має бути: active, inactive або maintenance' })
   status?: string;
 }
 

@@ -8,6 +8,7 @@ import {
   MinLength,
   Min,
   IsUrl,
+  MaxLength,
   ValidateIf
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -15,14 +16,17 @@ import { Type } from 'class-transformer';
 export class CreateProductDto {
   @IsString()
   @MinLength(1, { message: 'Назва товару обов\'язкова' })
+  @MaxLength(255, { message: 'Назва занадто довга' })
   name: string;
 
   @IsString()
   @MinLength(1, { message: 'Артикул обов\'язковий' })
+  @MaxLength(100, { message: 'Артикул занадто довгий' })
   sku: string;
 
   @IsString()
   @IsOptional()
+  @MaxLength(50000, { message: 'Опис занадто довгий' })
   description?: string;
 
   @IsString()
@@ -78,6 +82,7 @@ export class CreateProductDto {
   @IsOptional()
   @ValidateIf((o) => o.sizeChartUrl && o.sizeChartUrl.trim() !== '')
   @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
+  @MaxLength(2000, { message: 'URL занадто довгий' })
   sizeChartUrl?: string;
 
   @IsString()
@@ -153,6 +158,7 @@ export class UpdateProductDto {
   @IsOptional()
   @ValidateIf((o) => o.sizeChartUrl && o.sizeChartUrl.trim() !== '')
   @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
+  @MaxLength(2000, { message: 'URL занадто довгий' })
   sizeChartUrl?: string;
 
   @IsString()

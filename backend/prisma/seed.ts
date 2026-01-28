@@ -4,9 +4,21 @@ import * as bcrypt from 'bcrypt';
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  // ⚠️ SECURITY: Prevent running seed in production
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ SECURITY: Seed cannot be run in production environment!');
+    console.error('❌ This would create test users with weak passwords.');
+    process.exit(1);
+  }
 
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  console.log('🌱 Starting seed...');
+  console.warn('⚠️  WARNING: Creating test users with WEAK passwords for DEVELOPMENT ONLY!');
+  console.warn('⚠️  Test accounts: admin@ortomat.ua, doctor@ortomat.ua, courier@ortomat.ua');
+  console.warn('⚠️  Password: password123 (NEVER use this in production!)');
+
+  // Use environment variable or fallback to weak password (dev only)
+  const seedPassword = process.env.SEED_PASSWORD || 'password123';
+  const hashedPassword = await bcrypt.hash(seedPassword, 10);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin@ortomat.ua' },
