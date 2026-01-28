@@ -1,13 +1,14 @@
 // backend/src/products/dto/create-product.dto.ts
-import { 
-  IsString, 
-  IsNumber, 
-  IsOptional, 
-  IsArray, 
+import {
+  IsString,
+  IsNumber,
+  IsOptional,
+  IsArray,
   IsIn,
   MinLength,
   Min,
-  IsUrl
+  IsUrl,
+  ValidateIf
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -74,8 +75,9 @@ export class CreateProductDto {
   type?: string;
 
   @IsString()
-  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
   @IsOptional()
+  @ValidateIf((o) => o.sizeChartUrl && o.sizeChartUrl.trim() !== '')
+  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
   sizeChartUrl?: string;
 
   @IsString()
@@ -148,8 +150,9 @@ export class UpdateProductDto {
   type?: string;
 
   @IsString()
-  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
   @IsOptional()
+  @ValidateIf((o) => o.sizeChartUrl && o.sizeChartUrl.trim() !== '')
+  @IsUrl({}, { message: 'sizeChartUrl має бути валідним URL' })
   sizeChartUrl?: string;
 
   @IsString()
