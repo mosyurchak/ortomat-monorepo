@@ -444,7 +444,7 @@ export class LiqPayService {
         }
       }
 
-      this.logger.log(`✅ Commission created: ${commission} UAH for doctor ${payment.doctorId}`);
+      this.logger.log(`✅ Points transaction created: ${pointsEarned} points for doctor ${payment.doctorId}`);
     } catch (error) {
       this.logger.error('Error handling doctor commission:', error);
     }
