@@ -269,7 +269,7 @@ export default function AdminDashboard() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.name')}</th>
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.email')}</th>
                     <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.sales')}</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.earnings')}</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Бали</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -281,7 +281,7 @@ export default function AdminDashboard() {
                       <td className="py-3 px-4 text-gray-600">{doctor.email}</td>
                       <td className="py-3 px-4 text-right">{doctor.totalSales || 0}</td>
                       <td className="py-3 px-4 text-right font-semibold">
-                        {doctor.totalEarnings || 0} {t('common.currency')}
+                        {doctor.totalPoints || 0}
                       </td>
                     </tr>
                   ))}
