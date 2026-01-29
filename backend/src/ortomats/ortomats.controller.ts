@@ -104,12 +104,11 @@ export class OrtomatsController {
   @Post(':id/doctors')
   assignDoctor(
     @Param('id') id: string,
-    @Body() body: { doctorId: string; commissionPercent?: number },
+    @Body() body: { doctorId: string },
   ) {
     return this.ortomatsService.assignDoctor(
       id,
       body.doctorId,
-      body.commissionPercent,
     );
   }
 
