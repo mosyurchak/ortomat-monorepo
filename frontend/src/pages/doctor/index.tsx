@@ -15,7 +15,7 @@ interface QRCodeData {
 interface Sale {
   id: string;
   amount: number;
-  commission: number;
+  pointsEarned: number;
   createdAt: string;
   product: {
     name: string;
@@ -27,7 +27,7 @@ interface Sale {
 
 interface DoctorStatsResponse {
   totalSales: number;
-  totalEarnings: number;
+  totalPoints: number;
   recentSales: Sale[];
   salesByMonth: any[];
 }
@@ -39,7 +39,7 @@ export default function DoctorDashboard() {
   const [qrCode, setQrCode] = useState<QRCodeData | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [stats, setStats] = useState({
-    totalEarnings: 0,
+    totalPoints: 0,
     totalSales: 0,
   });
   const [loading, setLoading] = useState(true);
@@ -84,7 +84,7 @@ export default function DoctorDashboard() {
 
       // Встановлюємо статистику з backend
       setStats({
-        totalEarnings: statsResponse.totalEarnings || 0,
+        totalPoints: statsResponse.totalPoints || 0,
         totalSales: statsResponse.totalSales || 0,
       });
     } catch (error) {
@@ -178,10 +178,10 @@ export default function DoctorDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-white rounded-lg shadow p-6">
               <h3 className="text-sm font-medium text-gray-500">
-                {t('doctor.totalEarnings')}
+                Усього балів
               </h3>
               <p className="mt-2 text-3xl font-bold text-green-600">
-                ₴{stats.totalEarnings.toFixed(2)}
+                {stats.totalPoints}
               </p>
             </div>
             <div className="bg-white rounded-lg shadow p-6">
@@ -298,7 +298,7 @@ export default function DoctorDashboard() {
                         {t('doctor.amount')}
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                        {t('doctor.commission')}
+                        Бали
                       </th>
                     </tr>
                   </thead>
@@ -315,7 +315,7 @@ export default function DoctorDashboard() {
                           ₴{Number(sale.amount).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600">
-                          ₴{Number(sale.commission || 0).toFixed(2)}
+                          {sale.pointsEarned || 0}
                         </td>
                       </tr>
                     ))}

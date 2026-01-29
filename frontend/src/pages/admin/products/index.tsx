@@ -14,6 +14,7 @@ interface Product {
   description?: string;
   size: string;
   price: number;
+  referralPoints?: number;
   mainImage?: string;
   images?: string[];
   videoUrl?: string;
@@ -39,6 +40,7 @@ export default function AdminProducts() {
     description: '',
     size: 'Uni',
     price: 0,
+    referralPoints: 0,
     mainImage: '',
     images: ['', '', '', ''],
     videoUrl: '',
@@ -123,6 +125,7 @@ export default function AdminProducts() {
       description: '',
       size: 'Uni',
       price: 0,
+      referralPoints: 0,
       mainImage: '',
       images: ['', '', '', ''],
       videoUrl: '',
@@ -154,6 +157,7 @@ export default function AdminProducts() {
       ...formData,
       images: (formData.images || []).filter((img) => img && img.trim() !== ''),
       price: Number(formData.price),
+      referralPoints: Number(formData.referralPoints) || 0,
     };
 
     if (editingProduct) {
@@ -305,6 +309,17 @@ export default function AdminProducts() {
                         required
                         min="0"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Реферальні бали</label>
+                      <input
+                        type="number"
+                        value={formData.referralPoints}
+                        onChange={(e) => setFormData({ ...formData, referralPoints: Number(e.target.value) })}
+                        className="w-full px-3 py-2 border rounded-lg"
+                        min="0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Кількість балів для реферала при продажу</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium mb-1">Розмір *</label>

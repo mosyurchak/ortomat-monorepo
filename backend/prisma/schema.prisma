@@ -8,30 +8,30 @@ datasource db {
 }
 
 model User {
-  id                       String           @id @default(uuid())
-  email                    String           @unique
+  id                       String              @id @default(uuid())
+  email                    String              @unique
   password                 String
   role                     UserRole
   firstName                String
   lastName                 String
   middleName               String?
   phone                    String
-  isVerified               Boolean          @default(false)
-  createdAt                DateTime         @default(now())
-  updatedAt                DateTime         @updatedAt
-  emailNotifications       Boolean          @default(true)
+  isVerified               Boolean             @default(false)
+  createdAt                DateTime            @default(now())
+  updatedAt                DateTime            @updatedAt
+  emailNotifications       Boolean             @default(true)
   emailVerificationExpires DateTime?
-  emailVerificationToken   String?          @unique
+  emailVerificationToken   String?             @unique
   lastNotificationSent     DateTime?
   resetPasswordExpires     DateTime?
-  resetPasswordToken       String?          @unique
+  resetPasswordToken       String?             @unique
   activityLogs             ActivityLog[]
   courierOrtomats          CourierOrtomat[]
   doctorOrtomats           DoctorOrtomat[]
   emailLogs                EmailLog[]
   sales                    Sale[]
   payments                 Payment[]
-  commissions              Commission[]
+  pointsTransactions       PointsTransaction[] // ✅ Замінено commissions на pointsTransactions
 
   @@map("users")
 }
@@ -82,20 +82,24 @@ model Product {
   mainImage          String?
   images             String[] @default([])
   imageUrl           String?
-  
+
   // ✅ ІСНУЮЧІ поля (вже були в БД)
   color              String?
   material           String?
   manufacturer       String?
-  
+
   // ✅ НОВІ поля
   country            String?  // Країна виробника
   type               String?  // Тип товару
   sizeChartUrl       String?  // URL картинки таблиці розмірів
-  
+
   videoUrl           String?
   termsAndConditions String?  // Специфічні умови для товару (опціонально)
   attributes         Json?
+
+  // ✅ REFERRAL SYSTEM: Бали за продаж цього товару
+  referralPoints     Int      @default(0) // Кількість балів які отримає реферал при продажу
+
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
   cells              Cell[]
@@ -120,9 +124,9 @@ model DoctorOrtomat {
   ortomatId         String
   referralCode      String   @unique
   qrCode            String?
-  commissionPercent Float    @default(10.0)
+  // ✅ REFERRAL SYSTEM: Замінено commissionPercent на систему балів
+  totalPoints       Int      @default(0) // Загальна кількість нарахованих балів
   totalSales        Int      @default(0)
-  totalEarnings     Float    @default(0.0)
   createdAt         DateTime @default(now())
   doctor            User     @relation(fields: [doctorId], references: [id], onDelete: Cascade)
   ortomat           Ortomat  @relation(fields: [ortomatId], references: [id], onDelete: Cascade)
@@ -153,7 +157,8 @@ model Sale {
   ortomatId       String?
   cellNumber      Int?
   amount          Float
-  commission      Float?
+  // ✅ REFERRAL SYSTEM: Замінено commission на points
+  pointsEarned    Int?           // Кількість балів нарахована за цей продаж
   referralCode    String?
   paymentId       String?
   status          String         @default("pending")
@@ -162,13 +167,13 @@ model Sale {
   customerPhone   String?
   completedAt     DateTime?
   doctorOrtomatId String?
-  
+
   doctor          User?          @relation(fields: [doctorId], references: [id])
   doctorOrtomat   DoctorOrtomat? @relation(fields: [doctorOrtomatId], references: [id])
   ortomat         Ortomat?       @relation(fields: [ortomatId], references: [id])
   product         Product?       @relation(fields: [productId], references: [id])
   payment         Payment?       @relation(fields: [paymentId], references: [id])
-  commissions     Commission[]
+  pointsTransactions PointsTransaction[]
 
   @@map("sales")
 }
@@ -259,19 +264,20 @@ model Payment {
   @@map("payments")
 }
 
-model Commission {
+// ✅ REFERRAL SYSTEM: Перейменовано з Commission на PointsTransaction
+model PointsTransaction {
   id        String   @id @default(uuid())
-  amount    Float
+  points    Int      // Кількість нарахованих балів
   doctorId  String
   saleId    String
-  isPaid    Boolean  @default(false)
+  isPaid    Boolean  @default(false) // Чи виплачено (для майбутнього функціоналу)
   paidAt    DateTime?
   createdAt DateTime @default(now())
 
   doctor    User     @relation(fields: [doctorId], references: [id])
   sale      Sale     @relation(fields: [saleId], references: [id])
 
-  @@map("commissions")
+  @@map("points_transactions")
 }
 
 enum UserRole {

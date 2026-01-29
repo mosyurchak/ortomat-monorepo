@@ -9,7 +9,8 @@ import {
   Min,
   IsUrl,
   MaxLength,
-  ValidateIf
+  ValidateIf,
+  IsInt
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -37,6 +38,12 @@ export class CreateProductDto {
   @Type(() => Number)
   @Min(0, { message: 'Ціна не може бути від\'ємною' })
   price: number;
+
+  @IsInt({ message: 'Кількість реферальних балів має бути цілим числом' })
+  @Type(() => Number)
+  @Min(0, { message: 'Кількість балів не може бути від\'ємною' })
+  @IsOptional()
+  referralPoints?: number;
 
   @IsString()
   @IsOptional()
@@ -115,6 +122,12 @@ export class UpdateProductDto {
   @Type(() => Number)
   @IsOptional()
   price?: number;
+
+  @IsInt({ message: 'Кількість реферальних балів має бути цілим числом' })
+  @Type(() => Number)
+  @Min(0, { message: 'Кількість балів не може бути від\'ємною' })
+  @IsOptional()
+  referralPoints?: number;
 
   @IsString()
   @IsOptional()
