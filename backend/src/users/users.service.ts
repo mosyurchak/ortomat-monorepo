@@ -109,11 +109,10 @@ export class UsersService {
     if (!doctorOrtomat) {
       return {
         totalSales: 0,
-        totalEarnings: 0,
+        totalPoints: 0,
         recentSales: [],
         ortomat: null,
         referralCode: null,
-        commissionRate: 0,
       };
     }
 
@@ -131,14 +130,14 @@ export class UsersService {
     });
 
     const totalSales = sales.length;
-    const totalEarnings = sales.reduce((sum, sale) => sum + (sale.commission || 0), 0);
+    const totalPoints = sales.reduce((sum, sale) => sum + (sale.pointsEarned || 0), 0);
 
     const recentSales = sales.slice(0, 10).map(sale => ({
       id: sale.id,
       orderNumber: sale.orderNumber,
       productName: sale.product?.name,
       amount: sale.amount,
-      commission: sale.commission,
+      pointsEarned: sale.pointsEarned,
       createdAt: sale.createdAt,
     }));
 
@@ -155,17 +154,17 @@ export class UsersService {
             month,
             sales: 0,
             revenue: 0,
-            commission: 0,
+            points: 0,
           };
         }
         salesByMonth[month].sales += 1;
         salesByMonth[month].revenue += sale.amount || 0;
-        salesByMonth[month].commission += sale.commission || 0;
+        salesByMonth[month].points += sale.pointsEarned || 0;
       });
 
     return {
       totalSales,
-      totalEarnings: totalEarnings.toFixed(2),
+      totalPoints,
       recentSales,
       monthlyStats: Object.values(salesByMonth),
       ortomat: {
@@ -174,7 +173,6 @@ export class UsersService {
         address: doctorOrtomat.ortomat.address,
       },
       referralCode: doctorOrtomat.referralCode,
-      commissionRate: doctorOrtomat.commissionPercent,
     };
   }
 
@@ -246,7 +244,7 @@ export class UsersService {
       },
       _sum: {
         amount: true,
-        commission: true,
+        pointsEarned: true,
       },
       _count: true,
     });
@@ -268,10 +266,10 @@ export class UsersService {
       _count: true,
     });
 
-    // Топ 5 лікарів за заробітком
+    // Топ 5 лікарів за балами
     const topDoctors = await this.prisma.doctorOrtomat.findMany({
       orderBy: {
-        totalEarnings: 'desc',
+        totalPoints: 'desc',
       },
       take: 5,
       include: {
@@ -351,7 +349,7 @@ export class UsersService {
       sales: {
         total: salesStats._count,
         totalRevenue: salesStats._sum.amount || 0,
-        totalCommission: salesStats._sum.commission || 0,
+        totalPoints: salesStats._sum.pointsEarned || 0,
         thisMonth: {
           count: monthlySales._count,
           revenue: monthlySales._sum.amount || 0,
@@ -364,7 +362,7 @@ export class UsersService {
         },
         ortomat: d.ortomat.name,
         totalSales: d.totalSales,
-        totalEarnings: parseFloat(d.totalEarnings.toFixed(2)),
+        totalPoints: d.totalPoints,
       })),
       topProducts: topProductsWithDetails,
       ortomats: ortomatStats,
@@ -463,7 +461,6 @@ export class UsersService {
     middleName?: string;
     phone: string;
     ortomatId?: string;
-    commissionPercent?: number;
   }) {
     const bcrypt = require('bcryptjs');
 
@@ -502,7 +499,7 @@ export class UsersService {
           doctorId: doctor.id,
           ortomatId: data.ortomatId,
           referralCode,
-          commissionPercent: data.commissionPercent || 10,
+          totalPoints: 0, // Початково 0 балів
         },
       });
     }
@@ -526,7 +523,6 @@ export class UsersService {
       middleName?: string;
       phone?: string;
       ortomatId?: string;
-      commissionPercent?: number;
     }
   ) {
     const bcrypt = require('bcryptjs');
@@ -585,7 +581,7 @@ export class UsersService {
             doctorId: id,
             ortomatId: data.ortomatId,
             referralCode,
-            commissionPercent: data.commissionPercent || 10,
+            totalPoints: 0, // Початково 0 балів
           },
         });
       }
