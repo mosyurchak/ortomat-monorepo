@@ -43,7 +43,7 @@ export class OrdersService {
     }
 
     let doctorId = null;
-    let commission = null;
+    let pointsEarned = null;
 
     if (data.referralCode) {
       const doctorOrtomat = await this.prisma.doctorOrtomat.findUnique({
@@ -52,7 +52,7 @@ export class OrdersService {
 
       if (doctorOrtomat) {
         doctorId = doctorOrtomat.doctorId;
-        commission = (product.price * doctorOrtomat.commissionPercent) / 100;
+        pointsEarned = product.referralPoints || 0;
       }
     }
 
@@ -67,7 +67,7 @@ export class OrdersService {
         cellNumber: cell.number,
         amount: product.price,
         doctorId,
-        commission,
+        pointsEarned,
         referralCode: data.referralCode,
         status: 'pending',
       },

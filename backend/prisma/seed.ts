@@ -105,7 +105,7 @@ async function main() {
       doctorId: doctor.id,
       ortomatId: ortomat1.id,
       referralCode: 'DOC001',
-      commissionPercent: 10,
+      totalPoints: 0,
     },
   });
 

@@ -409,15 +409,18 @@ export class LiqPayService {
 
   private async handleDoctorCommission(payment: any, sale: any) {
     try {
-      const commission = payment.amount * 0.1;
-      
-      await this.prisma.commission.create({
-        data: {
-          amount: commission,
-          doctorId: payment.doctorId,
-          saleId: sale.id,
-        },
-      });
+      // Отримуємо бали з продажу
+      const pointsEarned = sale.pointsEarned || 0;
+
+      if (pointsEarned > 0) {
+        await this.prisma.pointsTransaction.create({
+          data: {
+            points: pointsEarned,
+            doctorId: payment.doctorId,
+            saleId: sale.id,
+          },
+        });
+      }
 
       const doctor = await this.prisma.user.findUnique({
         where: { id: payment.doctorId },
@@ -430,7 +433,7 @@ export class LiqPayService {
               doctor.email,
               {
                 firstName: doctor.firstName,
-                commission,
+                commission: pointsEarned, // Тимчасово залишаємо назву для сумісності з email template
                 saleAmount: payment.amount,
                 orderId: payment.orderId,
               }

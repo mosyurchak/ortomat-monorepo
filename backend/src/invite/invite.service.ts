@@ -129,7 +129,7 @@ export class InviteService {
         doctorId,
         ortomatId: invite.ortomatId,
         referralCode,
-        commissionPercent: 10, // За замовчуванням 10%
+        totalPoints: 0, // Початково 0 балів
       },
     });
   }

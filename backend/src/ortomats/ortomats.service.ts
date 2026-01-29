@@ -192,15 +192,15 @@ export class OrtomatsService {
     });
   }
 
-  async assignDoctor(ortomatId: string, doctorId: string, commissionPercent = 10.0) {
+  async assignDoctor(ortomatId: string, doctorId: string) {
     const referralCode = `REF-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     return this.prisma.doctorOrtomat.create({
       data: {
         ortomatId,
         doctorId,
         referralCode,
-        commissionPercent,
+        totalPoints: 0,
       },
       include: {
         doctor: true,
