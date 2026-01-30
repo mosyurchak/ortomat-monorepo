@@ -522,7 +522,7 @@ export class OrdersService {
       });
 
       // Оновлюємо статус замовлення
-      await this.prisma.sale.update({
+      const updatedSale = await this.prisma.sale.update({
         where: { id: sale.id },
         data: {
           status: 'completed',
@@ -530,6 +530,18 @@ export class OrdersService {
           completedAt: new Date(),
         },
       });
+
+      // ✅ ВИПРАВЛЕНО: Оновлюємо статистику doctorOrtomat
+      if (updatedSale.doctorOrtomatId && updatedSale.pointsEarned) {
+        await this.prisma.doctorOrtomat.update({
+          where: { id: updatedSale.doctorOrtomatId },
+          data: {
+            totalSales: { increment: 1 },
+            totalPoints: { increment: updatedSale.pointsEarned },
+          },
+        });
+        console.log(`✅ Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
+      }
 
       // Звільняємо комірку
       await this.ortomatsService.updateCellProduct(
@@ -668,10 +680,22 @@ export class OrdersService {
           },
         });
 
-        await this.prisma.sale.update({
+        const updatedSale = await this.prisma.sale.update({
           where: { id: sale.id },
           data: { status: 'completed' },
         });
+
+        // ✅ ВИПРАВЛЕНО: Оновлюємо статистику doctorOrtomat
+        if (updatedSale.doctorOrtomatId && updatedSale.pointsEarned) {
+          await this.prisma.doctorOrtomat.update({
+            where: { id: updatedSale.doctorOrtomatId },
+            data: {
+              totalSales: { increment: 1 },
+              totalPoints: { increment: updatedSale.pointsEarned },
+            },
+          });
+          console.log(`✅ Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
+        }
 
         // Логування
         await this.logsService.createLog({
