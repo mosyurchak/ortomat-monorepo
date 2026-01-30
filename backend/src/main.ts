@@ -12,6 +12,7 @@ async function bootstrap() {
   app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP for API (frontend handles it)
     crossOriginEmbedderPolicy: false, // Needed for CORS
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // ✅ ДОДАНО: Allow images/QR codes to be loaded from different origins
   }));
 
   // ✅ SECURITY: Global validation pipe
