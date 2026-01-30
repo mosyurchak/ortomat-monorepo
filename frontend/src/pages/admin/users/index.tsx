@@ -564,7 +564,7 @@ export default function AdminUsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Verified</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Реферальне посилання</th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
                 </tr>
               </thead>
@@ -588,13 +588,32 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        doctor.isVerified
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {doctor.isVerified ? '✓ Так' : '⏳ Ні'}
-                      </span>
+                      {doctor.doctorOrtomats?.[0]?.referralCode ? (
+                        <div className="flex items-center">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`}
+                            className="text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1 w-64"
+                            onClick={(e) => e.currentTarget.select()}
+                          />
+                          <button
+                            onClick={() => {
+                              const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`;
+                              navigator.clipboard.writeText(url);
+                              alert('Посилання скопійовано!');
+                            }}
+                            className="ml-2 text-blue-600 hover:text-blue-800"
+                            title="Копіювати"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-400">Не призначено ортомат</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                       <button
@@ -992,6 +1011,57 @@ export default function AdminUsersPage() {
                   ))}
                 </select>
               </div>
+
+              {/* ✅ ДОДАНО: Реферальне посилання та QR-код */}
+              {editingDoctor && editingDoctor.doctorOrtomats?.[0]?.referralCode && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                    Реферальне посилання
+                  </h3>
+
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Посилання для клієнтів:
+                    </label>
+                    <div className="flex items-center">
+                      <input
+                        type="text"
+                        readOnly
+                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${editingDoctor.doctorOrtomats[0].ortomatId}?ref=${editingDoctor.doctorOrtomats[0].referralCode}`}
+                        className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                        onClick={(e) => e.currentTarget.select()}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${editingDoctor.doctorOrtomats[0].ortomatId}?ref=${editingDoctor.doctorOrtomats[0].referralCode}`;
+                          navigator.clipboard.writeText(url);
+                          alert('Посилання скопійовано!');
+                        }}
+                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                      >
+                        Копіювати
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      QR-код:
+                    </label>
+                    <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200">
+                      <img
+                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/qr-code/doctor/${editingDoctor.id}`}
+                        alt="QR Code"
+                        className="w-48 h-48"
+                      />
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 text-center">
+                      Лікар може показати цей QR-код клієнтам для сканування
+                    </p>
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end space-x-3">
                 <button
