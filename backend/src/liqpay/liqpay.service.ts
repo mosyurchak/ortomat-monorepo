@@ -261,12 +261,46 @@ export class LiqPayService {
       // Генеруємо унікальний номер замовлення якщо його немає
       const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
 
+      // ✅ ВИПРАВЛЕНО: Розраховуємо бали для реферала
+      let pointsEarned = null;
+      let doctorOrtomatId = null;
+      const doctorId = payment.doctorId || info.doctorId || null;
+
+      if (doctorId && productId) {
+        // Отримуємо продукт для витягування балів
+        const product = await this.prisma.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (product && product.referralPoints > 0) {
+          pointsEarned = product.referralPoints;
+          this.logger.log(`💰 Points to award: ${pointsEarned} points`);
+
+          // Знаходимо doctorOrtomat для оновлення статистики
+          if (ortomatId) {
+            const doctorOrtomat = await this.prisma.doctorOrtomat.findFirst({
+              where: {
+                doctorId: doctorId,
+                ortomatId: ortomatId,
+              },
+            });
+
+            if (doctorOrtomat) {
+              doctorOrtomatId = doctorOrtomat.id;
+              this.logger.log(`✅ Found doctor-ortomat relation: ${doctorOrtomatId}`);
+            }
+          }
+        }
+      }
+
       // Створюємо продаж
       const sale = await this.prisma.sale.create({
         data: {
           orderNumber: orderNumber,
           amount: payment.amount,
-          doctorId: payment.doctorId || info.doctorId || null,
+          doctorId: doctorId,
+          pointsEarned: pointsEarned, // ✅ ВИПРАВЛЕНО: додано pointsEarned
+          doctorOrtomatId: doctorOrtomatId, // ✅ ВИПРАВЛЕНО: додано зв'язок
           paymentId: payment.id,
           ortomatId: ortomatId,
           productId: productId,
@@ -279,6 +313,19 @@ export class LiqPayService {
       this.logger.log(`✅ Sale created: ${sale.id}`);
       this.logger.log(`   - Order Number: ${sale.orderNumber}`);
       this.logger.log(`   - Cell Number in sale: ${sale.cellNumber}`);
+      this.logger.log(`   - Points earned: ${pointsEarned || 0}`);
+
+      // ✅ ВИПРАВЛЕНО: Оновлюємо статистику doctorOrtomat
+      if (doctorOrtomatId && pointsEarned) {
+        await this.prisma.doctorOrtomat.update({
+          where: { id: doctorOrtomatId },
+          data: {
+            totalSales: { increment: 1 },
+            totalPoints: { increment: pointsEarned },
+          },
+        });
+        this.logger.log(`✅ Updated doctor-ortomat stats: +${pointsEarned} points, +1 sale`);
+      }
 
       // Оновити статус комірки
       if (ortomatId && finalCellNumber !== null) {
