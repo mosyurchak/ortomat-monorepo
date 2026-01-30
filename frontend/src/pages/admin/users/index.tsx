@@ -1051,9 +1051,10 @@ export default function AdminUsersPage() {
                     </label>
                     <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200">
                       <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/qr-code/doctor/${editingDoctor.id}`}
+                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/qr-code/doctor/${editingDoctor.id}/image`}
                         alt="QR Code"
                         className="w-48 h-48"
+                        crossOrigin="anonymous"
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-2 text-center">
