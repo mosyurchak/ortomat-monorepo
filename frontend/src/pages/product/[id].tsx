@@ -90,8 +90,9 @@ export default function ProductPage() {
         ortomatId: ortomatId as string,
       });
 
+      // ✅ ВИПРАВЛЕНО: змінено doctorRef на ref для сумісності з payment.tsx
       if (ref) {
-        params.append('doctorRef', ref as string);
+        params.append('ref', ref as string);
       }
 
       console.log('🚀 Redirecting to payment with params:', params.toString());

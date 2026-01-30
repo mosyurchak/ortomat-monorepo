@@ -44,15 +44,27 @@ export class OrdersService {
 
     let doctorId = null;
     let pointsEarned = null;
+    let doctorOrtomatId = null; // ✅ ДОДАНО
 
     if (data.referralCode) {
+      console.log('🔍 Looking for referral code:', data.referralCode);
+
       const doctorOrtomat = await this.prisma.doctorOrtomat.findUnique({
         where: { referralCode: data.referralCode },
       });
 
       if (doctorOrtomat) {
         doctorId = doctorOrtomat.doctorId;
+        doctorOrtomatId = doctorOrtomat.id; // ✅ ДОДАНО
         pointsEarned = product.referralPoints || 0;
+
+        console.log('✅ Found doctor:', {
+          doctorId,
+          doctorOrtomatId,
+          pointsEarned,
+        });
+      } else {
+        console.log('⚠️ Referral code not found');
       }
     }
 
@@ -67,6 +79,7 @@ export class OrdersService {
         cellNumber: cell.number,
         amount: product.price,
         doctorId,
+        doctorOrtomatId, // ✅ ДОДАНО
         pointsEarned,
         referralCode: data.referralCode,
         status: 'pending',
