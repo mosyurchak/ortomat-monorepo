@@ -153,12 +153,28 @@ export default function AdminProducts() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    const cleanedData = {
-      ...formData,
+    // ✅ ВИПРАВЛЕНО: Фільтруємо тільки дозволені поля для оновлення
+    const allowedFields = [
+      'name', 'sku', 'description', 'size', 'price', 'referralPoints',
+      'mainImage', 'images', 'videoUrl', 'imageUrl',
+      'color', 'material', 'manufacturer', 'country', 'type',
+      'sizeChartUrl', 'termsAndConditions', 'attributes'
+    ];
+
+    const cleanedData: any = {
       images: (formData.images || []).filter((img) => img && img.trim() !== ''),
       price: Number(formData.price),
       referralPoints: Number(formData.referralPoints) || 0,
     };
+
+    // Додаємо тільки дозволені поля з formData
+    allowedFields.forEach(field => {
+      if (field !== 'images' && field !== 'price' && field !== 'referralPoints') {
+        if (formData[field as keyof Product] !== undefined) {
+          cleanedData[field] = formData[field as keyof Product];
+        }
+      }
+    });
 
     if (editingProduct) {
       updateMutation.mutate({ id: editingProduct.id, data: cleanedData });
