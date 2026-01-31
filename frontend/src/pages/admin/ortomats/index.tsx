@@ -137,42 +137,46 @@ export default function AdminOrtomatsPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              {t('admin.backToDashboard')}
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-6 md:mb-8">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-blue-600 hover:text-blue-700 mb-3 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            {t('admin.backToDashboard')}
+          </button>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               {t('admin.manageOrtomats')}
             </h1>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setShowModal(true)}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              {t('admin.addOrtomat')}
-            </button>
-            <button
-              onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-            >
-              Вийти
-            </button>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowModal(true)}
+                className="flex-1 md:flex-none bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center text-sm md:text-base"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden sm:inline">{t('admin.addOrtomat')}</span>
+                <span className="sm:hidden">Додати</span>
+              </button>
+              <button
+                onClick={logout}
+                className="bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-red-700 text-sm md:text-base"
+              >
+                Вийти
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Ortomats List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        {/* Desktop Table */}
+        <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
           <table className="min-w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -215,15 +219,14 @@ export default function AdminOrtomatsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                      ortomat.status === 'active' 
-                        ? 'bg-green-100 text-green-800' 
+                      ortomat.status === 'active'
+                        ? 'bg-green-100 text-green-800'
                         : 'bg-red-100 text-red-800'
                     }`}>
                       {ortomat.status === 'active' ? t('admin.active') : t('admin.inactive')}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    {/* ✅ НОВА КНОПКА УПРАВЛІННЯ */}
                     <button
                       onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
                       className="text-purple-600 hover:text-purple-900 mr-4 font-medium"
@@ -257,6 +260,75 @@ export default function AdminOrtomatsPage() {
 
           {(!ortomats || ortomats.length === 0) && (
             <div className="text-center py-12">
+              <p className="text-gray-500">{t('admin.noOrtomats')}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Cards */}
+        <div className="md:hidden space-y-4">
+          {ortomats?.map((ortomat: any) => (
+            <div key={ortomat.id} className="bg-white rounded-lg shadow p-4">
+              <div className="flex justify-between items-start mb-3">
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 text-lg">
+                    {ortomat.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    📍 {ortomat.address}
+                  </p>
+                  {ortomat.city && (
+                    <p className="text-sm text-gray-600">
+                      🏙️ {ortomat.city}
+                    </p>
+                  )}
+                </div>
+                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                  ortomat.status === 'active'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-red-100 text-red-800'
+                }`}>
+                  {ortomat.status === 'active' ? t('admin.active') : t('admin.inactive')}
+                </span>
+              </div>
+
+              <div className="mb-3 pb-3 border-b">
+                <span className="text-sm text-gray-600">
+                  📦 Комірок: <span className="font-medium text-gray-900">{ortomat.totalCells}</span>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
+                  className="px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
+                >
+                  ⚙️ Управління
+                </button>
+                <button
+                  onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
+                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  {t('admin.view')}
+                </button>
+                <button
+                  onClick={() => handleEdit(ortomat)}
+                  className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                >
+                  {t('admin.edit')}
+                </button>
+                <button
+                  onClick={() => handleDelete(ortomat.id)}
+                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                >
+                  {t('admin.delete')}
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {(!ortomats || ortomats.length === 0) && (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
               <p className="text-gray-500">{t('admin.noOrtomats')}</p>
             </div>
           )}
