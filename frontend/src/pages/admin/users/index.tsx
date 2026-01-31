@@ -849,7 +849,7 @@ export default function AdminUsersPage() {
       {/* Courier Modal */}
       {showCourierModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
               {editingCourier ? 'Редагувати кур\'єра' : 'Новий кур\'єр'}
             </h2>
@@ -1022,7 +1022,7 @@ export default function AdminUsersPage() {
       {/* Doctor Modal */}
       {showDoctorModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-6 my-8 max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
               {editingDoctor ? 'Редагувати лікаря' : 'Новий лікар'}
             </h2>
