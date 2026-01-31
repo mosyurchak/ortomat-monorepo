@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MonoPaymentService } from './mono-payment.service';
 import { MonoPaymentController } from './mono-payment.controller';
+import { PrismaModule } from '../prisma/prisma.module';
+import { TelegramBotModule } from '../telegram-bot/telegram-bot.module';
+import { EmailModule } from '../email/email.module';
 
 /**
  * Модуль для роботи з Monobank Acquiring API (Plata by Mono)
@@ -27,6 +30,7 @@ import { MonoPaymentController } from './mono-payment.controller';
  * ```
  */
 @Module({
+  imports: [PrismaModule, TelegramBotModule, EmailModule],
   controllers: [MonoPaymentController],
   providers: [MonoPaymentService],
   exports: [MonoPaymentService], // Експортуємо сервіс для використання в інших модулях

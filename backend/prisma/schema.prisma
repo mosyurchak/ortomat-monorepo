@@ -25,6 +25,10 @@ model User {
   lastNotificationSent     DateTime?
   resetPasswordExpires     DateTime?
   resetPasswordToken       String?             @unique
+  // ✅ TELEGRAM BOT: Поля для інтеграції з Telegram
+  telegramChatId           String?             @unique // Chat ID для відправки повідомлень
+  telegramUsername         String?             // Username в Telegram для зручності
+  telegramNotifications    Boolean             @default(true) // Чи відправляти нотифікації в Telegram
   activityLogs             ActivityLog[]
   courierOrtomats          CourierOrtomat[]
   doctorOrtomats           DoctorOrtomat[]

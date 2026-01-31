@@ -145,13 +145,11 @@ export class MonoPaymentController {
         `Webhook оброблено: invoice=${validatedData.invoiceId}, status=${validatedData.status}`,
       );
 
-      // ТУТ ПОТРІБНО ДОДАТИ ВАШУ БІЗНЕС-ЛОГІКУ:
-      // 1. Оновити статус замовлення в БД
-      // 2. Якщо status === 'success' - відкрити комірку в ортоматі
-      // 3. Нарахувати комісію лікарю
-      // 4. Відправити email користувачу
-      //
-      // Це буде зроблено в orders.service.ts
+      // ✅ Обробляємо успішний платіж
+      if (validatedData.status === 'success') {
+        this.logger.log('Processing successful Monobank payment...');
+        await this.monoPaymentService.handleSuccessfulMonoPayment(validatedData);
+      }
 
       // Обов'язково повертаємо HTTP 200 OK
       return {
