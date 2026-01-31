@@ -478,53 +478,56 @@ export default function AdminUsersPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-blue-600 hover:text-blue-700 mb-2 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Назад до панелі
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900">
+        <div className="mb-6 md:mb-8">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-blue-600 hover:text-blue-700 mb-3 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Назад до панелі
+          </button>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
               Управління користувачами
             </h1>
-          </div>
 
-          <div className="flex items-center space-x-3">
-            {activeTab === 'doctors' && (
+            <div className="flex items-center gap-2">
+              {activeTab === 'doctors' && (
+                <button
+                  onClick={() => setShowDoctorModal(true)}
+                  className="flex-1 md:flex-none bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center text-sm md:text-base"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="hidden sm:inline">Додати лікаря</span>
+                  <span className="sm:hidden">Додати</span>
+                </button>
+              )}
+
+              {activeTab === 'couriers' && (
+                <button
+                  onClick={() => setShowCourierModal(true)}
+                  className="flex-1 md:flex-none bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center text-sm md:text-base"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span className="hidden sm:inline">Додати кур'єра</span>
+                  <span className="sm:hidden">Додати</span>
+                </button>
+              )}
+
               <button
-                onClick={() => setShowDoctorModal(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
+                onClick={logout}
+                className="bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-red-700 text-sm md:text-base whitespace-nowrap"
               >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Додати лікаря
+                Вийти
               </button>
-            )}
-
-            {activeTab === 'couriers' && (
-              <button
-                onClick={() => setShowCourierModal(true)}
-                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Додати кур'єра
-              </button>
-            )}
-
-            <button
-              onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-            >
-              Вийти
-            </button>
+            </div>
           </div>
         </div>
 
@@ -556,45 +559,124 @@ export default function AdminUsersPage() {
 
         {/* Doctors Table */}
         {activeTab === 'doctors' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ім'я</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Реферальне посилання</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {doctors?.map((doctor: any) => (
-                  <tr key={doctor.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ім'я</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Реферальне посилання</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {doctors?.map((doctor: any) => (
+                    <tr key={doctor.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {doctor.firstName} {doctor.lastName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{doctor.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{doctor.phone}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {doctor.doctorOrtomats?.[0]?.ortomat?.name || '-'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        {doctor.doctorOrtomats?.[0]?.referralCode ? (
+                          <div className="flex items-center">
+                            <input
+                              type="text"
+                              readOnly
+                              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`}
+                              className="text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1 w-64"
+                              onClick={(e) => e.currentTarget.select()}
+                            />
+                            <button
+                              onClick={() => {
+                                const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`;
+                                navigator.clipboard.writeText(url);
+                                alert('Посилання скопійовано!');
+                              }}
+                              className="ml-2 text-blue-600 hover:text-blue-800"
+                              title="Копіювати"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                              </svg>
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Не призначено ортомат</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleEditDoctor(doctor)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          Редагувати
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDoctor(doctor.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Видалити
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {(!doctors || doctors.length === 0) && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Лікарів немає</p>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-4">
+              {doctors?.map((doctor: any) => (
+                <div key={doctor.id} className="bg-white rounded-lg shadow p-4">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="font-semibold text-gray-900">
                         {doctor.firstName} {doctor.lastName}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{doctor.email}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{doctor.phone}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
+                      </h3>
+                      <p className="text-sm text-gray-600">{doctor.email}</p>
+                      <p className="text-sm text-gray-600">{doctor.phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="font-medium text-gray-700">Ортомат:</span>
+                      <span className="ml-2 text-gray-900">
                         {doctor.doctorOrtomats?.[0]?.ortomat?.name || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      {doctor.doctorOrtomats?.[0]?.referralCode ? (
-                        <div className="flex items-center">
+                      </span>
+                    </div>
+
+                    {doctor.doctorOrtomats?.[0]?.referralCode && (
+                      <div>
+                        <span className="font-medium text-gray-700 block mb-1">Реферальне посилання:</span>
+                        <div className="flex items-center gap-2">
                           <input
                             type="text"
                             readOnly
                             value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`}
-                            className="text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1 w-64"
+                            className="flex-1 text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1"
                             onClick={(e) => e.currentTarget.select()}
                           />
                           <button
@@ -603,112 +685,164 @@ export default function AdminUsersPage() {
                               navigator.clipboard.writeText(url);
                               alert('Посилання скопійовано!');
                             }}
-                            className="ml-2 text-blue-600 hover:text-blue-800"
-                            title="Копіювати"
+                            className="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 rounded"
                           >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                           </button>
                         </div>
-                      ) : (
-                        <span className="text-sm text-gray-400">Не призначено ортомат</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditDoctor(doctor)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Редагувати
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDoctor(doctor.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Видалити
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      </div>
+                    )}
+                  </div>
 
-            {(!doctors || doctors.length === 0) && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Лікарів немає</p>
-              </div>
-            )}
-          </div>
+                  <div className="flex gap-2 mt-4 pt-3 border-t">
+                    <button
+                      onClick={() => handleEditDoctor(doctor)}
+                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Редагувати
+                    </button>
+                    <button
+                      onClick={() => handleDeleteDoctor(doctor.id)}
+                      className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    >
+                      Видалити
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(!doctors || doctors.length === 0) && (
+                <div className="bg-white rounded-lg shadow p-8 text-center">
+                  <p className="text-gray-500">Лікарів немає</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Couriers Table */}
         {activeTab === 'couriers' && (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ім'я</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомати</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {couriers?.map((courier: any) => (
-                  <tr key={courier.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-medium text-gray-900">
-                        {courier.firstName} {courier.lastName}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{courier.email}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">{courier.phone}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-900">
-                        {courier.ortomats?.length > 0 ? (
-                          <div className="flex flex-wrap gap-1">
-                            {courier.ortomats.map((ortomat: any) => (
-                              <span key={ortomat.id} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                                {ortomat.name}
-                              </span>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-gray-400">Не призначено</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => handleEditCourier(courier)}
-                        className="text-indigo-600 hover:text-indigo-900 mr-4"
-                      >
-                        Редагувати
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCourier(courier.id)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Видалити
-                      </button>
-                    </td>
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+              <table className="min-w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ім'я</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомати</th>
+                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {couriers?.map((courier: any) => (
+                    <tr key={courier.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {courier.firstName} {courier.lastName}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{courier.email}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">{courier.phone}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-900">
+                          {courier.ortomats?.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {courier.ortomats.map((ortomat: any) => (
+                                <span key={ortomat.id} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                                  {ortomat.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">Не призначено</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <button
+                          onClick={() => handleEditCourier(courier)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        >
+                          Редагувати
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCourier(courier.id)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Видалити
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
-            {(!couriers || couriers.length === 0) && (
-              <div className="text-center py-12">
-                <p className="text-gray-500">Кур'єрів немає</p>
-              </div>
-            )}
-          </div>
+              {(!couriers || couriers.length === 0) && (
+                <div className="text-center py-12">
+                  <p className="text-gray-500">Кур'єрів немає</p>
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="md:hidden space-y-4">
+              {couriers?.map((courier: any) => (
+                <div key={courier.id} className="bg-white rounded-lg shadow p-4">
+                  <div className="mb-3">
+                    <h3 className="font-semibold text-gray-900">
+                      {courier.firstName} {courier.lastName}
+                    </h3>
+                    <p className="text-sm text-gray-600">{courier.email}</p>
+                    <p className="text-sm text-gray-600">{courier.phone}</p>
+                  </div>
+
+                  <div className="mb-3">
+                    <span className="font-medium text-gray-700 text-sm block mb-2">Ортомати:</span>
+                    {courier.ortomats?.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {courier.ortomats.map((ortomat: any) => (
+                          <span key={ortomat.id} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            {ortomat.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">Не призначено</span>
+                    )}
+                  </div>
+
+                  <div className="flex gap-2 pt-3 border-t">
+                    <button
+                      onClick={() => handleEditCourier(courier)}
+                      className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                      Редагувати
+                    </button>
+                    <button
+                      onClick={() => handleDeleteCourier(courier.id)}
+                      className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                    >
+                      Видалити
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {(!couriers || couriers.length === 0) && (
+                <div className="bg-white rounded-lg shadow p-8 text-center">
+                  <p className="text-gray-500">Кур'єрів немає</p>
+                </div>
+              )}
+            </div>
+          </>
         )}
       </div>
 
