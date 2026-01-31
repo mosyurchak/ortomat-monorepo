@@ -106,77 +106,6 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {/* Total Users */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
-                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">{t('admin.totalUsers')}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats?.totalUsers || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Ortomats */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
-                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">{t('admin.totalOrtomats')}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats?.totalOrtomats || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Sales */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-purple-100 rounded-lg p-3">
-                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">{t('admin.totalSales')}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats?.totalSales || 0}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Total Revenue */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
-                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">{t('admin.totalRevenue')}</p>
-                <p className="text-2xl font-bold text-gray-900">
-                  {stats?.totalRevenue || 0} {t('common.currency')}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
         {/* Quick Actions */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <button
@@ -256,73 +185,76 @@ export default function AdminDashboard() {
           </button>
         </div>
 
-        {/* Top Doctors */}
-        {stats?.topDoctors && stats.topDoctors.length > 0 && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {t('admin.topDoctors')}
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.name')}</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.email')}</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.sales')}</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Бали</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.topDoctors.map((doctor: any) => (
-                    <tr key={doctor.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        {doctor.firstName} {doctor.lastName}
-                      </td>
-                      <td className="py-3 px-4 text-gray-600">{doctor.email}</td>
-                      <td className="py-3 px-4 text-right">{doctor.totalSales || 0}</td>
-                      <td className="py-3 px-4 text-right font-semibold">
-                        {doctor.totalPoints || 0}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        {/* Top Products */}
-        {stats?.topProducts && stats.topProducts.length > 0 && (
+        {/* Stats Grid - перенесено вниз */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total Users */}
           <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              {t('admin.topProducts')}
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.product')}</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">{t('admin.category')}</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.sales')}</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">{t('admin.revenue')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.topProducts.map((product: any) => (
-                    <tr key={product.id} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4">{product.name}</td>
-                      <td className="py-3 px-4 text-gray-600">{product.category}</td>
-                      <td className="py-3 px-4 text-right">{product.salesCount || 0}</td>
-                      <td className="py-3 px-4 text-right font-semibold">
-                        {product.revenue || 0} {t('common.currency')}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">{t('admin.totalUsers')}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalUsers || 0}
+                </p>
+              </div>
             </div>
           </div>
-        )}
+
+          {/* Total Ortomats */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">{t('admin.totalOrtomats')}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalOrtomats || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Sales */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">{t('admin.totalSales')}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalSales || 0}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Revenue */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">{t('admin.totalRevenue')}</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {stats?.totalRevenue || 0} {t('common.currency')}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
