@@ -201,40 +201,45 @@ export default function AdminProducts() {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="mb-8 flex items-center justify-between">
-          <div>
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-blue-600 hover:text-blue-700 mb-4 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Назад
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900">📦 Управління товарами</h1>
-            <p className="text-gray-600 mt-2">Всього товарів: {products?.length || 0}</p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                resetForm();
-                setShowModal(true);
-              }}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Додати товар
-            </button>
-            <button
-              onClick={logout}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-            >
-              Вийти
-            </button>
+        <div className="mb-6 md:mb-8">
+          <button
+            onClick={() => router.push('/admin')}
+            className="text-blue-600 hover:text-blue-700 mb-3 flex items-center"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Назад
+          </button>
+
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">📦 Управління товарами</h1>
+              <p className="text-gray-600 mt-2">Всього товарів: {products?.length || 0}</p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  resetForm();
+                  setShowModal(true);
+                }}
+                className="flex-1 md:flex-none bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center text-sm md:text-base"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="hidden sm:inline">Додати товар</span>
+                <span className="sm:hidden">Додати</span>
+              </button>
+              <button
+                onClick={logout}
+                className="bg-red-600 text-white px-3 md:px-4 py-2 rounded-lg hover:bg-red-700 text-sm md:text-base whitespace-nowrap"
+              >
+                Вийти
+              </button>
+            </div>
           </div>
         </div>
 
