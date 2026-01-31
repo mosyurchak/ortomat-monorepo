@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 
 @Injectable()
 export class LiqPayService {
@@ -14,6 +15,7 @@ export class LiqPayService {
     private configService: ConfigService,
     private prisma: PrismaService,
     private emailService: EmailService,
+    private telegramBotService: TelegramBotService,
   ) {
     this.publicKey = this.configService.get<string>('LIQPAY_PUBLIC_KEY');
     this.privateKey = this.configService.get<string>('LIQPAY_PRIVATE_KEY');
@@ -317,7 +319,7 @@ export class LiqPayService {
 
       // ✅ ВИПРАВЛЕНО: Оновлюємо статистику doctorOrtomat
       if (doctorOrtomatId && pointsEarned) {
-        await this.prisma.doctorOrtomat.update({
+        const updatedDoctorOrtomat = await this.prisma.doctorOrtomat.update({
           where: { id: doctorOrtomatId },
           data: {
             totalSales: { increment: 1 },
@@ -325,6 +327,23 @@ export class LiqPayService {
           },
         });
         this.logger.log(`✅ Updated doctor-ortomat stats: +${pointsEarned} points, +1 sale`);
+
+        // ✅ TELEGRAM: Відправляємо нотифікацію в Telegram
+        try {
+          const product = await this.prisma.product.findUnique({
+            where: { id: productId },
+          });
+
+          await this.telegramBotService.sendSaleNotification(doctorId, {
+            productName: product?.name || 'Товар',
+            points: pointsEarned,
+            totalPoints: updatedDoctorOrtomat.totalPoints,
+            amount: payment.amount,
+          });
+        } catch (error) {
+          this.logger.error('Failed to send Telegram notification:', error);
+          // Не блокуємо процес якщо нотифікація не надіслалась
+        }
       }
 
       // Оновити статус комірки

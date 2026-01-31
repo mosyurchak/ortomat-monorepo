@@ -3,6 +3,9 @@ import axios, { AxiosInstance } from 'axios';
 import * as crypto from 'crypto';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { MonoWebhookDto } from './dto/webhook.dto';
+import { PrismaService } from '../prisma/prisma.service';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
+import { EmailService } from '../email/email.service';
 
 /**
  * Сервіс для роботи з Monobank Acquiring API (Plata by Mono)
@@ -16,7 +19,11 @@ export class MonoPaymentService {
   private readonly token: string;
   private publicKey: string | null = null;
 
-  constructor() {
+  constructor(
+    private prisma: PrismaService,
+    private telegramBotService: TelegramBotService,
+    private emailService: EmailService,
+  ) {
     // Отримуємо токен з змінних оточення
     this.token = process.env.MONO_TOKEN;
 
@@ -270,6 +277,151 @@ export class MonoPaymentService {
     } catch (error) {
       this.logger.error(`Помилка повернення коштів для ${invoiceId}:`, error.response?.data || error.message);
       throw new BadRequestException('Не вдалося повернути кошти');
+    }
+  }
+
+  /**
+   * Обробка успішного платежу через Monobank
+   * Створює продаж, нараховує бали, відправляє нотифікації
+   */
+  async handleSuccessfulMonoPayment(webhookData: MonoWebhookDto) {
+    try {
+      this.logger.log('=== HANDLING SUCCESSFUL MONO PAYMENT ===');
+      this.logger.log(`Invoice ID: ${webhookData.invoiceId}`);
+      this.logger.log(`Amount: ${webhookData.amount / 100} UAH`);
+
+      // Знаходимо payment record в БД
+      const payment = await this.prisma.payment.findUnique({
+        where: { invoiceId: webhookData.invoiceId },
+      });
+
+      if (!payment) {
+        this.logger.error(`❌ Payment not found for invoiceId: ${webhookData.invoiceId}`);
+        return;
+      }
+
+      // Перевірка на дублікати
+      const existingSale = await this.prisma.sale.findFirst({
+        where: { paymentId: payment.id },
+      });
+
+      if (existingSale) {
+        this.logger.warn(`⚠️ Sale already exists for payment ${payment.id}, skipping duplicate...`);
+        return;
+      }
+
+      // Витягуємо дані з payment details
+      const details = payment.paymentDetails as any || {};
+      const productId = details.productId || null;
+      const ortomatId = details.ortomatId || null;
+      const cellNumber = details.cellNumber !== undefined ? details.cellNumber : null;
+      const doctorId = payment.doctorId || null;
+
+      this.logger.log(`📋 Extracted data:`);
+      this.logger.log(`  - Product ID: ${productId}`);
+      this.logger.log(`  - Ortomat ID: ${ortomatId}`);
+      this.logger.log(`  - Cell Number: ${cellNumber}`);
+      this.logger.log(`  - Doctor ID: ${doctorId}`);
+
+      // Розраховуємо бали для реферала
+      let pointsEarned = null;
+      let doctorOrtomatId = null;
+
+      if (doctorId && productId) {
+        const product = await this.prisma.product.findUnique({
+          where: { id: productId },
+        });
+
+        if (product && product.referralPoints > 0) {
+          pointsEarned = product.referralPoints;
+          this.logger.log(`💰 Points to award: ${pointsEarned} points`);
+
+          if (ortomatId) {
+            const doctorOrtomat = await this.prisma.doctorOrtomat.findFirst({
+              where: {
+                doctorId: doctorId,
+                ortomatId: ortomatId,
+              },
+            });
+
+            if (doctorOrtomat) {
+              doctorOrtomatId = doctorOrtomat.id;
+              this.logger.log(`✅ Found doctor-ortomat relation: ${doctorOrtomatId}`);
+            }
+          }
+        }
+      }
+
+      // Генеруємо унікальний номер замовлення
+      const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+
+      // Створюємо продаж
+      const sale = await this.prisma.sale.create({
+        data: {
+          orderNumber: orderNumber,
+          amount: webhookData.amount / 100, // Конвертуємо копійки в гривні
+          doctorId: doctorId,
+          pointsEarned: pointsEarned,
+          doctorOrtomatId: doctorOrtomatId,
+          paymentId: payment.id,
+          ortomatId: ortomatId,
+          productId: productId,
+          cellNumber: cellNumber,
+          status: 'completed',
+          completedAt: new Date(),
+        },
+      });
+
+      this.logger.log(`✅ Sale created: ${sale.id}`);
+      this.logger.log(`   - Order Number: ${sale.orderNumber}`);
+      this.logger.log(`   - Points earned: ${pointsEarned || 0}`);
+
+      // Оновлюємо статистику doctorOrtomat
+      if (doctorOrtomatId && pointsEarned) {
+        const updatedDoctorOrtomat = await this.prisma.doctorOrtomat.update({
+          where: { id: doctorOrtomatId },
+          data: {
+            totalSales: { increment: 1 },
+            totalPoints: { increment: pointsEarned },
+          },
+        });
+        this.logger.log(`✅ Updated doctor-ortomat stats: +${pointsEarned} points, +1 sale`);
+
+        // ✅ TELEGRAM: Відправляємо нотифікацію
+        try {
+          const product = await this.prisma.product.findUnique({
+            where: { id: productId },
+          });
+
+          await this.telegramBotService.sendSaleNotification(doctorId, {
+            productName: product?.name || 'Товар',
+            points: pointsEarned,
+            totalPoints: updatedDoctorOrtomat.totalPoints,
+            amount: webhookData.amount / 100,
+          });
+        } catch (error) {
+          this.logger.error('Failed to send Telegram notification:', error);
+        }
+      }
+
+      // Оновити статус комірки якщо є дані
+      if (ortomatId && cellNumber !== null) {
+        this.logger.log(`🔄 Marking cell as used: ortomat=${ortomatId}, cell=${cellNumber}`);
+        await this.prisma.cell.updateMany({
+          where: {
+            ortomatId: ortomatId,
+            number: cellNumber,
+          },
+          data: {
+            isAvailable: true, // Вивільняємо комірку після видачі
+          },
+        });
+      }
+
+      this.logger.log('=== END HANDLING SUCCESSFUL MONO PAYMENT ===');
+    } catch (error) {
+      this.logger.error('Error handling successful Mono payment:', error);
+      throw error;
     }
   }
 }
