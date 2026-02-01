@@ -17,11 +17,22 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
+    // Запускаємо бот з retry механізмом
+    this.startBotWithRetry(token);
+  }
+
+  /**
+   * Запуск бота з retry механізмом для уникнення 409 конфліктів
+   */
+  private async startBotWithRetry(token: string, retryCount = 0) {
+    const maxRetries = 5;
+    const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000); // Exponential backoff до 30 сек
+
     try {
       this.bot = new TelegramBot(token, {
         polling: {
           interval: 300,
-          autoStart: true,
+          autoStart: false, // Не запускаємо автоматично
           params: {
             timeout: 10,
           },
@@ -29,15 +40,50 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       });
 
       // Обробка помилок polling
-      this.bot.on('polling_error', (error) => {
-        this.logger.error('❌ Помилка polling:', error.message);
-        // Не перезапускаємо бот автоматично - дозволяємо Railway зробити це
+      this.bot.on('polling_error', async (error) => {
+        const errorMessage = error.message || '';
+
+        // Якщо 409 Conflict - інший інстанс ще працює
+        if (errorMessage.includes('409') && errorMessage.includes('Conflict')) {
+          this.logger.warn(`⚠️ 409 Conflict: інший інстанс бота ще працює. Спроба ${retryCount + 1}/${maxRetries}...`);
+
+          // Зупиняємо поточний polling
+          try {
+            await this.bot.stopPolling();
+          } catch (e) {
+            // Ігноруємо помилки зупинки
+          }
+
+          // Retry через затримку
+          if (retryCount < maxRetries) {
+            this.logger.log(`⏳ Очікування ${retryDelay / 1000} секунд перед наступною спробою...`);
+            setTimeout(() => {
+              this.startBotWithRetry(token, retryCount + 1);
+            }, retryDelay);
+          } else {
+            this.logger.error('❌ Досягнуто максимальну кількість спроб запуску бота');
+          }
+        } else {
+          // Інша помилка - просто логуємо
+          this.logger.error('❌ Помилка polling:', errorMessage);
+        }
       });
+
+      // Запускаємо polling вручну
+      await this.bot.startPolling();
 
       this.logger.log('✅ Telegram бот успішно запущено');
       this.setupCommands();
     } catch (error) {
-      this.logger.error('❌ Помилка запуску Telegram бота:', error);
+      this.logger.error('❌ Помилка запуску Telegram бота:', error.message);
+
+      // Retry при помилці запуску
+      if (retryCount < maxRetries) {
+        this.logger.log(`⏳ Очікування ${retryDelay / 1000} секунд перед наступною спробою...`);
+        setTimeout(() => {
+          this.startBotWithRetry(token, retryCount + 1);
+        }, retryDelay);
+      }
     }
   }
 
