@@ -160,8 +160,15 @@ export class CellManagementService {
       admin: `Opening cell #${cellNumber} by admin`,
     };
 
+    // Визначаємо правильний LogType в залежності від причини
+    const logTypeMap = {
+      sale: 'WEBSOCKET_COMMAND',
+      refill: 'COURIER_REFILL',
+      admin: 'CELL_OPENED',
+    } as const;
+
     await this.logsService.createLog({
-      type: reason === 'sale' ? 'WEBSOCKET_COMMAND' : 'CELL_OPERATION',
+      type: logTypeMap[reason],
       category: 'system',
       message: reasonMessages[reason] || `Opening cell #${cellNumber}`,
       ortomatId,
