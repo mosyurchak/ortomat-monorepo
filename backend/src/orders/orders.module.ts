@@ -5,13 +5,15 @@ import { OrtomatsModule } from '../ortomats/ortomats.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { LogsModule } from '../logs/logs.module';
 import { MonoPaymentModule } from '../mono-payment/mono-payment.module';
+import { CellManagementModule } from '../cell-management/cell-management.module';
 
 @Module({
   imports: [
     PrismaModule,
     OrtomatsModule,
     LogsModule,
-    MonoPaymentModule, // Додано для інтеграції з Monobank
+    MonoPaymentModule,
+    CellManagementModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],

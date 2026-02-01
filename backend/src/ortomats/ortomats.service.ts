@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { OrtomatsGateway } from './ortomats.gateway';
 import { LogsService } from '../logs/logs.service';
+import { CellManagementService } from '../cell-management/cell-management.service';
 
 @Injectable()
 export class OrtomatsService {
   constructor(
     private prisma: PrismaService,
     private logsService: LogsService,
+    private cellManagement: CellManagementService,
   ) {}
 
   async create(data: Prisma.OrtomatCreateInput) {
@@ -339,11 +341,12 @@ export class OrtomatsService {
   }
 
   async openCellForRefill(
-    ortomatId: string, 
-    cellNumber: number, 
-    courierId: string, 
+    ortomatId: string,
+    cellNumber: number,
+    courierId: string,
     gateway?: OrtomatsGateway
   ) {
+    // Перевіряємо що комірка існує та має призначений товар
     const cell = await this.prisma.cell.findFirst({
       where: {
         ortomatId,
@@ -364,61 +367,33 @@ export class OrtomatsService {
     }
 
     const action = !cell.isAvailable ? 'cleared' : 'opened';
-    
-    if (!cell.isAvailable) {
-      await this.prisma.cell.update({
-        where: { id: cell.id },
-        data: {
-          isAvailable: true,
-          lastRefillDate: null,
-        },
-      });
-    }
-
     const deviceId = ortomatId;
-    const ortomatName = cell.ortomat.name;
-    
-    if (gateway) {
-      const isOnline = gateway.isDeviceOnline(deviceId);
-      
-      if (isOnline) {
-        console.log(`🔌 Sending WebSocket command to ${ortomatName} (${deviceId}), cell ${cellNumber}`);
-        
-        const cmd_id = `ADMIN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-        
-        await gateway.openCell(deviceId, cellNumber, cmd_id);
-      } else {
-        console.log(`⚠️ Device ${ortomatName} (${deviceId}) offline, skipping WebSocket command`);
-      }
-    }
 
-    await this.logsService.logCellOpened({
+    // Використовуємо централізований сервіс для відкриття комірки
+    const result = await this.cellManagement.openCell({
+      deviceId,
       cellNumber,
       ortomatId,
-      userId: courierId,
-      reason: action === 'cleared' ? 'Clearing filled cell' : 'Opening for refill',
+      reason: 'refill',
       metadata: {
-        action,
-        ortomatName,
-        deviceId,
-        productId: cell.productId,
+        courierId,
+        userId: courierId,
         productName: cell.product?.name,
-        deviceOnline: gateway?.isDeviceOnline(deviceId),
+        action,
       },
     });
 
+    // Повертаємо результат у форматі який очікує courier контролер
     return {
-      success: true,
-      message: action === 'cleared' 
-        ? `${ortomatName}, комірка ${cellNumber} очищена та відкрита` 
-        : `${ortomatName}, комірка ${cellNumber} відкрита для заповнення`,
-      cellNumber,
+      success: result.success,
+      message: action === 'cleared'
+        ? `${result.ortomatName}, комірка ${cellNumber} очищена та відкрита`
+        : `${result.ortomatName}, комірка ${cellNumber} відкрита для заповнення`,
+      cellNumber: result.cellNumber,
       product: cell.product,
       action,
-      ortomatName,
-      note: action === 'cleared'
-        ? 'Cell is now empty (blue) but product is still assigned'
-        : 'Please place the product inside and close the cell',
+      ortomatName: result.ortomatName,
+      note: result.note,
     };
   }
 
