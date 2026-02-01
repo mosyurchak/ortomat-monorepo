@@ -14,7 +14,7 @@ export default function AdminOrtomatsPage() {
   
   const [showModal, setShowModal] = useState(false);
   const [editingOrtomat, setEditingOrtomat] = useState<Ortomat | null>(null);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<CreateOrtomatDto>({
     name: '',
     address: '',
     city: '',

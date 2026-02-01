@@ -10,7 +10,7 @@ type LogSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
 type LogCategory = 'cells' | 'orders' | 'couriers' | 'system' | 'security';
 
 type LogStats = {
-  bySeverity: Array<{ severity: string; _count: number }>;
+  bySeverity: Array<{ severity: LogSeverity; _count: number }>;
   byType: Array<{ type: string; _count: number }>;
   byCategory: Array<{ category: string; _count: number }>;
   totalLogs: number;
@@ -175,7 +175,7 @@ export default function AdminLogsPage() {
               <p className="text-sm text-gray-600 mb-1">Всього логів</p>
               <p className="text-2xl font-bold text-gray-900">{statsData.totalLogs}</p>
             </div>
-            {statsData.bySeverity.map((item: { severity: string; _count: number }) => (
+            {statsData.bySeverity.map((item: { severity: LogSeverity; _count: number }) => (
               <div key={item.severity} className="bg-white rounded-lg shadow p-6">
                 <p className="text-sm text-gray-600 mb-1">{getSeverityIcon(item.severity)} {item.severity}</p>
                 <p className="text-2xl font-bold text-gray-900">{item._count}</p>
@@ -290,7 +290,7 @@ export default function AdminLogsPage() {
                     {/* КАТЕГОРІЯ */}
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span className="inline-flex items-center text-gray-700">
-                        {getCategoryIcon(log.category)} {log.category}
+                        {getCategoryIcon(log.category as LogCategory)} {log.category}
                       </span>
                     </td>
                     
@@ -314,27 +314,27 @@ export default function AdminLogsPage() {
                               {/* ✅ ДОДАНО: Форматований вивід metadata */}
                               {log.metadata.saleId && (
                                 <p className="mb-1">
-                                  <span className="font-semibold">Продаж:</span> {log.metadata.saleId}
+                                  <span className="font-semibold">Продаж:</span> {String(log.metadata.saleId)}
                                 </p>
                               )}
                               {log.metadata.paymentId && (
                                 <p className="mb-1">
-                                  <span className="font-semibold">Платіж:</span> {log.metadata.paymentId}
+                                  <span className="font-semibold">Платіж:</span> {String(log.metadata.paymentId)}
                                 </p>
                               )}
                               {log.metadata.orderId && (
                                 <p className="mb-1">
-                                  <span className="font-semibold">Замовлення:</span> {log.metadata.orderId}
+                                  <span className="font-semibold">Замовлення:</span> {String(log.metadata.orderId)}
                                 </p>
                               )}
                               {log.metadata.amount && (
                                 <p className="mb-1">
-                                  <span className="font-semibold">Сума:</span> {formatAmount(log.metadata.amount)}
+                                  <span className="font-semibold">Сума:</span> {formatAmount(Number(log.metadata.amount))}
                                 </p>
                               )}
                               {log.metadata.productId && (
                                 <p className="mb-1">
-                                  <span className="font-semibold">Товар:</span> {log.metadata.productId}
+                                  <span className="font-semibold">Товар:</span> {String(log.metadata.productId)}
                                 </p>
                               )}
                               {/* Показати весь JSON якщо є інші поля */}
