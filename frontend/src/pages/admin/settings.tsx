@@ -69,7 +69,8 @@ export default function AdminSettings() {
 
     } catch (error: unknown) {
       console.error('Error saving settings:', error);
-      setMessage('❌ Помилка збереження: ' + (error.response?.data?.message || error.message));
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      setMessage('❌ Помилка збереження: ' + message);
     } finally {
       setSaving(false);
     }
@@ -97,7 +98,8 @@ export default function AdminSettings() {
       setTimeout(() => setBackupMessage(''), 5000);
     } catch (error: unknown) {
       console.error('Error exporting backup:', error);
-      setBackupMessage('❌ Помилка створення бекапу: ' + error.message);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      setBackupMessage('❌ Помилка створення бекапу: ' + message);
     } finally {
       setIsExporting(false);
     }
@@ -134,7 +136,8 @@ export default function AdminSettings() {
       }, 3000);
     } catch (error: unknown) {
       console.error('Error importing backup:', error);
-      setBackupMessage('❌ Помилка відновлення: ' + error.message);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      setBackupMessage('❌ Помилка відновлення: ' + message);
     } finally {
       setIsImporting(false);
       if (fileInputRef.current) {

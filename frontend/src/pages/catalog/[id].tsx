@@ -93,7 +93,7 @@ export default function CatalogPage() {
               
               return (
                 <Link
-                  key={product.id}
+                  key={String(product.id)}
                   href={{
                     pathname: `/product/${product.id}`,
                     query: {
@@ -108,7 +108,7 @@ export default function CatalogPage() {
                     {imageUrl ? (
                       <img
                         src={imageUrl}
-                        alt={product.name}
+                        alt={String(product.name)}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -120,32 +120,32 @@ export default function CatalogPage() {
 
                   <div className="p-6">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {product.name}
+                      {String(product.name)}
                     </h3>
-                    
+
                     {product.description && (
                       <div
                         className="text-gray-600 text-sm line-clamp-2"
-                        dangerouslySetInnerHTML={{ __html: product.description }}
+                        dangerouslySetInnerHTML={{ __html: String(product.description) }}
                       />
                     )}
 
                     <div className="flex items-center justify-between mb-4">
                       <div>
                         <span className="text-sm text-gray-500">{t('admin.category')}:</span>
-                        <p className="font-medium text-gray-900">{product.category}</p>
+                        <p className="font-medium text-gray-900">{String(product.category)}</p>
                       </div>
                       {product.size && (
                         <div className="text-right">
                           <span className="text-sm text-gray-500">Розмір:</span>
-                          <p className="font-medium text-gray-900">{product.size}</p>
+                          <p className="font-medium text-gray-900">{String(product.size)}</p>
                         </div>
                       )}
                     </div>
 
                     <div className="flex items-center justify-between pt-4 border-t border-gray-200">
                       <div className="text-2xl font-bold text-gray-900">
-                        {product.price} {t('catalog.uah')}
+                        {Number(product.price)} {t('catalog.uah')}
                       </div>
                       
                       <span className="bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
@@ -155,7 +155,7 @@ export default function CatalogPage() {
 
                     {product.quantity !== undefined && (
                       <div className="mt-2 text-sm text-gray-500">
-                        {t('catalog.inStock')}: {product.quantity} {t('product.pieces')}
+                        {t('catalog.inStock')}: {Number(product.quantity)} {t('product.pieces')}
                       </div>
                     )}
                   </div>

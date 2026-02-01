@@ -23,7 +23,8 @@ export default function VerifyEmailPage() {
         }, 3000);
       } catch (error: unknown) {
         setStatus('error');
-        setMessage(error.message || 'Помилка підтвердження email');
+        const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+        setMessage(errorMessage || 'Помилка підтвердження email');
       }
     };
 

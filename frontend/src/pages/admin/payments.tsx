@@ -79,17 +79,17 @@ export default function PaymentsPage() {
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(
-                          payment.status
+                          String(payment.status)
                         )}`}
                       >
                         {String(payment.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {payment.doctor?.firstName} {payment.doctor?.lastName}
+                      {(payment.doctor as any)?.firstName} {(payment.doctor as any)?.lastName}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(payment.createdAt).toLocaleString('uk-UA')}
+                      {new Date(String(payment.createdAt)).toLocaleString('uk-UA')}
                     </td>
                   </tr>
                 ))}

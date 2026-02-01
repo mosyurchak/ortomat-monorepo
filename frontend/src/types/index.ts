@@ -74,6 +74,10 @@ export interface User {
   middleName?: string;
   phone: string;
   role: 'admin' | 'doctor' | 'courier';
+  telegramChatId?: string;
+  telegramUsername?: string;
+  doctorOrtomats?: DoctorOrtomat[];
+  ortomats?: Ortomat[];
 }
 
 export interface Order {
@@ -143,6 +147,16 @@ export interface UpdateUserDto {
   phone?: string;
   email?: string;
   password?: string;
+}
+
+export interface CreateCourierDto {
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+  phone: string;
+  ortomatIds?: string[];
 }
 
 export interface RegisterDto {

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../contexts/AuthContext';
-import type { User, Ortomat, DoctorOrtomat, CreateDoctorDto, UpdateDoctorDto, UpdateUserDto } from '../../../types';
+import type { User, Ortomat, DoctorOrtomat, CreateDoctorDto, UpdateDoctorDto, UpdateUserDto, CreateCourierDto } from '../../../types';
 
 type Tab = 'doctors' | 'couriers';
 
@@ -272,7 +272,7 @@ export default function AdminUsersPage() {
 
   // Створення кур'єра
   const createCourierMutation = useMutation({
-    mutationFn: (data: UpdateUserDto) => api.createCourier(data),
+    mutationFn: (data: CreateCourierDto) => api.createCourier(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
