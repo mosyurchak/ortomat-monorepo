@@ -455,15 +455,13 @@ export class UsersService {
    */
   async createDoctor(data: {
     email: string;
-    password: string;
+    password?: string; // Опціонально: лікарі не потребують пароля
     firstName: string;
     lastName: string;
     middleName?: string;
     phone: string;
     ortomatId?: string;
   }) {
-    const bcrypt = require('bcryptjs');
-
     // Перевірка чи email вільний
     const existingUser = await this.prisma.user.findUnique({
       where: { email: data.email },
@@ -473,14 +471,11 @@ export class UsersService {
       throw new Error('Email already exists');
     }
 
-    // Хешування паролю
-    const hashedPassword = await bcrypt.hash(data.password, 10);
-
-    // Створення лікаря
+    // Створення лікаря БЕЗ пароля (авторизація тільки через Telegram)
     const doctor = await this.prisma.user.create({
       data: {
         email: data.email,
-        password: hashedPassword,
+        password: null, // Лікарі не мають пароля
         role: 'DOCTOR',
         firstName: data.firstName,
         lastName: data.lastName,
