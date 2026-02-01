@@ -127,8 +127,12 @@ export class TelegramBotService implements OnModuleInit {
         this.logger.log(`📞 Отримано номер: ${contact.phone_number} → ${normalizedPhone}`);
 
         // Шукаємо користувача за номером телефону
-        const user = await this.prisma.user.findFirst({
-          where: { phone: normalizedPhone },
+        // Оскільки в БД номери можуть бути в форматі "+38 (068) 836-77-62"
+        // а ми шукаємо "+380688367762", використаємо findMany і порівняємо нормалізовані номери
+        const allDoctors = await this.prisma.user.findMany({
+          where: {
+            role: 'DOCTOR',
+          },
           include: {
             doctorOrtomats: {
               include: {
@@ -136,6 +140,12 @@ export class TelegramBotService implements OnModuleInit {
               },
             },
           },
+        });
+
+        // Знаходимо лікаря з таким самим нормалізованим номером
+        const user = allDoctors.find(doctor => {
+          const dbPhoneNormalized = this.normalizePhone(doctor.phone);
+          return dbPhoneNormalized === normalizedPhone;
         });
 
         if (!user) {
