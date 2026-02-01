@@ -557,10 +557,9 @@ export default function AdminUsersPage() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ім'я</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Телефон</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомат</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Реферальне посилання</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ортомати</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Telegram</th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Дії</th>
                   </tr>
                 </thead>
@@ -571,44 +570,46 @@ export default function AdminUsersPage() {
                         <div className="text-sm font-medium text-gray-900">
                           {doctor.firstName} {doctor.lastName}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">{doctor.email}</div>
+                        {doctor.middleName && (
+                          <div className="text-xs text-gray-500">{doctor.middleName}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm text-gray-900">{doctor.phone}</div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-sm text-gray-900">
-                          {doctor.doctorOrtomats?.[0]?.ortomat?.name || '-'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        {doctor.doctorOrtomats?.[0]?.referralCode ? (
-                          <div className="flex items-center">
-                            <input
-                              type="text"
-                              readOnly
-                              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`}
-                              className="text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1 w-64"
-                              onClick={(e) => e.currentTarget.select()}
-                            />
-                            <button
-                              onClick={() => {
-                                const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`;
-                                navigator.clipboard.writeText(url);
-                                alert('Посилання скопійовано!');
-                              }}
-                              className="ml-2 text-blue-600 hover:text-blue-800"
-                              title="Копіювати"
-                            >
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                              </svg>
-                            </button>
+                        {doctor.doctorOrtomats && doctor.doctorOrtomats.length > 0 ? (
+                          <div className="space-y-2">
+                            {doctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                              <div key={doctorOrtomat.id} className="text-sm">
+                                <div className="font-medium text-gray-900">
+                                  {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Балів: {doctorOrtomat.totalPoints || 0}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-400">Не призначено ортомат</span>
+                          <span className="text-sm text-gray-400">Не призначено</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4">
+                        {doctor.telegramChatId ? (
+                          <div className="text-sm">
+                            <div className="flex items-center text-green-600">
+                              <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                              Підключено
+                            </div>
+                            {doctor.telegramUsername && (
+                              <div className="text-xs text-gray-500">@{doctor.telegramUsername}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-400">Не підключено</span>
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
@@ -646,45 +647,50 @@ export default function AdminUsersPage() {
                       <h3 className="font-semibold text-gray-900">
                         {doctor.firstName} {doctor.lastName}
                       </h3>
-                      <p className="text-sm text-gray-600">{doctor.email}</p>
-                      <p className="text-sm text-gray-600">{doctor.phone}</p>
+                      {doctor.middleName && (
+                        <p className="text-xs text-gray-500">{doctor.middleName}</p>
+                      )}
+                      <p className="text-sm text-gray-600 mt-1">{doctor.phone}</p>
                     </div>
                   </div>
 
                   <div className="space-y-2 text-sm">
+                    {/* Telegram статус */}
                     <div>
-                      <span className="font-medium text-gray-700">Ортомат:</span>
-                      <span className="ml-2 text-gray-900">
-                        {doctor.doctorOrtomats?.[0]?.ortomat?.name || '-'}
-                      </span>
+                      <span className="font-medium text-gray-700">Telegram:</span>
+                      {doctor.telegramChatId ? (
+                        <div className="ml-2 inline-flex items-center text-green-600">
+                          <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Підключено
+                          {doctor.telegramUsername && ` (@${doctor.telegramUsername})`}
+                        </div>
+                      ) : (
+                        <span className="ml-2 text-gray-400">Не підключено</span>
+                      )}
                     </div>
 
-                    {doctor.doctorOrtomats?.[0]?.referralCode && (
-                      <div>
-                        <span className="font-medium text-gray-700 block mb-1">Реферальне посилання:</span>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            readOnly
-                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`}
-                            className="flex-1 text-xs text-gray-600 bg-gray-50 border border-gray-300 rounded px-2 py-1"
-                            onClick={(e) => e.currentTarget.select()}
-                          />
-                          <button
-                            onClick={() => {
-                              const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctor.doctorOrtomats[0].ortomatId}?ref=${doctor.doctorOrtomats[0].referralCode}`;
-                              navigator.clipboard.writeText(url);
-                              alert('Посилання скопійовано!');
-                            }}
-                            className="p-2 text-blue-600 hover:text-blue-800 bg-blue-50 rounded"
-                          >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                          </button>
+                    {/* Ортомати */}
+                    <div>
+                      <span className="font-medium text-gray-700 block mb-1">Ортомати:</span>
+                      {doctor.doctorOrtomats && doctor.doctorOrtomats.length > 0 ? (
+                        <div className="space-y-1 ml-2">
+                          {doctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                            <div key={doctorOrtomat.id} className="text-sm">
+                              <span className="text-gray-900">
+                                {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
+                              </span>
+                              <span className="text-xs text-gray-500 ml-2">
+                                (Балів: {doctorOrtomat.totalPoints || 0})
+                              </span>
+                            </div>
+                          ))}
                         </div>
-                      </div>
-                    )}
+                      ) : (
+                        <span className="ml-2 text-gray-400">Не призначено</span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex gap-2 mt-4 pt-3 border-t">
@@ -1148,42 +1154,52 @@ export default function AdminUsersPage() {
                 </select>
               </div>
 
-              {/* ✅ ДОДАНО: Реферальне посилання та QR-код */}
-              {editingDoctor && editingDoctor.doctorOrtomats?.[0]?.referralCode && (
-                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                    Реферальне посилання
-                  </h3>
+              {/* ✅ ДОДАНО: Реферальні посилання та QR-коди */}
+              {editingDoctor && editingDoctor.doctorOrtomats && editingDoctor.doctorOrtomats.length > 0 && (
+                <div className="mb-6 space-y-4">
+                  {editingDoctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                    <div key={doctorOrtomat.id} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                        Реферальне посилання - {doctorOrtomat.ortomat?.name || `Ортомат ${index + 1}`}
+                      </h3>
 
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Посилання для клієнтів:
-                    </label>
-                    <div className="flex items-center">
-                      <input
-                        type="text"
-                        readOnly
-                        value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${editingDoctor.doctorOrtomats[0].ortomatId}?ref=${editingDoctor.doctorOrtomats[0].referralCode}`}
-                        className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                        onClick={(e) => e.currentTarget.select()}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${editingDoctor.doctorOrtomats[0].ortomatId}?ref=${editingDoctor.doctorOrtomats[0].referralCode}`;
-                          navigator.clipboard.writeText(url);
-                          alert('Посилання скопійовано!');
-                        }}
-                        className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Копіювати
-                      </button>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Посилання для клієнтів:
+                        </label>
+                        <div className="flex items-center">
+                          <input
+                            type="text"
+                            readOnly
+                            value={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctorOrtomat.ortomatId}?ref=${doctorOrtomat.referralCode}`}
+                            className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                            onClick={(e) => e.currentTarget.select()}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctorOrtomat.ortomatId}?ref=${doctorOrtomat.referralCode}`;
+                              navigator.clipboard.writeText(url);
+                              alert('Посилання скопійовано!');
+                            }}
+                            className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                          >
+                            Копіювати
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="mb-2">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Баланс балів: <span className="font-bold text-blue-600">{doctorOrtomat.totalPoints || 0}</span>
+                        </label>
+                      </div>
                     </div>
-                  </div>
+                  ))}
 
-                  <div>
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      QR-код:
+                      QR-код для Telegram бота:
                     </label>
                     <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200">
                       <img
@@ -1194,7 +1210,7 @@ export default function AdminUsersPage() {
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-2 text-center">
-                      Лікар може показати цей QR-код клієнтам для сканування
+                      Лікар може показати цей QR-код клієнтам для сканування та переходу в Telegram бот
                     </p>
                   </div>
                 </div>

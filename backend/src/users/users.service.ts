@@ -386,8 +386,16 @@ export class UsersService {
         phone: true,
         isVerified: true,
         createdAt: true,
+        telegramChatId: true,
+        telegramUsername: true,
+        telegramNotifications: true,
         doctorOrtomats: {
-          include: {
+          select: {
+            id: true,
+            ortomatId: true,
+            referralCode: true,
+            totalPoints: true,
+            totalSales: true,
             ortomat: {
               select: {
                 id: true,
