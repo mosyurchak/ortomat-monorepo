@@ -71,10 +71,10 @@ export default function PaymentsPage() {
                 {payments.map((payment: Record<string, unknown>) => (
                   <tr key={String(payment.id)} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {payment.orderId}
+                      {String(payment.orderId)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {payment.amount} ₴
+                      {Number(payment.amount)} ₴
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -82,7 +82,7 @@ export default function PaymentsPage() {
                           payment.status
                         )}`}
                       >
-                        {payment.status}
+                        {String(payment.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
