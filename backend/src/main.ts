@@ -8,6 +8,9 @@ import helmet from 'helmet';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // ✅ Enable graceful shutdown hooks (for Telegram bot cleanup)
+  app.enableShutdownHooks();
+
   // ✅ SECURITY: Security headers with Helmet
   app.use(helmet({
     contentSecurityPolicy: false, // Disable CSP for API (frontend handles it)
