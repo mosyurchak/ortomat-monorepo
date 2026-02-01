@@ -57,98 +57,112 @@ export class TelegramBotService implements OnModuleInit {
       const chatId = msg.chat.id;
       const username = msg.from?.username;
 
+      // Перевіряємо чи вже прив'язано
+      const existingUser = await this.prisma.user.findUnique({
+        where: { telegramChatId: chatId.toString() },
+      });
+
+      if (existingUser) {
+        await this.bot.sendMessage(
+          chatId,
+          `✅ Ваш Telegram вже прив'язано!\n\n` +
+          `👤 ${existingUser.firstName} ${existingUser.lastName}\n` +
+          `📱 ${existingUser.phone}\n\n` +
+          `Використовуйте /stats для перегляду статистики.`
+        );
+        return;
+      }
+
+      // Показуємо кнопку для прив'язки
       await this.bot.sendMessage(
         chatId,
         `👋 Вітаю в Ortomat Referral Bot!\n\n` +
         `Цей бот допоможе вам:\n` +
         `• 📊 Переглядати вашу статистику балів\n` +
         `• 💰 Отримувати сповіщення про нові продажі\n\n` +
-        `Для початку роботи прив'яжіть свій Telegram акаунт до профілю лікаря.\n\n` +
-        `📱 Використовуйте команду /link з номером телефону:\n` +
-        `/link +380501234567\n` +
-        `/link 0501234567\n\n` +
-        `📧 Або з email:\n` +
-        `/link doctor@example.com`,
+        `Для початку роботи натисніть кнопку нижче 👇`,
+        {
+          reply_markup: {
+            keyboard: [
+              [
+                {
+                  text: '📱 Прив\'язати через номер телефону',
+                  request_contact: true,
+                }
+              ]
+            ],
+            resize_keyboard: true,
+            one_time_keyboard: true,
+          }
+        }
       );
 
       this.logger.log(`📱 /start від користувача ${username} (${chatId})`);
     });
 
-    // Команда /link для прив'язки аккаунту
-    this.bot.onText(/\/link (.+)/, async (msg, match) => {
+    // Обробка контакту (номера телефону)
+    this.bot.on('contact', async (msg) => {
       const chatId = msg.chat.id;
+      const contact = msg.contact;
       const username = msg.from?.username;
-      const input = match?.[1]?.trim();
 
-      if (!input) {
-        await this.bot.sendMessage(
-          chatId,
-          '❌ Будь ласка, вкажіть ваш номер телефону або email:\n' +
-          '/link +380501234567\n' +
-          '/link 0501234567\n' +
-          '/link doctor@example.com'
-        );
+      if (!contact || !contact.phone_number) {
+        await this.bot.sendMessage(chatId, '❌ Не вдалося отримати номер телефону.');
         return;
       }
 
       try {
-        let user;
-        let searchType = '';
+        // Нормалізуємо номер телефону
+        const normalizedPhone = this.normalizePhone(contact.phone_number);
 
-        // Визначаємо чи це email чи телефон
-        if (input.includes('@')) {
-          // Це email
-          searchType = 'email';
-          user = await this.prisma.user.findUnique({
-            where: { email: input.toLowerCase() },
-            include: {
-              doctorOrtomats: {
-                include: {
-                  ortomat: true,
-                },
-              },
-            },
-          });
-        } else {
-          // Це номер телефону
-          searchType = 'phone';
-          const normalizedPhone = this.normalizePhone(input);
-
-          if (!normalizedPhone) {
-            await this.bot.sendMessage(
-              chatId,
-              '❌ Невірний формат номера телефону.\n\n' +
-              'Використовуйте один з форматів:\n' +
-              '+380501234567\n' +
-              '0501234567\n' +
-              '501234567'
-            );
-            return;
-          }
-
-          user = await this.prisma.user.findFirst({
-            where: { phone: normalizedPhone },
-            include: {
-              doctorOrtomats: {
-                include: {
-                  ortomat: true,
-                },
-              },
-            },
-          });
-        }
-
-        if (!user) {
-          const searchValue = searchType === 'email' ? input : this.normalizePhone(input);
+        if (!normalizedPhone) {
           await this.bot.sendMessage(
             chatId,
-            `❌ Користувача з ${searchType === 'email' ? 'email' : 'номером телефону'} ${searchValue} не знайдено.`
+            '❌ Невірний формат номера телефону.\n\n' +
+            'Ваш номер: ' + contact.phone_number
+          );
+          return;
+        }
+
+        this.logger.log(`📞 Отримано номер: ${contact.phone_number} → ${normalizedPhone}`);
+
+        // Шукаємо користувача за номером телефону
+        const user = await this.prisma.user.findFirst({
+          where: { phone: normalizedPhone },
+          include: {
+            doctorOrtomats: {
+              include: {
+                ortomat: true,
+              },
+            },
+          },
+        });
+
+        if (!user) {
+          await this.bot.sendMessage(
+            chatId,
+            `❌ Користувача з номером ${normalizedPhone} не знайдено в системі.\n\n` +
+            `Переконайтеся що ви зареєстровані як лікар-реферал.`,
+            {
+              reply_markup: {
+                remove_keyboard: true,
+              }
+            }
           );
           return;
         }
 
         if (user.role !== 'DOCTOR') {
-          await this.bot.sendMessage(chatId, `❌ Цей сервіс доступний тільки для лікарів-рефералів.`);
+          await this.bot.sendMessage(
+            chatId,
+            `❌ Цей сервіс доступний тільки для лікарів-рефералів.\n\n` +
+            `Ваша роль: ${user.role}`,
+            {
+              reply_markup: {
+                remove_keyboard: true,
+              }
+            }
+          );
           return;
         }
 
@@ -156,7 +170,13 @@ export class TelegramBotService implements OnModuleInit {
         if (user.telegramChatId && user.telegramChatId !== chatId.toString()) {
           await this.bot.sendMessage(
             chatId,
-            `⚠️ До цього акаунту вже прив'язано інший Telegram. Відв'яжіть його спочатку в особистому кабінеті.`
+            `⚠️ До цього акаунту вже прив'язано інший Telegram.\n\n` +
+            `Якщо це помилка - зверніться до адміністратора.`,
+            {
+              reply_markup: {
+                remove_keyboard: true,
+              }
+            }
           );
           return;
         }
@@ -178,16 +198,28 @@ export class TelegramBotService implements OnModuleInit {
           `✅ Telegram успішно прив'язано!\n\n` +
           `👤 Ім'я: ${user.firstName} ${user.lastName}\n` +
           `📱 Телефон: ${user.phone}\n` +
-          `📧 Email: ${user.email}\n` +
           `🏪 Ортомат: ${ortomatInfo}\n\n` +
           `Тепер ви будете отримувати сповіщення про продажі.\n` +
           `Використовуйте /stats щоб переглянути статистику.`,
+          {
+            reply_markup: {
+              remove_keyboard: true,
+            }
+          }
         );
 
-        this.logger.log(`🔗 Прив'язано Telegram для ${user.phone || user.email}: ${username} (${chatId})`);
+        this.logger.log(`🔗 Прив'язано Telegram для ${user.phone}: ${username} (${chatId})`);
       } catch (error) {
         this.logger.error('Помилка прив\'язки Telegram:', error);
-        await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Виникла помилка. Спробуйте пізніше.',
+          {
+            reply_markup: {
+              remove_keyboard: true,
+            }
+          }
+        );
       }
     });
 
@@ -314,16 +346,16 @@ export class TelegramBotService implements OnModuleInit {
       const helpMessage = `
 📱 Доступні команди:
 
-/start - Запустити бота
-/link <телефон або email> - Прив'язати Telegram до акаунту
+/start - Запустити бота та прив'язати акаунт
 /stats - Переглянути статистику балів
 /unlink - Відв'язати Telegram від акаунту
 /help - Показати цю довідку
 
-💡 Приклади:
-/link +380501234567
-/link 0501234567
-/link doctor@example.com
+💡 Як прив'язати акаунт:
+1. Натисніть /start
+2. Натисніть кнопку "📱 Прив'язати через номер телефону"
+3. Telegram запросить дозвіл поділитися номером
+4. Підтвердіть - і готово!
       `.trim();
 
       await this.bot.sendMessage(chatId, helpMessage);
