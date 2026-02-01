@@ -21,7 +21,8 @@ export default function ForgotPasswordPage() {
       setEmail('');
     } catch (error: unknown) {
       console.error('Forgot password error:', error);
-      setError(error.message || 'Помилка відправки email');
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      setError(message || 'Помилка відправки email');
     } finally {
       setIsLoading(false);
     }

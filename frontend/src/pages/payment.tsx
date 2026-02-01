@@ -61,7 +61,8 @@ export default function PaymentPage() {
     },
     onError: (error: unknown) => {
       console.error('Payment creation error:', error);
-      alert(`${t('payment.paymentError')}: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`${t('payment.paymentError')}: ${message}`);
       setProcessing(false);
     },
   });

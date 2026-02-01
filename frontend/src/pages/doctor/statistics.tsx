@@ -177,10 +177,10 @@ export default function DoctorStatisticsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
-                        {monthData.count} продажів
+                        {Number(monthData.count)} продажів
                       </p>
                       <p className="font-semibold text-green-600">
-                        {monthData.earnings?.toFixed(2) || 0} UAH
+                        {typeof monthData.earnings === 'number' ? monthData.earnings.toFixed(2) : 0} UAH
                       </p>
                     </div>
                   </div>

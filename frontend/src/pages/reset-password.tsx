@@ -41,7 +41,8 @@ export default function ResetPasswordPage() {
       setSuccess(true);
     } catch (error: unknown) {
       console.error('Reset password error:', error);
-      setError(error.message || 'Помилка зміни паролю. Можливо токен застарів.');
+      const message = error instanceof Error ? error.message : 'Помилка зміни паролю. Можливо токен застарів.';
+      setError(message);
     } finally {
       setIsLoading(false);
     }
