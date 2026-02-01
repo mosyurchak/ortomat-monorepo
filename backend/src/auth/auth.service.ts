@@ -26,6 +26,18 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // ✅ Перевірка: лікарі не можуть логінитись в адмінку
+    if (user.role === 'DOCTOR') {
+      console.log('❌ Doctor attempted to login - not allowed');
+      throw new UnauthorizedException('Лікарі можуть користуватись тільки Telegram ботом');
+    }
+
+    // ✅ Перевірка наявності пароля (лікарі не мають пароля)
+    if (!user.password) {
+      console.log('❌ User has no password');
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
     // ✅ SECURITY: Removed hash logging
     console.log('🔐 Comparing passwords...');
 

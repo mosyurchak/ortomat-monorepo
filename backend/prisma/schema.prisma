@@ -9,13 +9,13 @@ datasource db {
 
 model User {
   id                       String              @id @default(uuid())
-  email                    String              @unique
-  password                 String
+  email                    String?             @unique // Опціонально: NULL для лікарів (тільки ADMIN та COURIER)
+  password                 String?             // Опціонально: лікарі не мають пароля (тільки Telegram)
   role                     UserRole
   firstName                String
   lastName                 String
   middleName               String?
-  phone                    String
+  phone                    String              @unique // Унікальний телефон - головний ідентифікатор лікарів
   isVerified               Boolean             @default(false)
   createdAt                DateTime            @default(now())
   updatedAt                DateTime            @updatedAt
