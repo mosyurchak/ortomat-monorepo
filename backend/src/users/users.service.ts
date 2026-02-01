@@ -454,27 +454,30 @@ export class UsersService {
    * Створити лікаря
    */
   async createDoctor(data: {
-    email: string;
-    password?: string; // Опціонально: лікарі не потребують пароля
     firstName: string;
     lastName: string;
     middleName?: string;
     phone: string;
-    ortomatId?: string;
+    ortomatIds?: string[]; // Можна призначити до 2 ортоматів
   }) {
-    // Перевірка чи email вільний
+    // Автогенерація email з номера телефону
+    // +380501234567 → doctor_0501234567@ortomat.local
+    const phoneDigits = data.phone.replace(/\D/g, '');
+    const email = `doctor_${phoneDigits}@ortomat.local`;
+
+    // Перевірка чи email вже існує
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: data.email },
+      where: { email },
     });
 
     if (existingUser) {
-      throw new Error('Email already exists');
+      throw new Error('Doctor with this phone already exists');
     }
 
     // Створення лікаря БЕЗ пароля (авторизація тільки через Telegram)
     const doctor = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email,
         password: null, // Лікарі не мають пароля
         role: 'DOCTOR',
         firstName: data.firstName,
@@ -485,18 +488,20 @@ export class UsersService {
       },
     });
 
-    // Призначити ортомат з referralCode
-    if (data.ortomatId) {
-      const referralCode = `DOC${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+    // Призначити ортомати з referralCode (до 2 ортоматів)
+    if (data.ortomatIds && data.ortomatIds.length > 0) {
+      for (const ortomatId of data.ortomatIds) {
+        const referralCode = `DOC${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-      await this.prisma.doctorOrtomat.create({
-        data: {
-          doctorId: doctor.id,
-          ortomatId: data.ortomatId,
-          referralCode,
-          totalPoints: 0, // Початково 0 балів
-        },
-      });
+        await this.prisma.doctorOrtomat.create({
+          data: {
+            doctorId: doctor.id,
+            ortomatId,
+            referralCode,
+            totalPoints: 0, // Початково 0 балів
+          },
+        });
+      }
     }
 
     return {
@@ -511,17 +516,13 @@ export class UsersService {
   async updateDoctor(
     id: string,
     data: {
-      email?: string;
-      password?: string;
       firstName?: string;
       lastName?: string;
       middleName?: string;
       phone?: string;
-      ortomatId?: string;
+      ortomatIds?: string[]; // Можна призначити до 2 ортоматів
     }
   ) {
-    const bcrypt = require('bcryptjs');
-
     const doctor = await this.prisma.user.findUnique({
       where: { id },
     });
@@ -530,28 +531,18 @@ export class UsersService {
       throw new NotFoundException('Doctor not found');
     }
 
-    // Перевірка email
-    if (data.email && data.email !== doctor.email) {
-      const existingUser = await this.prisma.user.findUnique({
-        where: { email: data.email },
-      });
-
-      if (existingUser) {
-        throw new Error('Email already exists');
-      }
-    }
-
     // Підготовка даних для оновлення
     const updateData: any = {
-      email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
       middleName: data.middleName,
       phone: data.phone,
     };
 
-    if (data.password) {
-      updateData.password = await bcrypt.hash(data.password, 10);
+    // Якщо змінюється номер телефону - оновити email
+    if (data.phone && data.phone !== doctor.phone) {
+      const phoneDigits = data.phone.replace(/\D/g, '');
+      updateData.email = `doctor_${phoneDigits}@ortomat.local`;
     }
 
     // Оновлення користувача
@@ -560,25 +551,27 @@ export class UsersService {
       data: updateData,
     });
 
-    // Оновлення призначення ортомату
-    if (data.ortomatId !== undefined) {
+    // Оновлення призначення ортоматів
+    if (data.ortomatIds !== undefined) {
       // Видаляємо старі призначення
       await this.prisma.doctorOrtomat.deleteMany({
         where: { doctorId: id },
       });
 
-      // Додаємо нове
-      if (data.ortomatId) {
-        const referralCode = `DOC${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      // Додаємо нові (до 2 ортоматів)
+      if (data.ortomatIds && data.ortomatIds.length > 0) {
+        for (const ortomatId of data.ortomatIds) {
+          const referralCode = `DOC${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
-        await this.prisma.doctorOrtomat.create({
-          data: {
-            doctorId: id,
-            ortomatId: data.ortomatId,
-            referralCode,
-            totalPoints: 0, // Початково 0 балів
-          },
-        });
+          await this.prisma.doctorOrtomat.create({
+            data: {
+              doctorId: id,
+              ortomatId,
+              referralCode,
+              totalPoints: 0, // Початково 0 балів
+            },
+          });
+        }
       }
     }
 

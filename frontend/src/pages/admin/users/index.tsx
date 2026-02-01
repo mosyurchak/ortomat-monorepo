@@ -172,12 +172,11 @@ export default function AdminUsersPage() {
   const [showDoctorModal, setShowDoctorModal] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<any>(null);
   const [doctorFormData, setDoctorFormData] = useState({
-    email: '',
     firstName: '',
     lastName: '',
     middleName: '',
     phone: '',
-    ortomatId: '',
+    ortomatIds: [] as string[], // Можна призначити до 2 ортоматів
   });
 
   // Phone validation errors
@@ -316,12 +315,11 @@ export default function AdminUsersPage() {
 
   const resetDoctorForm = () => {
     setDoctorFormData({
-      email: '',
       firstName: '',
       lastName: '',
       middleName: '',
       phone: '',
-      ortomatId: '',
+      ortomatIds: [],
     });
   };
 
@@ -336,10 +334,11 @@ export default function AdminUsersPage() {
     }
 
     const submitData = {
-      ...doctorFormData,
-      phone: phoneToBackendFormat(doctorFormData.phone), // Конвертуємо в +380XXXXXXXXX
+      firstName: doctorFormData.firstName,
+      lastName: doctorFormData.lastName,
       middleName: doctorFormData.middleName || undefined,
-      ortomatId: doctorFormData.ortomatId || undefined,
+      phone: phoneToBackendFormat(doctorFormData.phone), // Конвертуємо в +380XXXXXXXXX
+      ortomatIds: doctorFormData.ortomatIds.filter(id => id), // Видалити порожні значення
     };
 
     if (editingDoctor) {
@@ -352,12 +351,11 @@ export default function AdminUsersPage() {
   const handleEditDoctor = (doctor: any) => {
     setEditingDoctor(doctor);
     setDoctorFormData({
-      email: doctor.email,
       firstName: doctor.firstName,
       lastName: doctor.lastName,
       middleName: doctor.middleName || '',
       phone: formatPhoneNumber(doctor.phone || ''), // Форматуємо телефон з БД
-      ortomatId: doctor.doctorOrtomats?.[0]?.ortomatId || '',
+      ortomatIds: doctor.doctorOrtomats?.map((do: any) => do.ortomatId) || [],
     });
     setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
     setShowDoctorModal(true);
@@ -1063,19 +1061,6 @@ export default function AdminUsersPage() {
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={doctorFormData.email}
-                  onChange={(e) => setDoctorFormData({ ...doctorFormData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
                   Телефон *
                 </label>
                 <input
@@ -1106,13 +1091,22 @@ export default function AdminUsersPage() {
                 )}
               </div>
 
-              <div className="mb-6">
+              {/* Перший ортомат */}
+              <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Призначити ортомат
+                  Перший ортомат
                 </label>
                 <select
-                  value={doctorFormData.ortomatId}
-                  onChange={(e) => setDoctorFormData({ ...doctorFormData, ortomatId: e.target.value })}
+                  value={doctorFormData.ortomatIds[0] || ''}
+                  onChange={(e) => {
+                    const newIds = [...doctorFormData.ortomatIds];
+                    if (e.target.value) {
+                      newIds[0] = e.target.value;
+                    } else {
+                      newIds.splice(0, 1);
+                    }
+                    setDoctorFormData({ ...doctorFormData, ortomatIds: newIds });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Не призначено</option>
@@ -1121,6 +1115,36 @@ export default function AdminUsersPage() {
                       {ortomat.name} - {ortomat.address}
                     </option>
                   ))}
+                </select>
+              </div>
+
+              {/* Другий ортомат (опціонально) */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Другий ортомат (опціонально)
+                </label>
+                <select
+                  value={doctorFormData.ortomatIds[1] || ''}
+                  onChange={(e) => {
+                    const newIds = [...doctorFormData.ortomatIds];
+                    if (e.target.value) {
+                      newIds[1] = e.target.value;
+                    } else {
+                      newIds.splice(1, 1);
+                    }
+                    setDoctorFormData({ ...doctorFormData, ortomatIds: newIds });
+                  }}
+                  disabled={!doctorFormData.ortomatIds[0]} // Можна вибрати тільки якщо перший вже вибраний
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
+                >
+                  <option value="">Не призначено</option>
+                  {allOrtomats
+                    ?.filter((ortomat: any) => ortomat.id !== doctorFormData.ortomatIds[0]) // Не показувати перший ортомат
+                    ?.map((ortomat: any) => (
+                      <option key={ortomat.id} value={ortomat.id}>
+                        {ortomat.name} - {ortomat.address}
+                      </option>
+                    ))}
                 </select>
               </div>
 
