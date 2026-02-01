@@ -228,13 +228,6 @@ export default function AdminOrtomatsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
-                      className="text-purple-600 hover:text-purple-900 mr-4 font-medium"
-                      title="Управління та QR коди для лікарів"
-                    >
-                      ⚙️ Управління
-                    </button>
-                    <button
                       onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
                       className="text-blue-600 hover:text-blue-900 mr-4"
                     >
@@ -300,12 +293,6 @@ export default function AdminOrtomatsPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => router.push(`/admin/ortomats/${ortomat.id}`)}
-                  className="px-3 py-2 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
-                >
-                  ⚙️ Управління
-                </button>
-                <button
                   onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
                   className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
@@ -319,7 +306,7 @@ export default function AdminOrtomatsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(ortomat.id)}
-                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
+                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 col-span-2"
                 >
                   {t('admin.delete')}
                 </button>

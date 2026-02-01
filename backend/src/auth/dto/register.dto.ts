@@ -31,9 +31,4 @@ export class RegisterDto {
   @IsNotEmpty({ message: 'Телефон обов\'язковий' })
   @Matches(/^\+380\d{9}$/, { message: 'Телефон має бути у форматі +380XXXXXXXXX' })
   phone: string;
-
-  @IsString()
-  @IsOptional()
-  @MaxLength(500, { message: 'Invite token занадто довгий' })
-  inviteToken?: string;
 }

@@ -12,7 +12,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { QrCodeModule } from './qr-code/qr-code.module';
 import { LogsModule } from './logs/logs.module';
 import { EmailModule } from './email/email.module';
-import { InviteModule } from './invite/invite.module';
 import { CourierModule } from './courier/courier.module';
 import { MonoPaymentModule } from './mono-payment/mono-payment.module';
 import { SettingsModule } from './settings/settings.module';
@@ -42,7 +41,6 @@ import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
     QrCodeModule,
     LogsModule,
     EmailModule,
-    InviteModule,
     CourierModule,
     MonoPaymentModule,
     SettingsModule,
