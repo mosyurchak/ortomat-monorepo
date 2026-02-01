@@ -1,9 +1,9 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import TelegramBot = require('node-telegram-bot-api');
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
-export class TelegramBotService implements OnModuleInit {
+export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   private bot: TelegramBot;
   private readonly logger = new Logger(TelegramBotService.name);
 
@@ -18,11 +18,39 @@ export class TelegramBotService implements OnModuleInit {
     }
 
     try {
-      this.bot = new TelegramBot(token, { polling: true });
+      this.bot = new TelegramBot(token, {
+        polling: {
+          interval: 300,
+          autoStart: true,
+          params: {
+            timeout: 10,
+          },
+        },
+      });
+
+      // Обробка помилок polling
+      this.bot.on('polling_error', (error) => {
+        this.logger.error('❌ Помилка polling:', error.message);
+        // Не перезапускаємо бот автоматично - дозволяємо Railway зробити це
+      });
+
       this.logger.log('✅ Telegram бот успішно запущено');
       this.setupCommands();
     } catch (error) {
       this.logger.error('❌ Помилка запуску Telegram бота:', error);
+    }
+  }
+
+  async onModuleDestroy() {
+    if (this.bot) {
+      try {
+        this.logger.log('🛑 Зупинка Telegram бота...');
+        await this.bot.stopPolling();
+        await this.bot.close();
+        this.logger.log('✅ Telegram бот зупинено');
+      } catch (error) {
+        this.logger.error('❌ Помилка зупинки бота:', error);
+      }
     }
   }
 
