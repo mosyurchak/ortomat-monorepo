@@ -26,6 +26,31 @@ export class TelegramBotService implements OnModuleInit {
     }
   }
 
+  /**
+   * Нормалізує номер телефону до формату +380XXXXXXXXX
+   */
+  private normalizePhone(phone: string): string | null {
+    // Видаляємо всі нецифрові символи
+    let digits = phone.replace(/\D/g, '');
+
+    // Якщо починається з 380, додаємо +
+    if (digits.startsWith('380') && digits.length === 12) {
+      return '+' + digits;
+    }
+
+    // Якщо починається з 0 (український формат)
+    if (digits.startsWith('0') && digits.length === 10) {
+      return '+38' + digits;
+    }
+
+    // Якщо 9 цифр - додаємо 0 на початок
+    if (digits.length === 9) {
+      return '+380' + digits;
+    }
+
+    return null; // Невалідний формат
+  }
+
   private setupCommands() {
     // Команда /start
     this.bot.onText(/\/start/, async (msg) => {
@@ -38,9 +63,12 @@ export class TelegramBotService implements OnModuleInit {
         `Цей бот допоможе вам:\n` +
         `• 📊 Переглядати вашу статистику балів\n` +
         `• 💰 Отримувати сповіщення про нові продажі\n\n` +
-        `Для початку роботи прив'яжіть свій Telegram акаунт до профілю лікаря.\n` +
-        `Надішліть команду /link разом з вашим email:\n` +
-        `/link your.email@example.com`,
+        `Для початку роботи прив'яжіть свій Telegram акаунт до профілю лікаря.\n\n` +
+        `📱 Використовуйте команду /link з номером телефону:\n` +
+        `/link +380501234567\n` +
+        `/link 0501234567\n\n` +
+        `📧 Або з email:\n` +
+        `/link doctor@example.com`,
       );
 
       this.logger.log(`📱 /start від користувача ${username} (${chatId})`);
@@ -50,28 +78,72 @@ export class TelegramBotService implements OnModuleInit {
     this.bot.onText(/\/link (.+)/, async (msg, match) => {
       const chatId = msg.chat.id;
       const username = msg.from?.username;
-      const email = match?.[1]?.trim();
+      const input = match?.[1]?.trim();
 
-      if (!email) {
-        await this.bot.sendMessage(chatId, '❌ Будь ласка, вкажіть ваш email:\n/link your.email@example.com');
+      if (!input) {
+        await this.bot.sendMessage(
+          chatId,
+          '❌ Будь ласка, вкажіть ваш номер телефону або email:\n' +
+          '/link +380501234567\n' +
+          '/link 0501234567\n' +
+          '/link doctor@example.com'
+        );
         return;
       }
 
       try {
-        // Знаходимо користувача за email
-        const user = await this.prisma.user.findUnique({
-          where: { email: email.toLowerCase() },
-          include: {
-            doctorOrtomats: {
-              include: {
-                ortomat: true,
+        let user;
+        let searchType = '';
+
+        // Визначаємо чи це email чи телефон
+        if (input.includes('@')) {
+          // Це email
+          searchType = 'email';
+          user = await this.prisma.user.findUnique({
+            where: { email: input.toLowerCase() },
+            include: {
+              doctorOrtomats: {
+                include: {
+                  ortomat: true,
+                },
               },
             },
-          },
-        });
+          });
+        } else {
+          // Це номер телефону
+          searchType = 'phone';
+          const normalizedPhone = this.normalizePhone(input);
+
+          if (!normalizedPhone) {
+            await this.bot.sendMessage(
+              chatId,
+              '❌ Невірний формат номера телефону.\n\n' +
+              'Використовуйте один з форматів:\n' +
+              '+380501234567\n' +
+              '0501234567\n' +
+              '501234567'
+            );
+            return;
+          }
+
+          user = await this.prisma.user.findFirst({
+            where: { phone: normalizedPhone },
+            include: {
+              doctorOrtomats: {
+                include: {
+                  ortomat: true,
+                },
+              },
+            },
+          });
+        }
 
         if (!user) {
-          await this.bot.sendMessage(chatId, `❌ Користувача з email ${email} не знайдено.`);
+          const searchValue = searchType === 'email' ? input : this.normalizePhone(input);
+          await this.bot.sendMessage(
+            chatId,
+            `❌ Користувача з ${searchType === 'email' ? 'email' : 'номером телефону'} ${searchValue} не знайдено.`
+          );
           return;
         }
 
@@ -105,13 +177,14 @@ export class TelegramBotService implements OnModuleInit {
           chatId,
           `✅ Telegram успішно прив'язано!\n\n` +
           `👤 Ім'я: ${user.firstName} ${user.lastName}\n` +
+          `📱 Телефон: ${user.phone}\n` +
           `📧 Email: ${user.email}\n` +
           `🏪 Ортомат: ${ortomatInfo}\n\n` +
           `Тепер ви будете отримувати сповіщення про продажі.\n` +
           `Використовуйте /stats щоб переглянути статистику.`,
         );
 
-        this.logger.log(`🔗 Прив'язано Telegram для ${email}: ${username} (${chatId})`);
+        this.logger.log(`🔗 Прив'язано Telegram для ${user.phone || user.email}: ${username} (${chatId})`);
       } catch (error) {
         this.logger.error('Помилка прив\'язки Telegram:', error);
         await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
@@ -242,12 +315,14 @@ export class TelegramBotService implements OnModuleInit {
 📱 Доступні команди:
 
 /start - Запустити бота
-/link <email> - Прив'язати Telegram до акаунту
+/link <телефон або email> - Прив'язати Telegram до акаунту
 /stats - Переглянути статистику балів
 /unlink - Відв'язати Telegram від акаунту
 /help - Показати цю довідку
 
-💡 Приклад:
+💡 Приклади:
+/link +380501234567
+/link 0501234567
 /link doctor@example.com
       `.trim();
 
