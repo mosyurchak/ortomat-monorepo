@@ -355,7 +355,7 @@ export default function AdminUsersPage() {
       lastName: doctor.lastName,
       middleName: doctor.middleName || '',
       phone: formatPhoneNumber(doctor.phone || ''), // Форматуємо телефон з БД
-      ortomatIds: doctor.doctorOrtomats?.map((do: any) => do.ortomatId) || [],
+      ortomatIds: doctor.doctorOrtomats?.map((item: any) => item.ortomatId) || [],
     });
     setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
     setShowDoctorModal(true);
