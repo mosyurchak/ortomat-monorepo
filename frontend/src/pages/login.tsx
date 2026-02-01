@@ -22,7 +22,7 @@ export default function Login() {
     try {
       await login(email, password);
       // Редирект відбувається автоматично в AuthContext
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Login error:', error);
       setError(error.message || t('auth.loginError'));
     } finally {

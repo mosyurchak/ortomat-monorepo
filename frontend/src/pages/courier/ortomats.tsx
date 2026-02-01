@@ -6,6 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
 import { ArrowLeft, MapPin, Package, AlertCircle } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
+import type { Ortomat, Cell } from '../../types';
+
+type OrtomatWithStats = Ortomat & {
+  cells?: Cell[];
+  filledCells: number;
+  emptyCells: number;
+  fillRate: number;
+};
 
 export default function CourierOrtomatsPage() {
   const router = useRouter();
@@ -45,14 +53,14 @@ export default function CourierOrtomatsPage() {
   }
 
   // Обчислюємо статистику для кожного ортомата
-  const ortomatsWithStats = ortomats?.map((ortomat: any) => {
+  const ortomatsWithStats = ortomats?.map((ortomat: Ortomat & { cells?: Cell[] }) => {
     const cells = ortomat.cells || [];
     const totalCells = ortomat.totalCells || 37;
-    
+
     // isAvailable = true означає порожня комірка
     // isAvailable = false означає заповнена комірка
-    const filledCells = cells.filter((c: any) => c.productId && !c.isAvailable).length;
-    const emptyCells = cells.filter((c: any) => c.productId && c.isAvailable).length;
+    const filledCells = cells.filter((c: Cell) => c.productId && !c.isAvailable).length;
+    const emptyCells = cells.filter((c: Cell) => c.productId && c.isAvailable).length;
     const fillRate = Math.round((filledCells / totalCells) * 100);
 
     return {
@@ -89,7 +97,7 @@ export default function CourierOrtomatsPage() {
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {ortomatsWithStats && ortomatsWithStats.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ortomatsWithStats.map((item: any) => (
+              {ortomatsWithStats.map((item: OrtomatWithStats) => (
                 <div
                   key={item.id}
                   className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow overflow-hidden"

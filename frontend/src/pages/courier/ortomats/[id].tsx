@@ -43,7 +43,7 @@ export default function CourierOrtomatDetailPage() {
   const openCellMutation = useMutation({
     mutationFn: ({ cellNumber, courierId }: { cellNumber: number; courierId: string }) =>
       api.openCellForRefill(id as string, cellNumber, courierId),
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       setIsOpening(false);
       const productName = data.product?.name || 'товар';
       alert(`Комірка відкривається...\n\n${data.note || ''}\n\nПокладіть товар: ${productName}\nЗакрийте комірку`);
@@ -56,7 +56,7 @@ export default function CourierOrtomatDetailPage() {
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       setIsOpening(false);
       alert(`Помилка: ${error.message}`);
     },
@@ -73,7 +73,7 @@ export default function CourierOrtomatDetailPage() {
       setSelectedCell(null);
       alert('Комірка заповнена!');
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       alert(`Помилка: ${error.message}`);
     },
   });

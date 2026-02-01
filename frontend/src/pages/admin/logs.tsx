@@ -4,9 +4,17 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
+import type { ActivityLog, Ortomat } from '../../types';
 
 type LogSeverity = 'INFO' | 'WARNING' | 'ERROR' | 'CRITICAL';
 type LogCategory = 'cells' | 'orders' | 'couriers' | 'system' | 'security';
+
+type LogStats = {
+  bySeverity: Array<{ severity: string; _count: number }>;
+  byType: Array<{ type: string; _count: number }>;
+  byCategory: Array<{ category: string; _count: number }>;
+  totalLogs: number;
+};
 
 export default function AdminLogsPage() {
   const router = useRouter();
@@ -167,7 +175,7 @@ export default function AdminLogsPage() {
               <p className="text-sm text-gray-600 mb-1">Всього логів</p>
               <p className="text-2xl font-bold text-gray-900">{statsData.totalLogs}</p>
             </div>
-            {statsData.bySeverity.map((item: any) => (
+            {statsData.bySeverity.map((item: { severity: string; _count: number }) => (
               <div key={item.severity} className="bg-white rounded-lg shadow p-6">
                 <p className="text-sm text-gray-600 mb-1">{getSeverityIcon(item.severity)} {item.severity}</p>
                 <p className="text-2xl font-bold text-gray-900">{item._count}</p>
@@ -219,7 +227,7 @@ export default function AdminLogsPage() {
                 className="w-full px-3 py-2 border rounded-md"
               >
                 <option value="">Всі</option>
-                {ortomats?.map((ortomat: any) => (
+                {ortomats?.map((ortomat: Ortomat) => (
                   <option key={ortomat.id} value={ortomat.id}>
                     {ortomat.name}
                   </option>
@@ -273,7 +281,7 @@ export default function AdminLogsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {logs.map((log: any) => (
+                {logs.map((log: ActivityLog) => (
                   <tr key={log.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(log.createdAt)}

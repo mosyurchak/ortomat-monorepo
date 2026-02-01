@@ -67,7 +67,7 @@ export default function AdminSettings() {
         setMessage('');
       }, 3000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error saving settings:', error);
       setMessage('❌ Помилка збереження: ' + (error.response?.data?.message || error.message));
     } finally {
@@ -95,7 +95,7 @@ export default function AdminSettings() {
 
       setBackupMessage('✅ Бекап успішно створено та завантажено!');
       setTimeout(() => setBackupMessage(''), 5000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error exporting backup:', error);
       setBackupMessage('❌ Помилка створення бекапу: ' + error.message);
     } finally {
@@ -132,7 +132,7 @@ export default function AdminSettings() {
       setTimeout(() => {
         window.location.reload();
       }, 3000);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error importing backup:', error);
       setBackupMessage('❌ Помилка відновлення: ' + error.message);
     } finally {

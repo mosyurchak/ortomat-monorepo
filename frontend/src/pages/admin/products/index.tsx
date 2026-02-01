@@ -4,6 +4,7 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../../contexts/AuthContext';
 import axios from 'axios';
+import type { CreateProductDto, UpdateProductDto } from '../../../types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -77,8 +78,9 @@ export default function AdminProducts() {
       resetForm();
       alert('✅ Товар успішно створено!');
     },
-    onError: (error: any) => {
-      alert('❌ Помилка: ' + (error.response?.data?.message || error.message));
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+      alert('❌ Помилка: ' + errorMessage);
     },
   });
 
@@ -97,8 +99,9 @@ export default function AdminProducts() {
       resetForm();
       alert('✅ Товар успішно оновлено!');
     },
-    onError: (error: any) => {
-      alert('❌ Помилка: ' + (error.response?.data?.message || error.message));
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+      alert('❌ Помилка: ' + errorMessage);
     },
   });
 
@@ -113,8 +116,9 @@ export default function AdminProducts() {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       alert('✅ Товар видалено!');
     },
-    onError: (error: any) => {
-      alert('❌ Помилка: ' + (error.response?.data?.message || error.message));
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
+      alert('❌ Помилка: ' + errorMessage);
     },
   });
 
@@ -161,7 +165,7 @@ export default function AdminProducts() {
       'sizeChartUrl', 'termsAndConditions', 'attributes'
     ];
 
-    const cleanedData: any = {
+    const cleanedData: Partial<UpdateProductDto> = {
       images: (formData.images || []).filter((img) => img && img.trim() !== ''),
       price: Number(formData.price),
       referralPoints: Number(formData.referralPoints) || 0,
@@ -171,7 +175,7 @@ export default function AdminProducts() {
     allowedFields.forEach(field => {
       if (field !== 'images' && field !== 'price' && field !== 'referralPoints') {
         if (formData[field as keyof Product] !== undefined) {
-          cleanedData[field] = formData[field as keyof Product];
+          (cleanedData as Record<string, unknown>)[field] = formData[field as keyof Product];
         }
       }
     });

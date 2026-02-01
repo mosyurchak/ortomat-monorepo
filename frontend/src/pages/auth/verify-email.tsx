@@ -21,7 +21,7 @@ export default function VerifyEmailPage() {
         setTimeout(() => {
           router.push('/login');
         }, 3000);
-      } catch (error: any) {
+      } catch (error: unknown) {
         setStatus('error');
         setMessage(error.message || 'Помилка підтвердження email');
       }

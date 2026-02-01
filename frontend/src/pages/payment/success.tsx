@@ -80,7 +80,7 @@ export default function PaymentSuccessPage() {
         router.push('/');
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error opening cell:', error);
       const message = error.response?.data?.message || 'Помилка відкриття комірки';
       alert(`Помилка: ${message}`);
@@ -111,7 +111,7 @@ export default function PaymentSuccessPage() {
       } else {
         alert('⏳ Оплата ще обробляється. Спробуйте через декілька секунд.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error checking payment:', error);
       alert(`Помилка перевірки: ${error.message}`);
     } finally {

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import Head from 'next/head';
 import { useTranslation } from '../../hooks/useTranslation';
+import type { Ortomat, Cell } from '../../types';
 
 export default function CourierDashboard() {
   const router = useRouter();
@@ -77,8 +78,8 @@ export default function CourierDashboard() {
 
           {/* Ortomats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {ortomats?.map((ortomat: any) => {
-              const filledCells = ortomat.cells?.filter((c: any) => c.productId && !c.isAvailable).length || 0;
+            {ortomats?.map((ortomat: Ortomat & { cells?: Cell[] }) => {
+              const filledCells = ortomat.cells?.filter((c: Cell) => c.productId && !c.isAvailable).length || 0;
               const fillPercentage = ortomat.totalCells 
                 ? Math.round((filledCells / ortomat.totalCells) * 100)
                 : 0;

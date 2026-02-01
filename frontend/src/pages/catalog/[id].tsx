@@ -87,7 +87,7 @@ export default function CatalogPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product: any) => {
+            {products.map((product: Record<string, unknown>) => {
               // Використовуємо перше зображення з масиву або fallback на imageUrl
               const imageUrl = product.images?.[0] || product.imageUrl;
               

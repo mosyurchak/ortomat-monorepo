@@ -39,7 +39,7 @@ export default function ResetPasswordPage() {
     try {
       await api.resetPassword(token, password);
       setSuccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Reset password error:', error);
       setError(error.message || 'Помилка зміни паролю. Можливо токен застарів.');
     } finally {

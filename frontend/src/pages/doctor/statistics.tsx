@@ -135,7 +135,7 @@ export default function DoctorStatisticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.recentSales.map((sale: any) => (
+                    {stats.recentSales.map((sale: Record<string, unknown>) => (
                       <tr key={sale.id} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm text-gray-600">
                           {new Date(sale.createdAt).toLocaleDateString('uk-UA')}
@@ -165,7 +165,7 @@ export default function DoctorStatisticsPage() {
                 Продажі по місяцях
               </h2>
               <div className="space-y-4">
-                {stats.salesByMonth.map((monthData: any, index: number) => (
+                {stats.salesByMonth.map((monthData: Record<string, unknown>, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">
