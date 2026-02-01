@@ -228,12 +228,6 @@ export default function AdminOrtomatsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button
-                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
-                      className="text-blue-600 hover:text-blue-900 mr-4"
-                    >
-                      {t('admin.view')}
-                    </button>
-                    <button
                       onClick={() => handleEdit(ortomat)}
                       className="text-indigo-600 hover:text-indigo-900 mr-4"
                     >
@@ -241,9 +235,15 @@ export default function AdminOrtomatsPage() {
                     </button>
                     <button
                       onClick={() => handleDelete(ortomat.id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="text-red-600 hover:text-red-900 mr-4"
                     >
                       {t('admin.delete')}
+                    </button>
+                    <button
+                      onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
+                      className="text-green-600 hover:text-green-900"
+                    >
+                      Менеджер комірок
                     </button>
                   </td>
                 </tr>
@@ -293,12 +293,6 @@ export default function AdminOrtomatsPage() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
-                  className="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  {t('admin.view')}
-                </button>
-                <button
                   onClick={() => handleEdit(ortomat)}
                   className="px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
                 >
@@ -306,9 +300,15 @@ export default function AdminOrtomatsPage() {
                 </button>
                 <button
                   onClick={() => handleDelete(ortomat.id)}
-                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 col-span-2"
+                  className="px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700"
                 >
                   {t('admin.delete')}
+                </button>
+                <button
+                  onClick={() => router.push(`/admin/ortomats/${ortomat.id}/cells`)}
+                  className="px-3 py-2 text-sm bg-green-600 text-white rounded-lg hover:bg-green-700 col-span-2"
+                >
+                  Менеджер комірок
                 </button>
               </div>
             </div>
