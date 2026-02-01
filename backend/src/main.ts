@@ -79,7 +79,7 @@ async function bootstrap() {
   
   // Listen on 0.0.0.0 for Railway
   await app.listen(port, '0.0.0.0');
-  
+
   console.log(`🚀 Backend running on port ${port}`);
   console.log(`🔌 WebSocket server on ws://0.0.0.0:${port}/ws`);
   console.log(`✅ Allowed CORS origins: [
@@ -89,6 +89,22 @@ async function bootstrap() {
   'https://www.ortomat.com.ua',
   '*.vercel.app'
 ]`);
+
+  // ✅ Graceful shutdown on SIGTERM (Railway uses this)
+  process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully...');
+    await app.close();
+    console.log('✅ Application closed');
+    process.exit(0);
+  });
+
+  // ✅ Graceful shutdown on SIGINT (Ctrl+C locally)
+  process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT received, shutting down gracefully...');
+    await app.close();
+    console.log('✅ Application closed');
+    process.exit(0);
+  });
 }
 
 bootstrap();
