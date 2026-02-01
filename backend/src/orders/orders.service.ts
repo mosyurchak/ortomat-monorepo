@@ -4,6 +4,7 @@ import { OrtomatsService } from '../ortomats/ortomats.service';
 import { OrtomatsGateway } from '../ortomats/ortomats.gateway';
 import { LogsService } from '../logs/logs.service';
 import { MonoPaymentService } from '../mono-payment/mono-payment.service';
+import { CellManagementService } from '../cell-management/cell-management.service';
 
 @Injectable()
 export class OrdersService {
@@ -12,7 +13,8 @@ export class OrdersService {
     private ortomatsService: OrtomatsService,
     private ortomatsGateway: OrtomatsGateway,
     private logsService: LogsService,
-    private monoPaymentService: MonoPaymentService, // Додано Monobank сервіс
+    private monoPaymentService: MonoPaymentService,
+    private cellManagement: CellManagementService,
   ) {}
 
   async createOrder(data: {
@@ -273,6 +275,7 @@ export class OrdersService {
   async openCell(orderId: string) {
     console.log('🔐 Opening cell for order:', orderId);
 
+    // Отримуємо інформацію про замовлення
     const order = await this.prisma.sale.findUnique({
       where: { id: orderId },
       include: {
@@ -289,97 +292,24 @@ export class OrdersService {
       throw new Error('Order is not completed yet. Please complete payment first.');
     }
 
+    // Використовуємо централізований сервіс для відкриття комірки
     const deviceId = 'locker-01';
 
-    console.log('🔍 Checking if device online:', deviceId);
-
-    const isOnline = this.ortomatsGateway.isDeviceOnline(deviceId);
-
-    if (!isOnline) {
-      console.log('⚠️ Device offline, using DEMO mode');
-
-      // Оновлюємо статус комірки - залишаємо productId, але позначаємо як порожню
-      await this.prisma.cell.update({
-        where: {
-          ortomatId_number: {
-            ortomatId: order.ortomatId,
-            number: order.cellNumber,
-          },
-        },
-        data: {
-          // productId залишається (не видаляємо!) - товар все ще призначений комірці
-          isAvailable: true, // true = порожня (синя - товар призначений, але комірка порожня)
-        },
-      });
-
-      console.log(`✅ Cell #${order.cellNumber} marked as empty (product dispensed)`);
-
-
-      return {
-        success: true,
-        message: `Cell ${order.cellNumber} opened successfully`,
-        cellNumber: order.cellNumber,
-        orderNumber: order.orderNumber,
-        deviceId: deviceId,
-        mode: 'demo',
-        note: '🎭 DEMO MODE: ESP32 device is not connected. In production with connected hardware, the physical cell lock would open automatically.',
-        product: order.product.name,
-      };
-    }
-
-    console.log('📤 Sending open command via WebSocket...');
-
-    const success = await this.ortomatsGateway.openCell(
+    const result = await this.cellManagement.openCell({
       deviceId,
-      order.cellNumber,
-      order.id,
-    );
-
-    if (!success) {
-      throw new Error('Failed to send command to ortomat');
-    }
-
-    console.log(`✅ WebSocket command sent to ${deviceId}, cell ${order.cellNumber}`);
-
-    // ✅ ДОДАНО: Логування відкриття комірки
-    await this.logsService.createLog({
-      type: 'WEBSOCKET_COMMAND',
-      category: 'system',
-      message: `Opening cell #${order.cellNumber} for order ${order.orderNumber}`,
-      ortomatId: order.ortomatId,
       cellNumber: order.cellNumber,
+      ortomatId: order.ortomatId,
+      reason: 'sale',
       metadata: {
         orderId: order.id,
         orderNumber: order.orderNumber,
-        deviceId,
-        mode: isOnline ? 'production' : 'demo',
-      },
-      severity: 'INFO',
-    });
-
-    // Оновлюємо статус комірки - залишаємо productId, але позначаємо як порожню
-    await this.prisma.cell.update({
-      where: {
-        ortomatId_number: {
-          ortomatId: order.ortomatId,
-          number: order.cellNumber,
-        },
-      },
-      data: {
-        // productId залишається (не видаляємо!) - товар все ще призначений комірці
-        isAvailable: true, // true = порожня (синя - товар призначений, але комірка порожня)
+        productName: order.product.name,
       },
     });
 
-    console.log(`✅ Cell #${order.cellNumber} marked as empty (product dispensed)`);
-
+    // Додаємо productName до результату (для зворотної сумісності)
     return {
-      success: true,
-      message: `Cell ${order.cellNumber} opening command sent via WebSocket`,
-      cellNumber: order.cellNumber,
-      orderNumber: order.orderNumber,
-      deviceId: deviceId,
-      mode: 'production',
+      ...result,
       product: order.product.name,
     };
   }

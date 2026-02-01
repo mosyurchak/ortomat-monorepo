@@ -17,6 +17,7 @@ import { MonoPaymentModule } from './mono-payment/mono-payment.module';
 import { SettingsModule } from './settings/settings.module';
 import { AdminModule } from './admin/admin.module';
 import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
+import { CellManagementModule } from './cell-management/cell-management.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { TelegramBotModule } from './telegram-bot/telegram-bot.module';
     SettingsModule,
     AdminModule,
     TelegramBotModule,
+    CellManagementModule,
   ],
   providers: [
     // ✅ SECURITY: Apply ThrottlerGuard globally
