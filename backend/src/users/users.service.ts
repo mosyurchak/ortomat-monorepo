@@ -468,24 +468,19 @@ export class UsersService {
     phone: string;
     ortomatIds?: string[]; // Можна призначити до 2 ортоматів
   }) {
-    // Автогенерація email з номера телефону
-    // +380501234567 → doctor_0501234567@ortomat.local
-    const phoneDigits = data.phone.replace(/\D/g, '');
-    const email = `doctor_${phoneDigits}@ortomat.local`;
-
-    // Перевірка чи email вже існує
+    // Перевірка чи лікар з таким телефоном вже існує
     const existingUser = await this.prisma.user.findUnique({
-      where: { email },
+      where: { phone: data.phone },
     });
 
     if (existingUser) {
       throw new Error('Doctor with this phone already exists');
     }
 
-    // Створення лікаря БЕЗ пароля (авторизація тільки через Telegram)
+    // Створення лікаря БЕЗ email та пароля (авторизація тільки через Telegram)
     const doctor = await this.prisma.user.create({
       data: {
-        email,
+        email: null, // Лікарі не мають email
         password: null, // Лікарі не мають пароля
         role: 'DOCTOR',
         firstName: data.firstName,
@@ -546,12 +541,6 @@ export class UsersService {
       middleName: data.middleName,
       phone: data.phone,
     };
-
-    // Якщо змінюється номер телефону - оновити email
-    if (data.phone && data.phone !== doctor.phone) {
-      const phoneDigits = data.phone.replace(/\D/g, '');
-      updateData.email = `doctor_${phoneDigits}@ortomat.local`;
-    }
 
     // Оновлення користувача
     const updatedDoctor = await this.prisma.user.update({

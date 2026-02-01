@@ -1,10 +1,7 @@
--- Очищаємо паролі для всіх лікарів (ставимо NULL)
-UPDATE "users"
-SET "password" = NULL
-WHERE "role" = 'DOCTOR';
+-- Зробити поле email опціональним (nullable)
+ALTER TABLE "users" ALTER COLUMN "email" DROP NOT NULL;
 
--- Оновлюємо email для всіх лікарів до автогенерованого формату
--- Витягуємо тільки цифри з телефону і генеруємо email
+-- Очистити паролі та email для всіх лікарів (ставимо NULL)
 UPDATE "users"
-SET "email" = 'doctor_' || regexp_replace("phone", '\D', '', 'g') || '@ortomat.local'
+SET "password" = NULL, "email" = NULL
 WHERE "role" = 'DOCTOR';

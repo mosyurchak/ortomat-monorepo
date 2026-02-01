@@ -9,7 +9,7 @@ datasource db {
 
 model User {
   id                       String              @id @default(uuid())
-  email                    String              @unique // Автогенерується для лікарів
+  email                    String?             @unique // Опціонально: NULL для лікарів (тільки ADMIN та COURIER)
   password                 String?             // Опціонально: лікарі не мають пароля (тільки Telegram)
   role                     UserRole
   firstName                String
