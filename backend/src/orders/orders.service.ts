@@ -362,7 +362,7 @@ export class OrdersService {
 
     console.log('✅ Monobank invoice created:', invoiceId);
 
-    // Зберігаємо Payment запис
+    // Зберігаємо Payment запис з УСІМА даними для майбутньої обробки
     await this.prisma.payment.create({
       data: {
         orderId: sale.id,
@@ -372,10 +372,18 @@ export class OrdersService {
         invoiceId: invoiceId,
         pageUrl: pageUrl,
         description: `Оплата: ${sale.product.name}`,
+        doctorId: sale.doctorId, // ✅ Додаємо doctorId для Telegram notifications
+        paymentDetails: {
+          // ✅ Зберігаємо деталі для handleSuccessfulMonoPayment
+          productId: sale.productId,
+          ortomatId: sale.ortomatId,
+          cellNumber: sale.cellNumber,
+          productName: sale.product.name,
+        },
       },
     });
 
-    console.log('✅ Payment record saved to database');
+    console.log('✅ Payment record saved with doctorId:', sale.doctorId);
 
     // Логування
     await this.logsService.createLog({
