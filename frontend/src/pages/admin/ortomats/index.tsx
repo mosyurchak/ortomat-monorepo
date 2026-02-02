@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
 import { useTranslation } from '../../../hooks/useTranslation';
@@ -43,11 +44,11 @@ export default function AdminOrtomatsPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
       setShowModal(false);
       resetForm();
-      alert(t('admin.ortomatCreated'));
+      toast.success(t('admin.ortomatCreated'));
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`${t('errors.general')}: ${message}`);
+      toast.error(`${t('errors.general')}: ${message}`);
     },
   });
 
@@ -60,11 +61,11 @@ export default function AdminOrtomatsPage() {
       setShowModal(false);
       setEditingOrtomat(null);
       resetForm();
-      alert(t('admin.ortomatUpdated'));
+      toast.success(t('admin.ortomatUpdated'));
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`${t('errors.general')}: ${message}`);
+      toast.error(`${t('errors.general')}: ${message}`);
     },
   });
 
@@ -73,11 +74,11 @@ export default function AdminOrtomatsPage() {
     mutationFn: (id: string) => api.deleteOrtomat(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
-      alert(t('admin.ortomatDeleted'));
+      toast.success(t('admin.ortomatDeleted'));
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`${t('errors.general')}: ${message}`);
+      toast.error(`${t('errors.general')}: ${message}`);
     },
   });
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -109,7 +110,7 @@ export default function DoctorDashboard() {
     if (!qrCode) return;
 
     navigator.clipboard.writeText(qrCode.referralUrl);
-    alert(t('doctor.linkCopied'));
+    toast.success(t('doctor.linkCopied'));
   };
 
   const handleLogout = () => {

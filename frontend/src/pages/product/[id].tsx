@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 import { ArrowLeft, X } from 'lucide-react';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -73,12 +74,12 @@ export default function ProductPage() {
     console.log('💳 Buy button clicked!');
     
     if (!ortomatId) {
-      alert('Оберіть ортомат');
+      toast.error('Оберіть ортомат');
       return;
     }
 
     if (!acceptedTerms) {
-      alert('Будь ласка, прийміть умови покупки');
+      toast.error('Будь ласка, прийміть умови покупки');
       return;
     }
 
@@ -101,7 +102,7 @@ export default function ProductPage() {
 
     } catch (error: unknown) {
       console.error('❌ Error:', error);
-      alert('Помилка. Спробуйте ще раз.');
+      toast.error('Помилка. Спробуйте ще раз.');
       setIsOrdering(false);
     }
   };
