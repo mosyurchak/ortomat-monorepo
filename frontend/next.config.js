@@ -17,6 +17,13 @@ const nextConfig = {
     NEXT_PUBLIC_WS_URL: process.env.NEXT_PUBLIC_WS_URL,
   },
   
+  // Видалити console.* в production build
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? {
+      exclude: ['error'], // Залишаємо console.error для критичних помилок
+    } : false,
+  },
+
   webpack: (config, { isServer }) => {
     // ✅ Додаємо fallback для browser
     if (!isServer) {
@@ -27,7 +34,7 @@ const nextConfig = {
         tls: false,
       };
     }
-    
+
     return config;
   },
 };
