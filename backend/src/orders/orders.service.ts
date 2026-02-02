@@ -664,9 +664,9 @@ export class OrdersService {
               totalPoints: totalPoints,
               amount: updatedSale.amount,
             });
-            console.log('📨 Telegram notification sent to doctor');
+            this.logger.log('📨 Telegram notification sent to doctor');
           } catch (error) {
-            console.error('❌ Failed to send Telegram notification:', error);
+            this.logger.error('❌ Failed to send Telegram notification:', error);
           }
         }
 
