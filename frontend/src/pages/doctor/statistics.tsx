@@ -1,11 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, memo } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { api } from '../../lib/api';
 import Head from 'next/head';
 
-export default function DoctorStatisticsPage() {
+const DoctorStatisticsPage = memo(function DoctorStatisticsPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
 
@@ -198,4 +198,8 @@ export default function DoctorStatisticsPage() {
       </div>
     </div>
   );
-}
+});
+
+DoctorStatisticsPage.displayName = 'DoctorStatisticsPage';
+
+export default DoctorStatisticsPage;

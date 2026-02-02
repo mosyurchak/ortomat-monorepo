@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
 import { useTranslation } from '../../../hooks/useTranslation';
 import type { Ortomat, CreateOrtomatDto, UpdateOrtomatDto } from '../../../types';
 
-export default function AdminOrtomatsPage() {
+const AdminOrtomatsPage = memo(function AdminOrtomatsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user, isLoading: authLoading, logout } = useAuth();
@@ -429,4 +429,8 @@ export default function AdminOrtomatsPage() {
       )}
     </div>
   );
-}
+});
+
+AdminOrtomatsPage.displayName = 'AdminOrtomatsPage';
+
+export default AdminOrtomatsPage;

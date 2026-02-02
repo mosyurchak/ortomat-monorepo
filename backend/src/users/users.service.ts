@@ -306,11 +306,24 @@ export class UsersService {
       take: 5,
     });
 
-    const topProductsWithDetails = await Promise.all(
-      topProducts.map(async (item) => {
-        const product = await this.prisma.product.findUnique({
-          where: { id: item.productId },
-        });
+    // Виправлення N+1: завантажуємо всі продукти одним запитом
+    const productIds = topProducts.map(item => item.productId);
+    const products = await this.prisma.product.findMany({
+      where: { id: { in: productIds } },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+      },
+    });
+
+    // Створюємо Map для швидкого доступу до продуктів
+    const productsMap = new Map(products.map(p => [p.id, p]));
+
+    const topProductsWithDetails = topProducts
+      .map(item => {
+        const product = productsMap.get(item.productId);
+        if (!product) return null; // Пропускаємо якщо продукт видалений
         return {
           product: {
             id: product.id,
@@ -321,7 +334,7 @@ export class UsersService {
           totalRevenue: item._sum.amount,
         };
       })
-    );
+      .filter(item => item !== null);
 
     // Статистика по ортоматах
     const ortomats = await this.prisma.ortomat.findMany({

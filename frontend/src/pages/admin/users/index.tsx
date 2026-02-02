@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, memo } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -149,6 +149,28 @@ const phoneToBackendFormat = (formattedPhone: string): string => {
   }
   return formattedPhone; // Повертаємо як є якщо щось не так
 };
+
+// Мемоізований компонент для відображення ортомату в списку
+const OrtomatBadge = memo(({ ortomat, index }: { ortomat: Ortomat; index: number }) => (
+  <span
+    key={ortomat.id}
+    className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1"
+  >
+    {index + 1}. {ortomat.name}
+  </span>
+));
+OrtomatBadge.displayName = 'OrtomatBadge';
+
+// Мемоізований компонент для відображення doctorOrtomat в списку
+const DoctorOrtomatBadge = memo(({ doctorOrtomat, index }: { doctorOrtomat: DoctorOrtomat; index: number }) => (
+  <span
+    key={doctorOrtomat.id}
+    className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-1 mb-1"
+  >
+    {index + 1}. {doctorOrtomat.ortomat.name}
+  </span>
+));
+DoctorOrtomatBadge.displayName = 'DoctorOrtomatBadge';
 
 export default function AdminUsersPage() {
   const router = useRouter();
