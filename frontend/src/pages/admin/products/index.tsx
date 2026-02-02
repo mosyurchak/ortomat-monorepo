@@ -1,5 +1,5 @@
 // frontend/src/pages/admin/products/index.tsx
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -29,7 +29,7 @@ interface Product {
   sizeChartUrl?: string;
 }
 
-export default function AdminProducts() {
+const AdminProducts = memo(function AdminProducts() {
   const { user, logout } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -525,7 +525,11 @@ export default function AdminProducts() {
       </div>
     </div>
   );
-}
+});
+
+AdminProducts.displayName = 'AdminProducts';
+
+export default AdminProducts;
 
 export async function getServerSideProps() {
   return { props: {} };
