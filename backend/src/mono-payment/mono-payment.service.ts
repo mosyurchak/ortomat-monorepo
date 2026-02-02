@@ -376,27 +376,33 @@ export class MonoPaymentService {
       this.logger.log(`   - Order Number: ${sale.orderNumber}`);
       this.logger.log(`   - Points earned: ${pointsEarned || 0}`);
 
-      // Оновлюємо статистику doctorOrtomat
-      if (doctorOrtomatId && pointsEarned) {
-        const updatedDoctorOrtomat = await this.prisma.doctorOrtomat.update({
+      // Оновлюємо статистику doctorOrtomat ЗАВЖДИ якщо є doctorOrtomatId
+      let updatedDoctorOrtomat = null;
+      if (doctorOrtomatId) {
+        updatedDoctorOrtomat = await this.prisma.doctorOrtomat.update({
           where: { id: doctorOrtomatId },
           data: {
             totalSales: { increment: 1 },
-            totalPoints: { increment: pointsEarned },
+            totalPoints: pointsEarned ? { increment: pointsEarned } : undefined,
           },
         });
-        this.logger.log(`✅ Updated doctor-ortomat stats: +${pointsEarned} points, +1 sale`);
+        this.logger.log(`✅ Updated doctor-ortomat stats: +${pointsEarned || 0} points, +1 sale`);
+      }
 
-        // ✅ TELEGRAM: Відправляємо нотифікацію
+      // ✅ TELEGRAM: Відправляємо нотифікацію ЗАВЖДИ якщо є doctorId
+      if (doctorId) {
         try {
           const product = await this.prisma.product.findUnique({
             where: { id: productId },
           });
 
+          // Отримуємо totalPoints з БД якщо не було оновлення
+          const totalPoints = updatedDoctorOrtomat?.totalPoints || 0;
+
           await this.telegramBotService.sendSaleNotification(doctorId, {
             productName: product?.name || 'Товар',
-            points: pointsEarned,
-            totalPoints: updatedDoctorOrtomat.totalPoints,
+            points: pointsEarned || 0,
+            totalPoints: totalPoints,
             amount: webhookData.amount / 100,
           });
         } catch (error) {
