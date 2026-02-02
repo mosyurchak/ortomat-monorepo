@@ -637,8 +637,9 @@ export class OrdersService {
         });
 
         // ✅ ВИПРАВЛЕНО: Оновлюємо статистику doctorOrtomat
+        let updatedDoctorOrtomat = null;
         if (updatedSale.doctorOrtomatId && updatedSale.pointsEarned) {
-          await this.prisma.doctorOrtomat.update({
+          updatedDoctorOrtomat = await this.prisma.doctorOrtomat.update({
             where: { id: updatedSale.doctorOrtomatId },
             data: {
               totalSales: { increment: 1 },
@@ -646,6 +647,27 @@ export class OrdersService {
             },
           });
           console.log(`✅ Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
+        }
+
+        // ✅ TELEGRAM: Відправляємо нотифікацію про продаж
+        if (updatedSale.doctorId) {
+          try {
+            const product = await this.prisma.product.findUnique({
+              where: { id: updatedSale.productId },
+            });
+
+            const totalPoints = updatedDoctorOrtomat?.totalPoints || 0;
+
+            await this.telegramBotService.sendSaleNotification(updatedSale.doctorId, {
+              productName: product?.name || sale.product?.name || 'Товар',
+              points: updatedSale.pointsEarned || 0,
+              totalPoints: totalPoints,
+              amount: updatedSale.amount,
+            });
+            console.log('📨 Telegram notification sent to doctor');
+          } catch (error) {
+            console.error('❌ Failed to send Telegram notification:', error);
+          }
         }
 
         // Логування
