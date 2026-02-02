@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../contexts/AuthContext';
 import type { User, Ortomat, DoctorOrtomat, CreateDoctorDto, UpdateDoctorDto, UpdateUserDto, CreateCourierDto } from '../../../types';
@@ -230,11 +231,11 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
       setShowDoctorModal(false);
       resetDoctorForm();
-      alert('Лікар успішно створений');
+      toast.success('Лікар успішно створений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -247,11 +248,11 @@ export default function AdminUsersPage() {
       setShowDoctorModal(false);
       setEditingDoctor(null);
       resetDoctorForm();
-      alert('Лікар успішно оновлений');
+      toast.success('Лікар успішно оновлений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -260,11 +261,11 @@ export default function AdminUsersPage() {
     mutationFn: (id: string) => api.deleteDoctor(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
-      alert('Лікар видалений');
+      toast.success('Лікар видалений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -278,11 +279,11 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       setShowCourierModal(false);
       resetCourierForm();
-      alert('Кур\'єр успішно створений');
+      toast.success('Кур\'єр успішно створений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -296,11 +297,11 @@ export default function AdminUsersPage() {
       setShowCourierModal(false);
       setEditingCourier(null);
       resetCourierForm();
-      alert('Кур\'єр успішно оновлений');
+      toast.success('Кур\'єр успішно оновлений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -310,11 +311,11 @@ export default function AdminUsersPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
-      alert('Кур\'єр видалений');
+      toast.success('Кур\'єр видалений');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -1187,7 +1188,7 @@ export default function AdminUsersPage() {
                             onClick={() => {
                               const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctorOrtomat.ortomatId}?ref=${doctorOrtomat.referralCode}`;
                               navigator.clipboard.writeText(url);
-                              alert('Посилання скопійовано!');
+                              toast.success('Посилання скопійовано!');
                             }}
                             className="ml-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                           >
