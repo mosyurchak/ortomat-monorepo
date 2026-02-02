@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../../contexts/AuthContext';
 import { api } from '../../../../lib/api';
 import { useTranslation } from '../../../../hooks/useTranslation';
@@ -63,11 +64,11 @@ export default function AdminCellsManagementPage() {
       setShowModal(false);
       setSelectedCell(null);
       setSelectedProductId('');
-      alert('Товар оновлено! Комірка тепер синя (призначений товар, порожня)');
+      toast.success('Товар оновлено! Комірка тепер синя (призначений товар, порожня)');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -88,7 +89,7 @@ export default function AdminCellsManagementPage() {
     onError: (error: unknown) => {
       setIsOpening(false);
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -101,11 +102,11 @@ export default function AdminCellsManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка заповнена! Тепер вона зелена (заповнена товаром)');
+      toast.success('Комірка заповнена! Тепер вона зелена (заповнена товаром)');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -123,12 +124,12 @@ export default function AdminCellsManagementPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка очищена! Тепер вона синя (призначений товар, порожня)');
+      toast.success('Комірка очищена! Тепер вона синя (призначений товар, порожня)');
     },
     onError: (error: unknown) => {
       setIsOpening(false);
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 

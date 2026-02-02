@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
 import Head from 'next/head';
@@ -47,7 +48,7 @@ export default function CourierOrtomatDetailPage() {
       setIsOpening(false);
       const product = data.product as Record<string, unknown> | undefined;
       const productName = product?.name ? String(product.name) : 'товар';
-      alert(`Комірка відкривається...\n\n${String(data.note || '')}\n\nПокладіть товар: ${productName}\nЗакрийте комірку`);
+      toast.success(`Комірка відкривається...\n\n${String(data.note || '')}\n\nПокладіть товар: ${productName}\nЗакрийте комірку`, { duration: 6000 });
       
       // Після того як кур'єр закрив комірку, відмічаємо її як заповнену
       if (selectedCell && user) {
@@ -60,7 +61,7 @@ export default function CourierOrtomatDetailPage() {
     onError: (error: unknown) => {
       setIsOpening(false);
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -73,11 +74,11 @@ export default function CourierOrtomatDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomat', id] });
       setShowModal(false);
       setSelectedCell(null);
-      alert('Комірка заповнена!');
+      toast.success('Комірка заповнена!');
     },
     onError: (error: unknown) => {
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     },
   });
 
@@ -89,7 +90,7 @@ export default function CourierOrtomatDetailPage() {
     }
 
     if (!cell.productId) {
-      alert('Адмін ще не призначив товар для цієї комірки');
+      toast.error('Адмін ще не призначив товар для цієї комірки');
       return;
     }
 

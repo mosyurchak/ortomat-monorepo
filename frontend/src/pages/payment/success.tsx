@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
+import toast from 'react-hot-toast';
 import { api } from '../../lib/api';
 
 export default function PaymentSuccessPage() {
@@ -58,7 +59,7 @@ export default function PaymentSuccessPage() {
 
   const handleOpenCell = async () => {
     if (!order || !order.id) {
-      alert('Помилка: інформація про замовлення не знайдена');
+      toast.error('Помилка: інформація про замовлення не знайдена');
       return;
     }
 
@@ -70,10 +71,10 @@ export default function PaymentSuccessPage() {
       console.log('✅ Cell opened:', response);
 
       const message = response.mode === 'demo'
-        ? `🎭 DEMO MODE: Комірка #${response.cellNumber} відкрита!\\n\\n${response.note}`
-        : `🔓 Комірка #${response.cellNumber} відкрита!\\n\\nЗаберіть свій товар: ${response.product}`;
+        ? `🎭 DEMO MODE: Комірка #${response.cellNumber} відкрита!\n\n${response.note}`
+        : `🔓 Комірка #${response.cellNumber} відкрита!\n\nЗаберіть свій товар: ${response.product}`;
 
-      alert(message);
+      toast.success(message, { duration: 6000 });
 
       // Перенаправляємо на головну
       setTimeout(() => {
@@ -86,7 +87,7 @@ export default function PaymentSuccessPage() {
       const message = isAxiosError
         ? (error as any).response?.data?.message || 'Помилка відкриття комірки'
         : 'Помилка відкриття комірки';
-      alert(`Помилка: ${message}`);
+      toast.error(`Помилка: ${message}`);
     } finally {
       setOpeningCell(false);
     }
@@ -106,18 +107,18 @@ export default function PaymentSuccessPage() {
         // Перезавантажуємо дані замовлення
         const orderData = await api.getOrder(orderId as string);
         setOrder(orderData);
-        alert('✅ Оплата підтверджена! Замовлення завершено.');
+        toast.success('✅ Оплата підтверджена! Замовлення завершено.');
       } else if (result.status === 'failed') {
         const orderData = await api.getOrder(orderId as string);
         setOrder(orderData);
-        alert('❌ Оплата не пройшла');
+        toast.error('❌ Оплата не пройшла');
       } else {
-        alert('⏳ Оплата ще обробляється. Спробуйте через декілька секунд.');
+        toast('⏳ Оплата ще обробляється. Спробуйте через декілька секунд.');
       }
     } catch (error: unknown) {
       console.error('❌ Error checking payment:', error);
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`Помилка перевірки: ${message}`);
+      toast.error(`Помилка перевірки: ${message}`);
     } finally {
       setCheckingPayment(false);
     }

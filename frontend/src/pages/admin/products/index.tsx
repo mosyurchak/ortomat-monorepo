@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../../contexts/AuthContext';
 import axios from 'axios';
 import type { CreateProductDto, UpdateProductDto } from '../../../types';
@@ -76,11 +77,11 @@ export default function AdminProducts() {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
       setShowModal(false);
       resetForm();
-      alert('✅ Товар успішно створено!');
+      toast.success('✅ Товар успішно створено!');
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-      alert('❌ Помилка: ' + errorMessage);
+      toast.error('❌ Помилка: ' + errorMessage);
     },
   });
 
@@ -97,11 +98,11 @@ export default function AdminProducts() {
       setShowModal(false);
       setEditingProduct(null);
       resetForm();
-      alert('✅ Товар успішно оновлено!');
+      toast.success('✅ Товар успішно оновлено!');
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-      alert('❌ Помилка: ' + errorMessage);
+      toast.error('❌ Помилка: ' + errorMessage);
     },
   });
 
@@ -114,11 +115,11 @@ export default function AdminProducts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-products'] });
-      alert('✅ Товар видалено!');
+      toast.success('✅ Товар видалено!');
     },
     onError: (error: unknown) => {
       const errorMessage = error instanceof Error ? error.message : 'Невідома помилка';
-      alert('❌ Помилка: ' + errorMessage);
+      toast.error('❌ Помилка: ' + errorMessage);
     },
   });
 

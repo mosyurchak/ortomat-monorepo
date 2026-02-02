@@ -1,6 +1,7 @@
 import { useRouter } from 'next/router';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import { api } from '../lib/api';
 import { useTranslation } from '../hooks/useTranslation';
 
@@ -55,14 +56,14 @@ export default function PaymentPage() {
       if (data.pageUrl) {
         window.location.href = data.pageUrl;
       } else {
-        alert('Помилка: не отримано URL для оплати');
+        toast.error('Помилка: не отримано URL для оплати');
         setProcessing(false);
       }
     },
     onError: (error: unknown) => {
       console.error('Payment creation error:', error);
       const message = error instanceof Error ? error.message : 'Невідома помилка';
-      alert(`${t('payment.paymentError')}: ${message}`);
+      toast.error(`${t('payment.paymentError')}: ${message}`);
       setProcessing(false);
     },
   });
