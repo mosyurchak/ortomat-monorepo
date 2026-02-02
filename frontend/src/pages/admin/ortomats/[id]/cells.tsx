@@ -47,7 +47,7 @@ export default function AdminCellsManagementPage() {
     mutationFn: async ({ cellNumber, productId }: { cellNumber: number; productId: string | null }) => {
       // Перевіряємо чи комірка існує в БД
       const existingCell = cells?.find((c: Cell) => c.number === cellNumber);
-      
+
       if (!existingCell && productId) {
         // Якщо комірки немає в БД і ми призначаємо товар - створюємо її
         // Використовуємо той самий endpoint, він створить комірку якщо її немає
@@ -65,8 +65,9 @@ export default function AdminCellsManagementPage() {
       setSelectedProductId('');
       alert('Товар оновлено! Комірка тепер синя (призначений товар, порожня)');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -84,9 +85,10 @@ export default function AdminCellsManagementPage() {
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       setIsOpening(false);
-      alert(`Помилка: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -101,8 +103,9 @@ export default function AdminCellsManagementPage() {
       setSelectedCell(null);
       alert('Комірка заповнена! Тепер вона зелена (заповнена товаром)');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -122,9 +125,10 @@ export default function AdminCellsManagementPage() {
       setSelectedCell(null);
       alert('Комірка очищена! Тепер вона синя (призначений товар, порожня)');
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       setIsOpening(false);
-      alert(`Помилка: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 

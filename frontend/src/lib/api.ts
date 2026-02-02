@@ -1,3 +1,16 @@
+import type {
+  CreateOrtomatDto,
+  UpdateOrtomatDto,
+  CreateProductDto,
+  UpdateProductDto,
+  CreateDoctorDto,
+  UpdateDoctorDto,
+  UpdateUserDto,
+  RegisterDto,
+  PaymentCallbackDto,
+  BackupData,
+} from '../types';
+
 // ✅ БЕЗ /api в кінці
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
@@ -65,14 +78,14 @@ class ApiClient {
     return this.request(`/api/ortomats/${id}/inventory`);
   }
 
-  async createOrtomat(data: any) {
+  async createOrtomat(data: CreateOrtomatDto) {
     return this.request('/api/ortomats', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateOrtomat(id: string, data: any) {
+  async updateOrtomat(id: string, data: UpdateOrtomatDto) {
     return this.request(`/api/ortomats/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -124,14 +137,14 @@ class ApiClient {
     return this.request(`/api/products/${id}`);
   }
 
-  async createProduct(data: any) {
+  async createProduct(data: CreateProductDto) {
     return this.request('/api/products', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateProduct(id: string, data: any) {
+  async updateProduct(id: string, data: UpdateProductDto) {
     return this.request(`/api/products/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -164,7 +177,7 @@ class ApiClient {
     });
   }
 
-  async handlePaymentCallback(data: any) {
+  async handlePaymentCallback(data: PaymentCallbackDto) {
     return this.request('/api/orders/callback', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -217,7 +230,7 @@ class ApiClient {
     });
   }
 
-  async register(data: any) {
+  async register(data: RegisterDto) {
     return this.request('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -256,14 +269,14 @@ class ApiClient {
     return this.request('/api/users/doctors');
   }
 
-  async createDoctor(data: any) {
+  async createDoctor(data: CreateDoctorDto) {
     return this.request('/api/users/doctors', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateDoctor(id: string, data: any) {
+  async updateDoctor(id: string, data: UpdateDoctorDto) {
     return this.request(`/api/users/doctors/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -276,7 +289,7 @@ class ApiClient {
     });
   }
 
-  async updateUser(id: string, data: any) {
+  async updateUser(id: string, data: UpdateUserDto) {
     return this.request(`/api/users/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
@@ -443,7 +456,7 @@ class ApiClient {
   }
 
   // Імпорт даних з файлу бекапу
-  async importBackup(backupData: any) {
+  async importBackup(backupData: BackupData) {
     return this.request('/api/admin/restore', {
       method: 'POST',
       body: JSON.stringify(backupData),

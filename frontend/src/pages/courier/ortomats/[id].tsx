@@ -43,10 +43,11 @@ export default function CourierOrtomatDetailPage() {
   const openCellMutation = useMutation({
     mutationFn: ({ cellNumber, courierId }: { cellNumber: number; courierId: string }) =>
       api.openCellForRefill(id as string, cellNumber, courierId),
-    onSuccess: (data: any) => {
+    onSuccess: (data: Record<string, unknown>) => {
       setIsOpening(false);
-      const productName = data.product?.name || 'товар';
-      alert(`Комірка відкривається...\n\n${data.note || ''}\n\nПокладіть товар: ${productName}\nЗакрийте комірку`);
+      const product = data.product as Record<string, unknown> | undefined;
+      const productName = product?.name ? String(product.name) : 'товар';
+      alert(`Комірка відкривається...\n\n${String(data.note || '')}\n\nПокладіть товар: ${productName}\nЗакрийте комірку`);
       
       // Після того як кур'єр закрив комірку, відмічаємо її як заповнену
       if (selectedCell && user) {
@@ -56,9 +57,10 @@ export default function CourierOrtomatDetailPage() {
         });
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       setIsOpening(false);
-      alert(`Помилка: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -73,8 +75,9 @@ export default function CourierOrtomatDetailPage() {
       setSelectedCell(null);
       alert('Комірка заповнена!');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 

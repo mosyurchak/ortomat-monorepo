@@ -91,7 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('➡️ Redirecting to /dashboard');
         router.push('/dashboard');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Login error:', error);
       throw error;
     }

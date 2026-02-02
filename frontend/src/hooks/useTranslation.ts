@@ -17,11 +17,11 @@ type TranslationKey = NestedKeyOf<TranslationKeys>;
 export function useTranslation() {
   const t = (key: TranslationKey, params?: Record<string, string | number>): string => {
     const keys = key.split('.');
-    let value: any = translations;
+    let value: unknown = translations;
 
     for (const k of keys) {
       if (value && typeof value === 'object' && k in value) {
-        value = value[k];
+        value = (value as Record<string, unknown>)[k];
       } else {
         console.warn(`Translation key not found: ${key}`);
         return key;

@@ -99,7 +99,7 @@ export default function ProductPage() {
 
       router.push(`/payment?${params.toString()}`);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error:', error);
       alert('Помилка. Спробуйте ще раз.');
       setIsOrdering(false);

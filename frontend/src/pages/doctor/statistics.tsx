@@ -135,20 +135,20 @@ export default function DoctorStatisticsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {stats.recentSales.map((sale: any) => (
-                      <tr key={sale.id} className="border-b hover:bg-gray-50">
+                    {stats.recentSales.map((sale: Record<string, unknown>) => (
+                      <tr key={String(sale.id)} className="border-b hover:bg-gray-50">
                         <td className="py-3 px-4 text-sm text-gray-600">
-                          {new Date(sale.createdAt).toLocaleDateString('uk-UA')}
+                          {new Date(String(sale.createdAt)).toLocaleDateString('uk-UA')}
                         </td>
-                        <td className="py-3 px-4 text-sm">{sale.product?.name}</td>
+                        <td className="py-3 px-4 text-sm">{String((sale.product as Record<string, unknown>)?.name || '')}</td>
                         <td className="py-3 px-4 text-sm text-gray-600">
-                          {sale.ortomat?.name}
+                          {String((sale.ortomat as Record<string, unknown>)?.name || '')}
                         </td>
                         <td className="py-3 px-4 text-sm text-right font-medium">
-                          {sale.amount} UAH
+                          {Number(sale.amount)} UAH
                         </td>
                         <td className="py-3 px-4 text-sm text-right font-semibold text-green-600">
-                          +{sale.commission?.toFixed(2) || 0} UAH
+                          +{typeof sale.commission === 'number' ? sale.commission.toFixed(2) : 0} UAH
                         </td>
                       </tr>
                     ))}
@@ -165,11 +165,11 @@ export default function DoctorStatisticsPage() {
                 Продажі по місяцях
               </h2>
               <div className="space-y-4">
-                {stats.salesByMonth.map((monthData: any, index: number) => (
+                {stats.salesByMonth.map((monthData: Record<string, unknown>, index: number) => (
                   <div key={index} className="flex items-center justify-between">
                     <div>
                       <p className="font-medium">
-                        {new Date(monthData.month).toLocaleDateString('uk-UA', {
+                        {new Date(String(monthData.month)).toLocaleDateString('uk-UA', {
                           month: 'long',
                           year: 'numeric',
                         })}
@@ -177,10 +177,10 @@ export default function DoctorStatisticsPage() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-600">
-                        {monthData.count} продажів
+                        {Number(monthData.count)} продажів
                       </p>
                       <p className="font-semibold text-green-600">
-                        {monthData.earnings?.toFixed(2) || 0} UAH
+                        {typeof monthData.earnings === 'number' ? monthData.earnings.toFixed(2) : 0} UAH
                       </p>
                     </div>
                   </div>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { api } from '../../../lib/api';
 import { useTranslation } from '../../../hooks/useTranslation';
+import type { Ortomat, CreateOrtomatDto, UpdateOrtomatDto } from '../../../types';
 
 export default function AdminOrtomatsPage() {
   const router = useRouter();
@@ -12,8 +13,8 @@ export default function AdminOrtomatsPage() {
   const { t } = useTranslation();
   
   const [showModal, setShowModal] = useState(false);
-  const [editingOrtomat, setEditingOrtomat] = useState<any>(null);
-  const [formData, setFormData] = useState({
+  const [editingOrtomat, setEditingOrtomat] = useState<Ortomat | null>(null);
+  const [formData, setFormData] = useState<CreateOrtomatDto>({
     name: '',
     address: '',
     city: '',
@@ -37,21 +38,22 @@ export default function AdminOrtomatsPage() {
 
   // Створення ортомату
   const createMutation = useMutation({
-    mutationFn: (data: any) => api.createOrtomat(data),
+    mutationFn: (data: CreateOrtomatDto) => api.createOrtomat(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
       setShowModal(false);
       resetForm();
       alert(t('admin.ortomatCreated'));
     },
-    onError: (error: any) => {
-      alert(`${t('errors.general')}: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`${t('errors.general')}: ${message}`);
     },
   });
 
   // Оновлення ортомату
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: UpdateOrtomatDto }) =>
       api.updateOrtomat(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
@@ -60,8 +62,9 @@ export default function AdminOrtomatsPage() {
       resetForm();
       alert(t('admin.ortomatUpdated'));
     },
-    onError: (error: any) => {
-      alert(`${t('errors.general')}: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`${t('errors.general')}: ${message}`);
     },
   });
 
@@ -72,8 +75,9 @@ export default function AdminOrtomatsPage() {
       queryClient.invalidateQueries({ queryKey: ['ortomats'] });
       alert(t('admin.ortomatDeleted'));
     },
-    onError: (error: any) => {
-      alert(`${t('errors.general')}: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`${t('errors.general')}: ${message}`);
     },
   });
 
@@ -97,7 +101,7 @@ export default function AdminOrtomatsPage() {
     }
   };
 
-  const handleEdit = (ortomat: any) => {
+  const handleEdit = (ortomat: Ortomat) => {
     setEditingOrtomat(ortomat);
     setFormData({
       name: ortomat.name,
@@ -201,7 +205,7 @@ export default function AdminOrtomatsPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {ortomats?.map((ortomat: any) => (
+              {ortomats?.map((ortomat: Ortomat) => (
                 <tr key={ortomat.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">
@@ -260,7 +264,7 @@ export default function AdminOrtomatsPage() {
 
         {/* Mobile Cards */}
         <div className="md:hidden space-y-4">
-          {ortomats?.map((ortomat: any) => (
+          {ortomats?.map((ortomat: Ortomat) => (
             <div key={ortomat.id} className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
@@ -390,7 +394,7 @@ export default function AdminOrtomatsPage() {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'active' | 'inactive' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="active">{t('admin.active')}</option>

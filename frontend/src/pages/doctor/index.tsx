@@ -29,7 +29,7 @@ interface DoctorStatsResponse {
   totalSales: number;
   totalPoints: number;
   recentSales: Sale[];
-  salesByMonth: any[];
+  salesByMonth: Record<string, unknown>[];
 }
 
 export default function DoctorDashboard() {

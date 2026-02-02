@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../../../lib/api';
 import { useAuth } from '../../../contexts/AuthContext';
+import type { User, Ortomat, DoctorOrtomat, CreateDoctorDto, UpdateDoctorDto, UpdateUserDto, CreateCourierDto } from '../../../types';
 
 type Tab = 'doctors' | 'couriers';
 
@@ -157,7 +158,7 @@ export default function AdminUsersPage() {
 
   // Courier state
   const [showCourierModal, setShowCourierModal] = useState(false);
-  const [editingCourier, setEditingCourier] = useState<any>(null);
+  const [editingCourier, setEditingCourier] = useState<User | null>(null);
   const [courierFormData, setCourierFormData] = useState({
     email: '',
     password: '',
@@ -170,7 +171,7 @@ export default function AdminUsersPage() {
 
   // Doctor state
   const [showDoctorModal, setShowDoctorModal] = useState(false);
-  const [editingDoctor, setEditingDoctor] = useState<any>(null);
+  const [editingDoctor, setEditingDoctor] = useState<User | null>(null);
   const [doctorFormData, setDoctorFormData] = useState({
     firstName: '',
     lastName: '',
@@ -224,21 +225,22 @@ export default function AdminUsersPage() {
 
   // Створення лікаря
   const createDoctorMutation = useMutation({
-    mutationFn: (data: any) => api.createDoctor(data),
+    mutationFn: (data: CreateDoctorDto) => api.createDoctor(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
       setShowDoctorModal(false);
       resetDoctorForm();
       alert('Лікар успішно створений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
   // Оновлення лікаря
   const updateDoctorMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateDoctorDto }) =>
       api.updateDoctor(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
@@ -247,8 +249,9 @@ export default function AdminUsersPage() {
       resetDoctorForm();
       alert('Лікар успішно оновлений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -259,8 +262,9 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
       alert('Лікар видалений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -268,7 +272,7 @@ export default function AdminUsersPage() {
 
   // Створення кур'єра
   const createCourierMutation = useMutation({
-    mutationFn: (data: any) => api.createCourier(data),
+    mutationFn: (data: CreateCourierDto) => api.createCourier(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
@@ -276,14 +280,15 @@ export default function AdminUsersPage() {
       resetCourierForm();
       alert('Кур\'єр успішно створений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
   // Оновлення кур'єра
   const updateCourierMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
+    mutationFn: ({ id, data }: { id: string; data: UpdateUserDto }) =>
       api.updateCourier(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['couriers'] });
@@ -293,8 +298,9 @@ export default function AdminUsersPage() {
       resetCourierForm();
       alert('Кур\'єр успішно оновлений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -306,8 +312,9 @@ export default function AdminUsersPage() {
       queryClient.invalidateQueries({ queryKey: ['available-ortomats'] });
       alert('Кур\'єр видалений');
     },
-    onError: (error: any) => {
-      alert(`Помилка: ${error.message}`);
+    onError: (error: unknown) => {
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка: ${message}`);
     },
   });
 
@@ -348,14 +355,14 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleEditDoctor = (doctor: any) => {
+  const handleEditDoctor = (doctor: User & { doctorOrtomats?: DoctorOrtomat[] }) => {
     setEditingDoctor(doctor);
     setDoctorFormData({
       firstName: doctor.firstName,
       lastName: doctor.lastName,
       middleName: doctor.middleName || '',
       phone: formatPhoneNumber(doctor.phone || ''), // Форматуємо телефон з БД
-      ortomatIds: doctor.doctorOrtomats?.map((item: any) => item.ortomatId) || [],
+      ortomatIds: doctor.doctorOrtomats?.map((item: DoctorOrtomat) => item.ortomatId) || [],
     });
     setPhoneErrors(prev => ({ ...prev, doctor: '' })); // Очищаємо помилки
     setShowDoctorModal(true);
@@ -406,7 +413,7 @@ export default function AdminUsersPage() {
     };
 
     if (editingCourier) {
-      const updateData: any = { ...submitData };
+      const updateData: UpdateUserDto = { ...submitData };
       if (!courierFormData.password) {
         delete updateData.password;
       }
@@ -416,7 +423,7 @@ export default function AdminUsersPage() {
     }
   };
 
-  const handleEditCourier = (courier: any) => {
+  const handleEditCourier = (courier: User & { ortomats?: Ortomat[] }) => {
     setEditingCourier(courier);
     setCourierFormData({
       email: courier.email,
@@ -425,7 +432,7 @@ export default function AdminUsersPage() {
       lastName: courier.lastName,
       middleName: courier.middleName || '',
       phone: formatPhoneNumber(courier.phone || ''), // Форматуємо телефон з БД
-      ortomatIds: courier.ortomats?.map((o: any) => o.id) || [],
+      ortomatIds: courier.ortomats?.map((o: Ortomat) => o.id) || [],
     });
     setPhoneErrors(prev => ({ ...prev, courier: '' })); // Очищаємо помилки
     setShowCourierModal(true);
@@ -564,7 +571,7 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {doctors?.map((doctor: any) => (
+                  {doctors?.map((doctor: User & { doctorOrtomats?: DoctorOrtomat[] }) => (
                     <tr key={doctor.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -580,7 +587,7 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4">
                         {doctor.doctorOrtomats && doctor.doctorOrtomats.length > 0 ? (
                           <div className="space-y-2">
-                            {doctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                            {doctor.doctorOrtomats.map((doctorOrtomat: DoctorOrtomat, index: number) => (
                               <div key={doctorOrtomat.id} className="text-sm">
                                 <div className="font-medium text-gray-900">
                                   {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
@@ -640,7 +647,7 @@ export default function AdminUsersPage() {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {doctors?.map((doctor: any) => (
+              {doctors?.map((doctor: User & { doctorOrtomats?: DoctorOrtomat[], telegramChatId?: string, telegramUsername?: string }) => (
                 <div key={doctor.id} className="bg-white rounded-lg shadow p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -676,7 +683,7 @@ export default function AdminUsersPage() {
                       <span className="font-medium text-gray-700 block mb-1">Ортомати:</span>
                       {doctor.doctorOrtomats && doctor.doctorOrtomats.length > 0 ? (
                         <div className="space-y-1 ml-2">
-                          {doctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                          {doctor.doctorOrtomats.map((doctorOrtomat: DoctorOrtomat, index: number) => (
                             <div key={doctorOrtomat.id} className="text-sm">
                               <span className="text-gray-900">
                                 {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
@@ -735,7 +742,7 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {couriers?.map((courier: any) => (
+                  {couriers?.map((courier: User & { ortomats?: Ortomat[] }) => (
                     <tr key={courier.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -752,7 +759,7 @@ export default function AdminUsersPage() {
                         <div className="text-sm text-gray-900">
                           {courier.ortomats?.length > 0 ? (
                             <div className="flex flex-wrap gap-1">
-                              {courier.ortomats.map((ortomat: any) => (
+                              {courier.ortomats.map((ortomat: Ortomat) => (
                                 <span key={ortomat.id} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                                   {ortomat.name}
                                 </span>
@@ -791,7 +798,7 @@ export default function AdminUsersPage() {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {couriers?.map((courier: any) => (
+              {couriers?.map((courier: User & { ortomats?: Ortomat[] }) => (
                 <div key={courier.id} className="bg-white rounded-lg shadow p-4">
                   <div className="mb-3">
                     <h3 className="font-semibold text-gray-900">
@@ -805,7 +812,7 @@ export default function AdminUsersPage() {
                     <span className="font-medium text-gray-700 text-sm block mb-2">Ортомати:</span>
                     {courier.ortomats?.length > 0 ? (
                       <div className="flex flex-wrap gap-2">
-                        {courier.ortomats.map((ortomat: any) => (
+                        {courier.ortomats.map((ortomat: Ortomat) => (
                           <span key={ortomat.id} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                             {ortomat.name}
                           </span>
@@ -957,11 +964,11 @@ export default function AdminUsersPage() {
                   Призначити ортомати
                 </label>
                 <div className="border border-gray-300 rounded-md p-4 max-h-48 overflow-y-auto">
-                  {(editingCourier ? allOrtomats : availableOrtomats)?.map((ortomat: any) => {
+                  {(editingCourier ? allOrtomats : availableOrtomats)?.map((ortomat: Ortomat) => {
                     const isAssigned = courierFormData.ortomatIds.includes(ortomat.id);
-                    const isOccupied = editingCourier && 
-                      !isAssigned && 
-                      !availableOrtomats?.some((o: any) => o.id === ortomat.id);
+                    const isOccupied = editingCourier &&
+                      !isAssigned &&
+                      !availableOrtomats?.some((o: Ortomat) => o.id === ortomat.id);
 
                     return (
                       <label 
@@ -1116,7 +1123,7 @@ export default function AdminUsersPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Не призначено</option>
-                  {allOrtomats?.map((ortomat: any) => (
+                  {allOrtomats?.map((ortomat: Ortomat) => (
                     <option key={ortomat.id} value={ortomat.id}>
                       {ortomat.name} - {ortomat.address}
                     </option>
@@ -1145,8 +1152,8 @@ export default function AdminUsersPage() {
                 >
                   <option value="">Не призначено</option>
                   {allOrtomats
-                    ?.filter((ortomat: any) => ortomat.id !== doctorFormData.ortomatIds[0]) // Не показувати перший ортомат
-                    ?.map((ortomat: any) => (
+                    ?.filter((ortomat: Ortomat) => ortomat.id !== doctorFormData.ortomatIds[0]) // Не показувати перший ортомат
+                    ?.map((ortomat: Ortomat) => (
                       <option key={ortomat.id} value={ortomat.id}>
                         {ortomat.name} - {ortomat.address}
                       </option>
@@ -1157,7 +1164,7 @@ export default function AdminUsersPage() {
               {/* ✅ ДОДАНО: Реферальні посилання та QR-коди */}
               {editingDoctor && editingDoctor.doctorOrtomats && editingDoctor.doctorOrtomats.length > 0 && (
                 <div className="mb-6 space-y-4">
-                  {editingDoctor.doctorOrtomats.map((doctorOrtomat: any, index: number) => (
+                  {editingDoctor.doctorOrtomats.map((doctorOrtomat: DoctorOrtomat, index: number) => (
                     <div key={doctorOrtomat.id} className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                       <h3 className="text-lg font-semibold text-gray-900 mb-3">
                         Реферальне посилання - {doctorOrtomat.ortomat?.name || `Ортомат ${index + 1}`}

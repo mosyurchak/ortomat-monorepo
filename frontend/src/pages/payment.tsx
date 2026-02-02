@@ -22,7 +22,7 @@ export default function PaymentPage() {
       console.log('Order created:', data);
       setCreatedOrderId(data.id);
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Order creation error:', error);
     },
   });
@@ -59,9 +59,10 @@ export default function PaymentPage() {
         setProcessing(false);
       }
     },
-    onError: (error: any) => {
+    onError: (error: unknown) => {
       console.error('Payment creation error:', error);
-      alert(`${t('payment.paymentError')}: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`${t('payment.paymentError')}: ${message}`);
       setProcessing(false);
     },
   });

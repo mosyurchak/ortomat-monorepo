@@ -5,7 +5,7 @@ import { api } from '../../lib/api';
 export default function PaymentSuccessPage() {
   const router = useRouter();
   const { orderId } = router.query;
-  const [order, setOrder] = useState<any>(null);
+  const [order, setOrder] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(true);
   const [openingCell, setOpeningCell] = useState(false);
   const [checkCount, setCheckCount] = useState(0);
@@ -66,7 +66,7 @@ export default function PaymentSuccessPage() {
       setOpeningCell(true);
       console.log('🔓 Opening cell for order:', order.id);
 
-      const response = await api.openCell(order.id);
+      const response = await api.openCell(String(order.id));
       console.log('✅ Cell opened:', response);
 
       const message = response.mode === 'demo'
@@ -80,9 +80,12 @@ export default function PaymentSuccessPage() {
         router.push('/');
       }, 2000);
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error opening cell:', error);
-      const message = error.response?.data?.message || 'Помилка відкриття комірки';
+      const isAxiosError = error && typeof error === 'object' && 'response' in error;
+      const message = isAxiosError
+        ? (error as any).response?.data?.message || 'Помилка відкриття комірки'
+        : 'Помилка відкриття комірки';
       alert(`Помилка: ${message}`);
     } finally {
       setOpeningCell(false);
@@ -111,9 +114,10 @@ export default function PaymentSuccessPage() {
       } else {
         alert('⏳ Оплата ще обробляється. Спробуйте через декілька секунд.');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('❌ Error checking payment:', error);
-      alert(`Помилка перевірки: ${error.message}`);
+      const message = error instanceof Error ? error.message : 'Невідома помилка';
+      alert(`Помилка перевірки: ${message}`);
     } finally {
       setCheckingPayment(false);
     }
@@ -168,18 +172,18 @@ export default function PaymentSuccessPage() {
 
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-500">Товар</p>
-                <p className="text-lg font-semibold text-gray-900">{order.product?.name || 'N/A'}</p>
+                <p className="text-lg font-semibold text-gray-900">{String((order.product as Record<string, unknown> | undefined)?.name || 'N/A')}</p>
 
                 <p className="text-sm text-gray-500 mt-3">Сума платежу</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(order.amount)}
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(Number(order.amount))}
                 </p>
 
-                <p className="text-xs text-gray-400 mt-2">Замовлення: {order.orderNumber}</p>
+                <p className="text-xs text-gray-400 mt-2">Замовлення: {String(order.orderNumber)}</p>
 
                 {order.cellNumber !== null && (
                   <p className="text-sm text-green-600 mt-2">
-                    📦 Комірка #{order.cellNumber}
+                    📦 Комірка #{String(order.cellNumber)}
                   </p>
                 )}
               </div>
@@ -231,7 +235,7 @@ export default function PaymentSuccessPage() {
               <div className="bg-gray-50 rounded-lg p-4 mb-6">
                 <p className="text-sm text-gray-500">Сума платежу</p>
                 <p className="text-3xl font-bold text-gray-900">
-                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(order.amount)}
+                  {new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(Number(order.amount))}
                 </p>
               </div>
 

@@ -68,28 +68,28 @@ export default function PaymentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {payments.map((payment: any) => (
-                  <tr key={payment.id} className="hover:bg-gray-50">
+                {payments.map((payment: Record<string, unknown>) => (
+                  <tr key={String(payment.id)} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      {payment.orderId}
+                      {String(payment.orderId)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {payment.amount} ₴
+                      {Number(payment.amount)} ₴
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`px-2 py-1 text-xs rounded-full ${getStatusBadge(
-                          payment.status
+                          String(payment.status)
                         )}`}
                       >
-                        {payment.status}
+                        {String(payment.status)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {payment.doctor?.firstName} {payment.doctor?.lastName}
+                      {(payment.doctor as any)?.firstName} {(payment.doctor as any)?.lastName}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      {new Date(payment.createdAt).toLocaleString('uk-UA')}
+                      {new Date(String(payment.createdAt)).toLocaleString('uk-UA')}
                     </td>
                   </tr>
                 ))}
