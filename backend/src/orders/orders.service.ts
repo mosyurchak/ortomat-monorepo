@@ -1,13 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from '../ortomats/ortomats.service';
 import { OrtomatsGateway } from '../ortomats/ortomats.gateway';
 import { LogsService } from '../logs/logs.service';
 import { MonoPaymentService } from '../mono-payment/mono-payment.service';
 import { CellManagementService } from '../cell-management/cell-management.service';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 
 @Injectable()
 export class OrdersService {
+  private readonly logger = new Logger(OrdersService.name);
+
   constructor(
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
@@ -15,6 +18,7 @@ export class OrdersService {
     private logsService: LogsService,
     private monoPaymentService: MonoPaymentService,
     private cellManagement: CellManagementService,
+    private telegramBotService: TelegramBotService,
   ) {}
 
   async createOrder(data: {
