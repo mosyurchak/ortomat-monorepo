@@ -6,6 +6,7 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { LogsModule } from '../logs/logs.module';
 import { MonoPaymentModule } from '../mono-payment/mono-payment.module';
 import { CellManagementModule } from '../cell-management/cell-management.module';
+import { TelegramBotModule } from '../telegram-bot/telegram-bot.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { CellManagementModule } from '../cell-management/cell-management.module'
     LogsModule,
     MonoPaymentModule,
     CellManagementModule,
+    TelegramBotModule,
   ],
   controllers: [OrdersController],
   providers: [OrdersService],
