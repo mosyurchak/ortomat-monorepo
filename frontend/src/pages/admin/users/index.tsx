@@ -705,15 +705,27 @@ export default function AdminUsersPage() {
                     <div>
                       <span className="font-medium text-gray-700 block mb-1">Ортомати:</span>
                       {doctor.doctorOrtomats && doctor.doctorOrtomats.length > 0 ? (
-                        <div className="space-y-1 ml-2">
+                        <div className="space-y-2 ml-2">
                           {doctor.doctorOrtomats.map((doctorOrtomat: DoctorOrtomat, index: number) => (
                             <div key={doctorOrtomat.id} className="text-sm">
-                              <span className="text-gray-900">
-                                {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
-                              </span>
-                              <span className="text-xs text-gray-500 ml-2">
-                                (Балів: {doctorOrtomat.totalPoints || 0})
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-gray-900">
+                                  {index + 1}. {doctorOrtomat.ortomat?.name || 'Невідомий'}
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  (Балів: {doctorOrtomat.totalPoints || 0})
+                                </span>
+                              </div>
+                              {doctorOrtomat.referralCode && (
+                                <a
+                                  href={`${typeof window !== 'undefined' ? window.location.origin : ''}/catalog/${doctorOrtomat.ortomatId}?ref=${doctorOrtomat.referralCode}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-xs text-blue-600 hover:text-blue-800 underline ml-4"
+                                >
+                                  Реферальне посилання →
+                                </a>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1226,23 +1238,6 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   ))}
-
-                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      QR-код для Telegram бота:
-                    </label>
-                    <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200">
-                      <img
-                        src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/qr-code/doctor/${editingDoctor.id}/image`}
-                        alt="QR Code"
-                        className="w-48 h-48"
-                        crossOrigin="anonymous"
-                      />
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 text-center">
-                      Лікар може показати цей QR-код клієнтам для сканування та переходу в Telegram бот
-                    </p>
-                  </div>
                 </div>
               )}
 
