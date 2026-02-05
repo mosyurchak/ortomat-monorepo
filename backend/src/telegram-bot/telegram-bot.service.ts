@@ -478,7 +478,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       `.trim();
 
       await this.bot.sendMessage(user.telegramChatId, message);
-      this.logger.log(`📨 Надіслано нотифікацію про продаж для ${user.email}`);
+      this.logger.log(`📨 Надіслано нотифікацію про продаж для ${user.email || user.phone || user.id}`);
     } catch (error) {
       this.logger.error('Помилка відправки нотифікації:', error);
     }
