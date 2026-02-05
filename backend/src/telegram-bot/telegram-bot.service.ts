@@ -29,6 +29,16 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const retryDelay = Math.min(1000 * Math.pow(2, retryCount), 30000); // Exponential backoff до 30 сек
 
     try {
+      // Якщо бот вже існує - спочатку зупиняємо та очищаємо
+      if (this.bot) {
+        try {
+          await this.bot.stopPolling();
+          this.bot.removeAllListeners('polling_error');
+        } catch (e) {
+          // Ігноруємо помилки
+        }
+      }
+
       this.bot = new TelegramBot(token, {
         polling: {
           interval: 300,
@@ -39,29 +49,41 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         },
       });
 
-      // Обробка помилок polling
-      this.bot.on('polling_error', async (error) => {
+      let pollingErrorHandled = false;
+
+      // Обробка помилок polling (тільки один раз)
+      this.bot.once('polling_error', async (error) => {
+        if (pollingErrorHandled) {
+          return;
+        }
+        pollingErrorHandled = true;
+
         const errorMessage = error.message || '';
 
         // Якщо 409 Conflict - інший інстанс ще працює
         if (errorMessage.includes('409') && errorMessage.includes('Conflict')) {
-          this.logger.warn(`⚠️ 409 Conflict: інший інстанс бота ще працює. Спроба ${retryCount + 1}/${maxRetries}...`);
+          if (retryCount === 0) {
+            this.logger.warn('⚠️ 409 Conflict: виявлено конфлікт з іншим інстансом Telegram бота.');
+            this.logger.warn('   Можливі причини: Railway horizontal scaling, локальна розробка + production, або старий контейнер ще не вимкнувся.');
+          }
+          this.logger.debug(`   Спроба ${retryCount + 1}/${maxRetries}, очікування ${retryDelay / 1000}с...`);
 
           // Зупиняємо поточний polling
           try {
             await this.bot.stopPolling();
+            this.bot.removeAllListeners('polling_error');
           } catch (e) {
             // Ігноруємо помилки зупинки
           }
 
           // Retry через затримку
           if (retryCount < maxRetries) {
-            this.logger.log(`⏳ Очікування ${retryDelay / 1000} секунд перед наступною спробою...`);
             setTimeout(() => {
               this.startBotWithRetry(token, retryCount + 1);
             }, retryDelay);
           } else {
             this.logger.error('❌ Досягнуто максимальну кількість спроб запуску бота');
+            this.logger.error('   Перевірте чи немає іншого запущеного інстансу backend з тим самим TELEGRAM_BOT_TOKEN');
           }
         } else {
           // Інша помилка - просто логуємо
