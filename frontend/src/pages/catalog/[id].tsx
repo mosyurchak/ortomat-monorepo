@@ -64,11 +64,6 @@ export default function CatalogPage() {
               {ortomat.address}
               {ortomat.city && `, ${ortomat.city}`}
             </p>
-            {ref && (
-              <p className="mt-2 text-sm text-green-600">
-                ✓ Реферальний код активовано
-              </p>
-            )}
           </div>
         </div>
 
