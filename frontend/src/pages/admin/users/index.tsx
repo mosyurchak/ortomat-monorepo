@@ -776,7 +776,7 @@ export default function AdminUsersPage() {
                           onClick={() => handleEditDoctor(doctor)}
                           className="text-indigo-600 hover:text-indigo-900 mr-4"
                         >
-                          Редагувати
+                          Редагувати / Переглянути
                         </button>
                         <button
                           onClick={() => handleDeleteDoctor(doctor.id)}
@@ -869,7 +869,7 @@ export default function AdminUsersPage() {
                       onClick={() => handleEditDoctor(doctor)}
                       className="flex-1 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                     >
-                      Редагувати
+                      Редагувати / Переглянути
                     </button>
                     <button
                       onClick={() => handleDeleteDoctor(doctor.id)}
@@ -1367,6 +1367,20 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* QR-код для Telegram бота */}
+              {editingDoctor && (
+                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex justify-center bg-white p-4 rounded-lg border border-gray-200">
+                    <img
+                      src={`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/api/qr-code/doctor/${editingDoctor.id}/image`}
+                      alt="QR Code"
+                      className="w-48 h-48"
+                      crossOrigin="anonymous"
+                    />
+                  </div>
                 </div>
               )}
 
