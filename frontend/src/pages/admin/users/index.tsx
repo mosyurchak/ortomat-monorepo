@@ -178,6 +178,7 @@ export default function AdminUsersPage() {
   const { user, isLoading: authLoading, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<Tab>('doctors');
+  const [sortBy, setSortBy] = useState<'alphabet' | 'newest' | 'activity' | 'rating'>('alphabet');
 
   // Courier state
   const [showCourierModal, setShowCourierModal] = useState(false);
@@ -340,6 +341,83 @@ export default function AdminUsersPage() {
       toast.error(`Помилка: ${message}`);
     },
   });
+
+  // ==================== SORTING LOGIC ====================
+
+  const getSortedDoctors = () => {
+    if (!doctors) return [];
+
+    const doctorsCopy = [...doctors];
+
+    switch (sortBy) {
+      case 'alphabet':
+        return doctorsCopy.sort((a, b) => {
+          const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+          const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+          return nameA.localeCompare(nameB, 'uk');
+        });
+
+      case 'newest':
+        return doctorsCopy.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA; // Нові спочатку
+        });
+
+      case 'activity':
+        return doctorsCopy.sort((a, b) => {
+          // Сортування по останній активності (за кількістю продажів)
+          const salesA = a.doctorOrtomats?.reduce((sum: number, do_: DoctorOrtomat) => sum + (do_.totalSales || 0), 0) || 0;
+          const salesB = b.doctorOrtomats?.reduce((sum: number, do_: DoctorOrtomat) => sum + (do_.totalSales || 0), 0) || 0;
+          return salesB - salesA; // Більше продажів - вище
+        });
+
+      case 'rating':
+        return doctorsCopy.sort((a, b) => {
+          // Сортування по загальній кількості балів
+          const pointsA = a.doctorOrtomats?.reduce((sum: number, do_: DoctorOrtomat) => sum + (do_.totalPoints || 0), 0) || 0;
+          const pointsB = b.doctorOrtomats?.reduce((sum: number, do_: DoctorOrtomat) => sum + (do_.totalPoints || 0), 0) || 0;
+          return pointsB - pointsA; // Більше балів - вище
+        });
+
+      default:
+        return doctorsCopy;
+    }
+  };
+
+  const getSortedCouriers = () => {
+    if (!couriers) return [];
+
+    const couriersCopy = [...couriers];
+
+    switch (sortBy) {
+      case 'alphabet':
+        return couriersCopy.sort((a, b) => {
+          const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+          const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+          return nameA.localeCompare(nameB, 'uk');
+        });
+
+      case 'newest':
+        return couriersCopy.sort((a, b) => {
+          const dateA = new Date(a.createdAt).getTime();
+          const dateB = new Date(b.createdAt).getTime();
+          return dateB - dateA;
+        });
+
+      case 'activity':
+      case 'rating':
+        // Для кур'єрів поки просто алфавітне сортування
+        return couriersCopy.sort((a, b) => {
+          const nameA = `${a.lastName} ${a.firstName}`.toLowerCase();
+          const nameB = `${b.lastName} ${b.firstName}`.toLowerCase();
+          return nameA.localeCompare(nameB, 'uk');
+        });
+
+      default:
+        return couriersCopy;
+    }
+  };
 
   // ==================== DOCTOR HANDLERS ====================
 
@@ -578,6 +656,57 @@ export default function AdminUsersPage() {
           </nav>
         </div>
 
+        {/* Sort Filter */}
+        <div className="mb-6 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-gray-700">Сортувати:</span>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setSortBy('alphabet')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'alphabet'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              📝 За алфавітом
+            </button>
+            <button
+              onClick={() => setSortBy('newest')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                sortBy === 'newest'
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              🆕 Спочатку нові
+            </button>
+            {activeTab === 'doctors' && (
+              <>
+                <button
+                  onClick={() => setSortBy('activity')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    sortBy === 'activity'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  📊 За активністю
+                </button>
+                <button
+                  onClick={() => setSortBy('rating')}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    sortBy === 'rating'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  ⭐ За рейтингом (балами)
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Doctors Table */}
         {activeTab === 'doctors' && (
           <>
@@ -594,7 +723,7 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {doctors?.map((doctor: User & { doctorOrtomats?: DoctorOrtomat[] }) => (
+                  {getSortedDoctors().map((doctor: User & { doctorOrtomats?: DoctorOrtomat[] }) => (
                     <tr key={doctor.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -670,7 +799,7 @@ export default function AdminUsersPage() {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {doctors?.map((doctor: User & { doctorOrtomats?: DoctorOrtomat[], telegramChatId?: string, telegramUsername?: string }) => (
+              {getSortedDoctors().map((doctor: User & { doctorOrtomats?: DoctorOrtomat[], telegramChatId?: string, telegramUsername?: string }) => (
                 <div key={doctor.id} className="bg-white rounded-lg shadow p-4">
                   <div className="flex justify-between items-start mb-3">
                     <div>
@@ -777,7 +906,7 @@ export default function AdminUsersPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {couriers?.map((courier: User & { ortomats?: Ortomat[] }) => (
+                  {getSortedCouriers().map((courier: User & { ortomats?: Ortomat[] }) => (
                     <tr key={courier.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
@@ -833,7 +962,7 @@ export default function AdminUsersPage() {
 
             {/* Mobile Cards */}
             <div className="md:hidden space-y-4">
-              {couriers?.map((courier: User & { ortomats?: Ortomat[] }) => (
+              {getSortedCouriers().map((courier: User & { ortomats?: Ortomat[] }) => (
                 <div key={courier.id} className="bg-white rounded-lg shadow p-4">
                   <div className="mb-3">
                     <h3 className="font-semibold text-gray-900">
