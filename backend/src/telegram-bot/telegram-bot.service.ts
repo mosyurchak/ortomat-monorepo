@@ -402,7 +402,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         }
 
         await this.bot.sendMessage(chatId, statsMessage);
-        this.logger.log(`📊 /stats для ${user.email}`);
+        this.logger.log(`📊 /stats для ${user.email || user.phone || user.id}`);
       } catch (error) {
         this.logger.error('Помилка отримання статистики:', error);
         await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
@@ -434,11 +434,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
         await this.bot.sendMessage(
           chatId,
-          `✅ Telegram відв'язано від акаунту ${user.email}.\n` +
+          `✅ Telegram відв'язано від акаунту ${user.email || user.phone || 'вашого профілю'}.\n` +
           `Ви більше не будете отримувати сповіщення.`,
         );
 
-        this.logger.log(`🔓 Відв'язано Telegram для ${user.email}`);
+        this.logger.log(`🔓 Відв'язано Telegram для ${user.email || user.phone || user.id}`);
       } catch (error) {
         this.logger.error('Помилка відв\'язки Telegram:', error);
         await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
