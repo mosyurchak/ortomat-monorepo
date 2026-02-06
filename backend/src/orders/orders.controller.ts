@@ -9,6 +9,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
@@ -16,6 +17,8 @@ import { OrdersService } from './orders.service';
 
 @Controller('orders')
 export class OrdersController {
+  private readonly logger = new Logger(OrdersController.name);
+
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post('create')
@@ -73,7 +76,7 @@ export class OrdersController {
       // Завжди повертаємо 200 OK для Monobank
       return result;
     } catch (error) {
-      console.error('❌ Monobank webhook error:', error.message);
+      this.logger.error(`Monobank webhook error: ${error.message}`);
 
       // Навіть при помилці повертаємо 200, щоб Monobank не робив retry
       return {

@@ -1,14 +1,16 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class AdminService {
+  private readonly logger = new Logger(AdminService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // Експорт всіх даних з БД
   async exportAllData() {
-    console.log('🔄 Starting database backup...');
+    this.logger.log('Starting database backup');
 
     const backup = {
       timestamp: new Date().toISOString(),
@@ -65,23 +67,15 @@ export class AdminService {
       },
     };
 
-    console.log('✅ Backup created successfully');
-    console.log(`📊 Stats:
-      - Users: ${backup.data.users.length}
-      - Ortomats: ${backup.data.ortomats.length}
-      - Products: ${backup.data.products.length}
-      - Cells: ${backup.data.cells.length}
-      - Sales: ${backup.data.sales.length}
-      - Payments: ${backup.data.payments.length}
-      - Logs: ${backup.data.logs.length}
-    `);
+    this.logger.log('Backup created successfully');
+    this.logger.log(`Backup stats: Users=${backup.data.users.length}, Ortomats=${backup.data.ortomats.length}, Products=${backup.data.products.length}, Cells=${backup.data.cells.length}, Sales=${backup.data.sales.length}, Payments=${backup.data.payments.length}, Logs=${backup.data.logs.length}`);
 
     return backup;
   }
 
   // Відновлення даних з бекапу
   async restoreAllData(backupData: any) {
-    console.log('🔄 Starting database restore...');
+    this.logger.log('Starting database restore');
 
     if (!backupData.data) {
       throw new Error('Невірний формат бекапу');
@@ -91,7 +85,7 @@ export class AdminService {
 
     // УВАГА: Видаляємо всі існуючі дані перед відновленням
     // Порядок важливий через foreign keys
-    console.log('⚠️  Clearing existing data...');
+    this.logger.warn('Clearing existing data');
 
     await this.prisma.activityLog.deleteMany({});
     await this.prisma.sale.deleteMany({});
@@ -105,13 +99,13 @@ export class AdminService {
     await this.prisma.settings.deleteMany({});
     await this.prisma.user.deleteMany({});
 
-    console.log('✅ Existing data cleared');
-    console.log('📥 Restoring data...');
+    this.logger.log('Existing data cleared');
+    this.logger.log('Restoring data');
 
     // Генеруємо хешований дефолтний пароль для всіх користувачів
     const DEFAULT_PASSWORD = 'password123';
     const hashedDefaultPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10);
-    console.log(`🔐 Default password for restored users: "${DEFAULT_PASSWORD}"`);
+    this.logger.warn('Default password set for restored users');
 
     // Відновлюємо дані в правильному порядку
     // Спочатку незалежні таблиці, потім залежні
@@ -126,31 +120,31 @@ export class AdminService {
           },
         });
       }
-      console.log(`  ✓ Users restored: ${data.users.length}`);
+      this.logger.log(`Users restored: ${data.users.length}`);
     }
 
     // 2. Ортомати
     if (data.ortomats?.length) {
       await this.prisma.ortomat.createMany({ data: data.ortomats });
-      console.log(`  ✓ Ortomats restored: ${data.ortomats.length}`);
+      this.logger.log(`Ortomats restored: ${data.ortomats.length}`);
     }
 
     // 3. Продукти
     if (data.products?.length) {
       await this.prisma.product.createMany({ data: data.products });
-      console.log(`  ✓ Products restored: ${data.products.length}`);
+      this.logger.log(`Products restored: ${data.products.length}`);
     }
 
     // 4. Комірки
     if (data.cells?.length) {
       await this.prisma.cell.createMany({ data: data.cells });
-      console.log(`  ✓ Cells restored: ${data.cells.length}`);
+      this.logger.log(`Cells restored: ${data.cells.length}`);
     }
 
     // 5. Зв'язки лікарів
     if (data.doctorOrtomats?.length) {
       await this.prisma.doctorOrtomat.createMany({ data: data.doctorOrtomats });
-      console.log(`  ✓ Doctor-Ortomat links restored: ${data.doctorOrtomats.length}`);
+      this.logger.log(`Doctor-Ortomat links restored: ${data.doctorOrtomats.length}`);
     }
 
     // 6. Зв'язки кур'єрів
@@ -158,43 +152,41 @@ export class AdminService {
       await this.prisma.courierOrtomat.createMany({
         data: data.courierOrtomats,
       });
-      console.log(`  ✓ Courier-Ortomat links restored: ${data.courierOrtomats.length}`);
+      this.logger.log(`Courier-Ortomat links restored: ${data.courierOrtomats.length}`);
     }
 
     // 7. Запрошення
     if (data.invites?.length) {
       await this.prisma.ortomatInvite.createMany({ data: data.invites });
-      console.log(`  ✓ Invites restored: ${data.invites.length}`);
+      this.logger.log(`Invites restored: ${data.invites.length}`);
     }
 
     // 8. Платежі
     if (data.payments?.length) {
       await this.prisma.payment.createMany({ data: data.payments });
-      console.log(`  ✓ Payments restored: ${data.payments.length}`);
+      this.logger.log(`Payments restored: ${data.payments.length}`);
     }
 
     // 9. Продажі
     if (data.sales?.length) {
       await this.prisma.sale.createMany({ data: data.sales });
-      console.log(`  ✓ Sales restored: ${data.sales.length}`);
+      this.logger.log(`Sales restored: ${data.sales.length}`);
     }
 
     // 10. Логи
     if (data.logs?.length) {
       await this.prisma.activityLog.createMany({ data: data.logs });
-      console.log(`  ✓ Logs restored: ${data.logs.length}`);
+      this.logger.log(`Logs restored: ${data.logs.length}`);
     }
 
     // 11. Налаштування
     if (data.settings?.length) {
       await this.prisma.settings.createMany({ data: data.settings });
-      console.log(`  ✓ Settings restored: ${data.settings.length}`);
+      this.logger.log(`Settings restored: ${data.settings.length}`);
     }
 
-    console.log('✅ Database restore completed successfully!');
-    console.log('⚠️  ВАЖЛИВО: Всі користувачі відновлені з тимчасовим паролем "password123"');
-    console.log('⚠️  Користувачі повинні змінити пароль після першого логіну!');
-    console.log(`⚠️  Відновлено користувачів: ${data.users?.length || 0}`);
+    this.logger.log('Database restore completed successfully');
+    this.logger.warn(`All users restored with temporary password - ${data.users?.length || 0} users must change password after first login`);
 
     return { success: true };
   }

@@ -8,6 +8,7 @@ import {
   Delete,
   UseGuards,
   Query,
+  Logger,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -19,6 +20,8 @@ import { UpdateCellProductDto, MarkCellFilledDto } from './dto/update-cell.dto';
 
 @Controller('ortomats')
 export class OrtomatsController {
+  private readonly logger = new Logger(OrtomatsController.name);
+
   constructor(
     private readonly ortomatsService: OrtomatsService,
     private readonly ortomatsGateway: OrtomatsGateway,
@@ -131,7 +134,7 @@ export class OrtomatsController {
     @Param('id') id: string,
     @Body() body: { cellNumber: number },
   ) {
-    console.log('🔧 Admin opening cell directly (maintenance mode)');
+    this.logger.log('Admin opening cell directly (maintenance mode)');
     return this.ortomatsService.openCell(id, body.cellNumber);
   }
 

@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { LogType, Severity } from '@prisma/client';
 
 @Injectable()
 export class LogsService {
+  private readonly logger = new Logger(LogsService.name);
+
   constructor(private prisma: PrismaService) {}
 
   // ✅ Створити лог
@@ -25,7 +27,7 @@ export class LogsService {
         },
       });
     } catch (error) {
-      console.error('Failed to create activity log:', error);
+      this.logger.error(`Failed to create activity log: ${error.message}`);
       // Не кидаємо помилку, щоб не ламати основний функціонал
     }
   }

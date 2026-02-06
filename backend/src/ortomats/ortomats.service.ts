@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 import { OrtomatsGateway } from './ortomats.gateway';
@@ -7,6 +7,8 @@ import { CellManagementService } from '../cell-management/cell-management.servic
 
 @Injectable()
 export class OrtomatsService {
+  private readonly logger = new Logger(OrtomatsService.name);
+
   constructor(
     private prisma: PrismaService,
     private logsService: LogsService,
@@ -234,7 +236,7 @@ export class OrtomatsService {
     cellNumber: number,
     saleId: string,
   ) {
-    console.log(`🔓 Opening cell with payment verification: ortomat=${ortomatId}, cell=${cellNumber}, sale=${saleId}`);
+    this.logger.log(`Opening cell with payment verification: ortomat=${ortomatId}, cell=${cellNumber}, sale=${saleId}`);
 
     // Перевіряємо що sale існує
     const sale = await this.prisma.sale.findUnique({
@@ -262,12 +264,12 @@ export class OrtomatsService {
       throw new BadRequestException('Sale cell number does not match requested cell');
     }
 
-    console.log(`✅ Payment verified for sale ${saleId}: status=${sale.status}, amount=${sale.amount}`);
+    this.logger.log(`Payment verified for sale ${saleId}: status=${sale.status}, amount=${sale.amount}`);
 
     // Відкриваємо комірку
     const result = await this.openCell(ortomatId, cellNumber);
 
-    console.log(`✅ Cell ${cellNumber} opened successfully for paid order`);
+    this.logger.log(`Cell ${cellNumber} opened successfully for paid order`);
 
     return {
       ...result,

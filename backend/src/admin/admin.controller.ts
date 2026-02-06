@@ -7,6 +7,7 @@ import {
   Body,
   HttpStatus,
   HttpException,
+  Logger,
 } from '@nestjs/common';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
@@ -18,6 +19,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles('ADMIN')
 export class AdminController {
+  private readonly logger = new Logger(AdminController.name);
+
   constructor(private readonly adminService: AdminService) {}
 
   // Експорт всіх даних БД
@@ -35,12 +38,8 @@ export class AdminController {
       res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
       res.send(JSON.stringify(backupData));
     } catch (error) {
-      console.error('❌ Backup creation failed:', error);
-      console.error('Error details:', {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-      });
+      this.logger.error(`Backup creation failed: ${error.message}`);
+      this.logger.error(`Error details: ${error.name} - ${error.stack}`);
       throw new HttpException(
         `Помилка створення бекапу: ${error.message}`,
         HttpStatus.INTERNAL_SERVER_ERROR,
