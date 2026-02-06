@@ -1,9 +1,11 @@
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Injectable, CanActivate, ExecutionContext, Logger } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 
 @Injectable()
 export class RolesGuard implements CanActivate {
+  private readonly logger = new Logger(RolesGuard.name);
+
   constructor(private reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
@@ -21,20 +23,20 @@ export class RolesGuard implements CanActivate {
 
     // ✅ SECURITY: Перевірка що user існує
     if (!user) {
-      console.error('❌ RolesGuard: No user in request');
+      this.logger.error('RolesGuard: No user in request');
       return false;
     }
 
     // ✅ SECURITY: Перевірка що user має role
     if (!user.role) {
-      console.error('❌ RolesGuard: User has no role', { userId: user.userId, email: user.email });
+      this.logger.error(`RolesGuard: User has no role: ${user.userId}`);
       return false;
     }
 
     const hasRole = requiredRoles.some((role) => user.role === role);
 
     if (!hasRole) {
-      console.log(`⚠️ RolesGuard: User ${user.email} (${user.role}) tried to access ${requiredRoles.join(', ')} endpoint`);
+      this.logger.warn(`RolesGuard: User ${user.userId} (${user.role}) tried to access ${requiredRoles.join(', ')} endpoint`);
     }
 
     return hasRole;

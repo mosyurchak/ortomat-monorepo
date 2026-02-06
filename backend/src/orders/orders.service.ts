@@ -150,7 +150,7 @@ export class OrdersService {
       },
     });
 
-    console.log('✅ Order status updated to completed');
+    this.logger.log('Order status updated to completed');
 
     // ✅ ДОДАНО: Логування успішної оплати
     await this.logsService.logPaymentSuccess({
@@ -213,7 +213,7 @@ export class OrdersService {
         null,
       );
 
-      console.log('✅ Payment callback processed successfully');
+      this.logger.log('Payment callback processed successfully');
 
       return {
         success: true,
@@ -229,7 +229,7 @@ export class OrdersService {
         },
       });
 
-      console.log('❌ Payment failed');
+      this.logger.warn('Payment failed');
 
       return {
         success: false,
@@ -273,7 +273,7 @@ export class OrdersService {
   }
 
   async openCell(orderId: string) {
-    console.log('🔐 Opening cell for order:', orderId);
+    this.logger.log(`Opening cell for order: ${orderId}`);
 
     // Отримуємо інформацію про замовлення
     const order = await this.prisma.sale.findUnique({
@@ -319,7 +319,7 @@ export class OrdersService {
    * Викликається з frontend після створення замовлення
    */
   async createMonoPayment(orderId: string) {
-    console.log('💳 Creating Monobank payment for order:', orderId);
+    this.logger.log(`Creating Monobank payment for order: ${orderId}`);
 
     // Отримуємо замовлення
     const sale = await this.prisma.sale.findUnique({
@@ -360,7 +360,7 @@ export class OrdersService {
       webHookUrl: `${backendUrl}/api/orders/mono-webhook`,
     });
 
-    console.log('✅ Monobank invoice created:', invoiceId);
+    this.logger.log(`Monobank invoice created: ${invoiceId}`);
 
     // Зберігаємо Payment запис з УСІМА даними для майбутньої обробки
     await this.prisma.payment.create({
@@ -383,7 +383,7 @@ export class OrdersService {
       },
     });
 
-    console.log('✅ Payment record saved with doctorId:', sale.doctorId);
+    this.logger.log(`Payment record saved for order: ${sale.id}`);
 
     // Логування
     await this.logsService.createLog({
@@ -413,7 +413,7 @@ export class OrdersService {
    * Викликається автоматично Monobank при зміні статусу платежу
    */
   async handleMonoWebhook(webhookData: any, signature: string, rawBody: string | Buffer) {
-    console.log('📞 Monobank webhook received for invoice:', webhookData.invoiceId);
+    this.logger.log(`Monobank webhook received for invoice: ${webhookData.invoiceId}`);
 
     // Перевіряємо підпис webhook
     const validatedData = await this.monoPaymentService.handleWebhook(
@@ -422,7 +422,7 @@ export class OrdersService {
       rawBody,
     );
 
-    console.log('✅ Webhook signature verified');
+    this.logger.log('Webhook signature verified');
 
     // Знаходимо платіж за invoiceId
     const payment = await this.prisma.payment.findUnique({
@@ -438,14 +438,14 @@ export class OrdersService {
     });
 
     if (!payment) {
-      console.error('❌ Payment not found for invoice:', validatedData.invoiceId);
+      this.logger.error(`Payment not found for invoice: ${validatedData.invoiceId}`);
       throw new Error('Payment not found');
     }
 
     const sale = payment.sales[0]; // Отримуємо перше (і єдине) замовлення
 
     if (!sale) {
-      console.error('❌ Sale not found for payment:', payment.id);
+      this.logger.error(`Sale not found for payment: ${payment.id}`);
       throw new Error('Sale not found');
     }
 
@@ -461,7 +461,7 @@ export class OrdersService {
 
     // Обробляємо різні статуси
     if (validatedData.status === 'success') {
-      console.log('✅ Payment successful! Processing order...');
+      this.logger.log('Payment successful, processing order');
 
       // Оновлюємо статус платежу
       await this.prisma.payment.update({
@@ -491,7 +491,7 @@ export class OrdersService {
             totalPoints: { increment: updatedSale.pointsEarned },
           },
         });
-        console.log(`✅ Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
+        this.logger.log(`Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
       }
 
       // Звільняємо комірку
@@ -511,13 +511,13 @@ export class OrdersService {
       // Відкриваємо комірку автоматично
       try {
         await this.openCell(sale.id);
-        console.log('✅ Cell opened automatically after payment');
+        this.logger.log('Cell opened automatically after payment');
       } catch (error) {
-        console.error('❌ Failed to open cell:', error.message);
+        this.logger.error(`Failed to open cell: ${error.message}`);
         // Не кидаємо помилку, щоб не блокувати webhook
       }
 
-      console.log('✅ Order completed successfully');
+      this.logger.log('Order completed successfully');
 
       return {
         success: true,
@@ -526,7 +526,7 @@ export class OrdersService {
         cellNumber: sale.cellNumber,
       };
     } else if (validatedData.status === 'failure') {
-      console.log('❌ Payment failed');
+      this.logger.warn('Payment failed');
 
       // Оновлюємо статуси на failed
       await this.prisma.payment.update({
@@ -557,7 +557,7 @@ export class OrdersService {
         message: 'Payment failed',
       };
     } else {
-      console.log(`ℹ️ Payment status: ${validatedData.status}`);
+      this.logger.log(`Payment status: ${validatedData.status}`);
 
       return {
         success: true,
@@ -571,7 +571,7 @@ export class OrdersService {
    * Використовується якщо webhook не спрацював
    */
   async checkPaymentStatus(orderId: string) {
-    console.log(`🔍 Manually checking payment status for order: ${orderId}`);
+    this.logger.log(`Manually checking payment status for order: ${orderId}`);
 
     // Знаходимо замовлення
     const sale = await this.prisma.sale.findUnique({
@@ -600,7 +600,7 @@ export class OrdersService {
       orderBy: { createdAt: 'desc' },
     });
 
-    console.log('💳 Found payment:', payment);
+    this.logger.log(`Found payment: ${payment?.id}`);
 
     if (!payment || !payment.invoiceId) {
       throw new Error('Payment not found or no invoice ID');
@@ -611,15 +611,15 @@ export class OrdersService {
       throw new Error('This is not a Monobank payment');
     }
 
-    console.log(`📄 Checking Monobank invoice: ${payment.invoiceId}`);
+    this.logger.log(`Checking Monobank invoice: ${payment.invoiceId}`);
 
     // Перевіряємо статус в Monobank API
     try {
       const invoiceStatus = await this.monoPaymentService.getInvoiceStatus(payment.invoiceId);
-      console.log('✅ Invoice status from Monobank:', invoiceStatus);
+      this.logger.log(`Invoice status from Monobank: ${invoiceStatus.status}`);
 
       if (invoiceStatus.status === 'success') {
-        console.log('💰 Payment confirmed! Completing order...');
+        this.logger.log('Payment confirmed, completing order');
 
         // Оновлюємо статуси
         await this.prisma.payment.update({
@@ -646,7 +646,7 @@ export class OrdersService {
               totalPoints: { increment: updatedSale.pointsEarned },
             },
           });
-          console.log(`✅ Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
+          this.logger.log(`Updated doctor-ortomat stats: +${updatedSale.pointsEarned} points, +1 sale`);
         }
 
         // ✅ TELEGRAM: Відправляємо нотифікацію про продаж
@@ -666,7 +666,7 @@ export class OrdersService {
             });
             this.logger.log('📨 Telegram notification sent to doctor');
           } catch (error) {
-            this.logger.error('❌ Failed to send Telegram notification:', error);
+            this.logger.error(`Failed to send Telegram notification: ${error.message}`);
           }
         }
 
@@ -687,11 +687,11 @@ export class OrdersService {
 
         // Відкриваємо комірку
         try {
-          console.log(`🔓 Opening cell #${sale.cellNumber}...`);
+          this.logger.log(`Opening cell #${sale.cellNumber}`);
           await this.ortomatsGateway.openCell(sale.ortomatId, sale.cellNumber, sale.id);
-          console.log('✅ Cell opened successfully');
+          this.logger.log('Cell opened successfully');
         } catch (error) {
-          console.error('❌ Failed to open cell:', error.message);
+          this.logger.error(`Failed to open cell: ${error.message}`);
         }
 
         return {
@@ -701,7 +701,7 @@ export class OrdersService {
           cellNumber: sale.cellNumber,
         };
       } else if (invoiceStatus.status === 'failure') {
-        console.log('❌ Payment failed according to Monobank');
+        this.logger.warn('Payment failed according to Monobank');
 
         await this.prisma.payment.update({
           where: { id: payment.id },
@@ -719,7 +719,7 @@ export class OrdersService {
           status: 'failed',
         };
       } else {
-        console.log(`ℹ️ Payment still pending: ${invoiceStatus.status}`);
+        this.logger.log(`Payment still pending: ${invoiceStatus.status}`);
 
         return {
           success: true,
@@ -729,7 +729,7 @@ export class OrdersService {
         };
       }
     } catch (error) {
-      console.error('❌ Error checking Monobank status:', error.message);
+      this.logger.error(`Error checking Monobank status: ${error.message}`);
       throw new Error(`Failed to check payment status: ${error.message}`);
     }
   }

@@ -1,9 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OrtomatsService } from '../ortomats/ortomats.service';
 
 @Injectable()
 export class SalesService {
+  private readonly logger = new Logger(SalesService.name);
+
   constructor(
     private prisma: PrismaService,
     private ortomatsService: OrtomatsService,
@@ -11,7 +13,7 @@ export class SalesService {
 
   // ✅ Admin статистика
   async getAdminStats() {
-    console.log('📊 Getting admin stats...');
+    this.logger.log('Getting admin stats');
 
     // Загальна кількість користувачів
     const totalUsers = await this.prisma.user.count();
@@ -95,7 +97,7 @@ export class SalesService {
       .sort((a, b) => b.salesCount - a.salesCount)
       .slice(0, 5);
 
-    console.log('✅ Admin stats calculated');
+    this.logger.log('Admin stats calculated');
 
     return {
       totalUsers,
@@ -109,7 +111,7 @@ export class SalesService {
 
   // ✅ Статистика лікаря - ВИПРАВЛЕНО
   async getDoctorStats(doctorId: string) {
-    console.log('📊 Getting doctor stats for:', doctorId);
+    this.logger.log(`Getting doctor stats for: ${doctorId}`);
 
     // Перевіряємо чи лікар існує
     const doctor = await this.prisma.user.findUnique({
@@ -123,8 +125,8 @@ export class SalesService {
       throw new Error('Doctor not found');
     }
 
-    console.log('👤 Doctor:', doctor.email);
-    console.log('🏥 Doctor ortomats:', doctor.doctorOrtomats.length);
+    this.logger.log(`Doctor: ${doctor.id}`);
+    this.logger.log(`Doctor ortomats: ${doctor.doctorOrtomats.length}`);
 
     // Знаходимо всі продажі де doctorId співпадає
     const sales = await this.prisma.sale.findMany({
@@ -149,16 +151,11 @@ export class SalesService {
       },
     });
 
-    console.log('💰 Found sales:', sales.length);
+    this.logger.log(`Found sales: ${sales.length}`);
 
     // Додатковий дебаг - показуємо перший продаж
     if (sales.length > 0) {
-      console.log('📦 First sale:', {
-        id: sales[0].id,
-        doctorId: sales[0].doctorId,
-        amount: sales[0].amount,
-        pointsEarned: sales[0].pointsEarned,
-      });
+      this.logger.log(`First sale: ${sales[0].id}, amount: ${sales[0].amount}, points: ${sales[0].pointsEarned}`);
     }
 
     const totalSales = sales.length;
@@ -167,7 +164,7 @@ export class SalesService {
       0,
     );
 
-    console.log('📊 Stats:', { totalSales, totalPoints });
+    this.logger.log(`Stats: totalSales=${totalSales}, totalPoints=${totalPoints}`);
 
     // Беремо останні 10 продажів для відображення
     const recentSales = sales.slice(0, 10);
@@ -188,7 +185,7 @@ export class SalesService {
         LIMIT 6
       `;
     } catch (error) {
-      console.error('Error getting sales by month:', error);
+      this.logger.error(`Error getting sales by month: ${error.message}`);
     }
 
     return {
@@ -212,11 +209,7 @@ export class SalesService {
     let pointsEarned = null;
     let doctorOrtomatId = null;
 
-    console.log('💰 Creating sale with data:', {
-      productId: data.productId,
-      ortomatId: data.ortomatId,
-      referralCode: data.referralCode,
-    });
+    this.logger.log(`Creating sale: productId=${data.productId}, ortomatId=${data.ortomatId}`);
 
     // Знаходимо продукт для отримання балів
     const product = await this.prisma.product.findUnique({
@@ -229,7 +222,7 @@ export class SalesService {
 
     // Якщо є реферальний код, знаходимо лікаря і нараховуємо бали
     if (data.referralCode) {
-      console.log('🔍 Looking for referral code:', data.referralCode);
+      this.logger.log(`Looking for referral code: ${data.referralCode}`);
 
       const doctorOrtomat = await this.prisma.doctorOrtomat.findUnique({
         where: { referralCode: data.referralCode },
@@ -243,17 +236,12 @@ export class SalesService {
         doctorOrtomatId = doctorOrtomat.id;
         pointsEarned = product.referralPoints || 0;
 
-        console.log('✅ Found doctor:', {
-          doctorId,
-          doctorEmail: doctorOrtomat.doctor.email,
-          pointsEarned,
-          productReferralPoints: product.referralPoints,
-        });
+        this.logger.log(`Found doctor: ${doctorId}, points: ${pointsEarned}`);
       } else {
-        console.log('⚠️ Referral code not found:', data.referralCode);
+        this.logger.warn(`Referral code not found: ${data.referralCode}`);
       }
     } else {
-      console.log('⚠️ No referral code provided');
+      this.logger.log('No referral code provided');
     }
 
     // Створюємо продаж
@@ -285,12 +273,7 @@ export class SalesService {
       },
     });
 
-    console.log('✅ Sale created:', {
-      saleId: sale.id,
-      doctorId: sale.doctorId,
-      pointsEarned: sale.pointsEarned,
-      amount: sale.amount,
-    });
+    this.logger.log(`Sale created: ${sale.id}, amount: ${sale.amount}`);
 
     // Оновлюємо статистику в doctorOrtomat якщо є
     if (doctorOrtomatId && pointsEarned) {
@@ -301,7 +284,7 @@ export class SalesService {
           totalPoints: { increment: pointsEarned },
         },
       });
-      console.log('✅ Updated doctor ortomat stats');
+      this.logger.log('Updated doctor ortomat stats');
     }
 
     // Видаляємо продукт з комірки
@@ -350,7 +333,7 @@ export class SalesService {
     cellNumber: number;
     referralCode?: string;
   }) {
-    console.log('💰 Processing purchase...', data);
+    this.logger.log(`Processing purchase: product=${data.productId}, ortomat=${data.ortomatId}`);
 
     // Знаходимо продукт для отримання ціни
     const product = await this.prisma.product.findUnique({
@@ -390,7 +373,7 @@ export class SalesService {
     // Відкриваємо комірку
     await this.ortomatsService.openCell(data.ortomatId, data.cellNumber);
 
-    console.log('✅ Purchase completed');
+    this.logger.log('Purchase completed');
 
     return {
       sale,
