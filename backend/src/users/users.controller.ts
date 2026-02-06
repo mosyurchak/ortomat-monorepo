@@ -10,6 +10,7 @@
   Request,
   ForbiddenException,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -46,6 +47,8 @@ export class UsersController {
   }
 
   // ⭐ Create doctor
+  // ✅ SECURITY: Rate limited to 5 doctor creations per minute
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per minute
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @Post('doctors')
@@ -54,6 +57,8 @@ export class UsersController {
   }
 
   // ⭐ Update doctor
+  // ✅ SECURITY: Rate limited to 10 doctor updates per minute
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 per minute
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @Patch('doctors/:id')
@@ -62,6 +67,8 @@ export class UsersController {
   }
 
   // ⭐ Delete doctor
+  // ✅ SECURITY: Rate limited to 3 doctor deletions per minute (CRITICAL)
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 per minute
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles('ADMIN')
   @Delete('doctors/:id')
@@ -111,6 +118,8 @@ export class UsersController {
     return this.usersService.update(id, updateData);
   }
 
+  // ✅ SECURITY: Rate limited to 3 user deletions per minute (CRITICAL)
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 per minute
   @UseGuards(AuthGuard('jwt'))
   @Delete(':id')
   remove(@Param('id') id: string) {

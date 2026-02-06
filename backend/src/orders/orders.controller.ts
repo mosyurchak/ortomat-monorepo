@@ -11,6 +11,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { OrdersService } from './orders.service';
@@ -21,6 +22,10 @@ export class OrdersController {
 
   constructor(private readonly ordersService: OrdersService) {}
 
+  /**
+   * ✅ SECURITY: Rate limited to 10 orders per minute to prevent spam
+   */
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 per minute
   @Post('create')
   createOrder(@Body() createOrderDto: any) {
     return this.ordersService.createOrder(createOrderDto);
@@ -42,7 +47,9 @@ export class OrdersController {
    *
    * Викликається з frontend після створення замовлення
    * Повертає pageUrl для перенаправлення користувача на оплату
+   * ✅ SECURITY: Rate limited to 5 payments per minute
    */
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 per minute
   @Post(':id/create-mono-payment')
   @HttpCode(HttpStatus.OK)
   async createMonoPayment(@Param('id') orderId: string) {
@@ -98,6 +105,11 @@ export class OrdersController {
     return this.ordersService.getAllOrders();
   }
 
+  /**
+   * ✅ SECURITY: Rate limited to 3 cell operations per minute (CRITICAL)
+   * This endpoint physically opens a locker cell
+   */
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 per minute
   @Post(':id/open-cell')
   openCell(@Param('id') id: string) {
     return this.ordersService.openCell(id);
@@ -109,7 +121,9 @@ export class OrdersController {
    *
    * Використовується якщо webhook не спрацював
    * Перевіряє статус напряму в Monobank API і завершує замовлення якщо оплачено
+   * ✅ SECURITY: Rate limited to 10 status checks per minute
    */
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 per minute
   @Post(':id/check-payment-status')
   @HttpCode(HttpStatus.OK)
   async checkPaymentStatus(@Param('id') orderId: string) {

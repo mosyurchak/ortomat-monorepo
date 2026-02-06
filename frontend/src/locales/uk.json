@@ -119,7 +119,7 @@
     "notFound": "Товар не знайдено",
     "backToHome": "Повернутися на головну",
     "processing": "Обробка...",
-    "securePayment": "Безпечна оплата через LiqPay"
+    "securePayment": "Безпечна оплата через Monobank"
   },
   "cart": {
     "title": "Кошик",
@@ -149,7 +149,7 @@
     "selectOrtomat": "Оберіть ортомат для отримання",
     "pickupPoint": "Пункт видачі",
     "paymentMethod": "Спосіб оплати",
-    "card": "Картка (LiqPay)",
+    "card": "Картка (Monobank)",
     "cash": "Готівка",
     "contactInfo": "Контактна інформація",
     "phone": "Телефон",

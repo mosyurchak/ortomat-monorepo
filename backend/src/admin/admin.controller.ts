@@ -9,6 +9,7 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Response } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminService } from './admin.service';
@@ -24,6 +25,8 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // Експорт всіх даних БД
+  // ✅ SECURITY: Rate limited to 2 backups per hour (CRITICAL - exports entire DB)
+  @Throttle({ default: { limit: 2, ttl: 3600000 } }) // 2 per hour
   @Get('backup')
   async exportData(@Res() res: Response) {
     try {
@@ -48,6 +51,8 @@ export class AdminController {
   }
 
   // Імпорт даних з бекапу
+  // ✅ SECURITY: Rate limited to 1 restore per hour (ULTRA CRITICAL - restores entire DB)
+  @Throttle({ default: { limit: 1, ttl: 3600000 } }) // 1 per hour
   @Post('restore')
   async importData(@Body() backupData: any) {
     try {

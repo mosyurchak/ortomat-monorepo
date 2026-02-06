@@ -357,7 +357,6 @@ export class SalesService {
       throw new Error('Product not available in this cell');
     }
 
-    // Тут має бути інтеграція з LiqPay
     const paymentId = `payment-${Date.now()}`;
 
     // Створюємо продаж
