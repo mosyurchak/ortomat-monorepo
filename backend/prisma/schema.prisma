@@ -25,6 +25,9 @@ model User {
   lastNotificationSent     DateTime?
   resetPasswordExpires     DateTime?
   resetPasswordToken       String?             @unique
+  // ✅ SECURITY: Refresh token для JWT (довготривала автентифікація)
+  refreshToken             String?             @unique // Хешований refresh token
+  refreshTokenExpiry       DateTime?           // Expiry для refresh token
   // ✅ TELEGRAM BOT: Поля для інтеграції з Telegram
   telegramChatId           String?             @unique // Chat ID для відправки повідомлень
   telegramUsername         String?             // Username в Telegram для зручності

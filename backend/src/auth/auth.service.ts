@@ -1,62 +1,59 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import { RegisterDto } from './dto/register.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
     private emailService: EmailService,
+    private prisma: PrismaService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    console.log('🔍 Validating user:', email);
-    // ✅ SECURITY: Removed password logging
+    this.logger.log('Validating user credentials');
 
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      console.log('❌ User not found');
+      this.logger.warn('User not found');
       throw new UnauthorizedException('Invalid credentials');
     }
 
     // ✅ Перевірка: лікарі не можуть логінитись в адмінку
     if (user.role === 'DOCTOR') {
-      console.log('❌ Doctor attempted to login - not allowed');
+      this.logger.warn('Doctor attempted to login - access denied');
       throw new UnauthorizedException('Лікарі можуть користуватись тільки Telegram ботом');
     }
 
     // ✅ Перевірка наявності пароля (лікарі не мають пароля)
     if (!user.password) {
-      console.log('❌ User has no password');
+      this.logger.warn('User has no password');
       throw new UnauthorizedException('Invalid credentials');
     }
-
-    // ✅ SECURITY: Removed hash logging
-    console.log('🔐 Comparing passwords...');
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
-    console.log('✅ Password valid?', isPasswordValid);
-
     if (!isPasswordValid) {
-      console.log('❌ Invalid password - bcrypt comparison failed');
+      this.logger.warn('Invalid password - bcrypt comparison failed');
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    console.log('✅ User validated successfully:', user.email);
+    this.logger.log(`User validated successfully: ${user.id}`);
 
     const { password: _, ...result } = user;
     return result;
   }
 
   async login(user: any) {
-    console.log('🔐 Generating token for:', user.email);
-    console.log('👤 User role from DB:', user.role);
+    this.logger.log(`User login attempt: ${user.id}`);
 
     const payload = {
       email: user.email,
@@ -64,12 +61,34 @@ export class AuthService {
       role: user.role,
     };
 
-    const access_token = this.jwtService.sign(payload);
+    // ✅ SECURITY: Short-lived access token (15 minutes)
+    const access_token = this.jwtService.sign(payload, {
+      expiresIn: '15m',
+    });
 
-    console.log('✅ Login successful:', user.email, 'Role:', user.role);
+    // ✅ SECURITY: Long-lived refresh token (7 days)
+    const refresh_token = this.jwtService.sign(
+      { sub: user.id, type: 'refresh' },
+      { expiresIn: '7d' }
+    );
+
+    // ✅ SECURITY: Hash and store refresh token in database
+    const hashedRefreshToken = await bcrypt.hash(refresh_token, 10);
+    const refreshTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        refreshToken: hashedRefreshToken,
+        refreshTokenExpiry: refreshTokenExpiry,
+      },
+    });
+
+    this.logger.log(`Login successful for user: ${user.id}`);
 
     return {
       access_token,
+      refresh_token,
       user: {
         id: user.id,
         email: user.email,
@@ -78,6 +97,89 @@ export class AuthService {
         lastName: user.lastName,
         isVerified: user.isVerified,
       },
+    };
+  }
+
+  /**
+   * ✅ SECURITY: Refresh access token using refresh token
+   */
+  async refreshToken(refreshToken: string) {
+    this.logger.log('Refresh token attempt');
+
+    try {
+      // Verify refresh token signature and expiry
+      const payload = this.jwtService.verify(refreshToken);
+
+      if (payload.type !== 'refresh') {
+        throw new UnauthorizedException('Invalid token type');
+      }
+
+      // Find user with valid refresh token
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+      });
+
+      if (!user || !user.refreshToken || !user.refreshTokenExpiry) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Check if refresh token expired in database
+      if (user.refreshTokenExpiry < new Date()) {
+        this.logger.warn(`Expired refresh token for user: ${user.id}`);
+        throw new UnauthorizedException('Refresh token expired');
+      }
+
+      // Verify refresh token hash
+      const isValidRefreshToken = await bcrypt.compare(
+        refreshToken,
+        user.refreshToken,
+      );
+
+      if (!isValidRefreshToken) {
+        this.logger.warn(`Invalid refresh token for user: ${user.id}`);
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+
+      // Generate new access token
+      const newPayload = {
+        email: user.email,
+        sub: user.id,
+        role: user.role,
+      };
+
+      const access_token = this.jwtService.sign(newPayload, {
+        expiresIn: '15m',
+      });
+
+      this.logger.log(`Token refreshed for user: ${user.id}`);
+
+      return {
+        access_token,
+      };
+    } catch (error) {
+      this.logger.error(`Refresh token failed: ${error.message}`);
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
+  }
+
+  /**
+   * ✅ SECURITY: Logout - invalidate refresh token
+   */
+  async logout(userId: string) {
+    this.logger.log(`Logout attempt for user: ${userId}`);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        refreshToken: null,
+        refreshTokenExpiry: null,
+      },
+    });
+
+    this.logger.log(`Logout successful for user: ${userId}`);
+
+    return {
+      message: 'Logged out successfully',
     };
   }
 
@@ -93,14 +195,14 @@ export class AuthService {
    * Верифікація email
    */
   async verifyEmail(token: string) {
-    console.log('✉️ Verifying email with token:', token);
+    this.logger.log('Email verification attempt');
 
     try {
       const result = await this.emailService.verifyEmailToken(token);
-      console.log('✅ Email verified:', result.email);
+      this.logger.log('Email verified successfully');
       return result;
     } catch (error) {
-      console.log('❌ Email verification failed:', error.message);
+      this.logger.error(`Email verification failed: ${error.message}`);
       throw new BadRequestException(error.message);
     }
   }
@@ -109,12 +211,12 @@ export class AuthService {
    * Запит на відновлення паролю
    */
   async forgotPassword(email: string) {
-    console.log('🔑 Password reset requested for:', email);
+    this.logger.log('Password reset requested');
 
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
-      console.log('⚠️ User not found, but returning success message');
+      this.logger.warn('Password reset requested for non-existent user');
       return {
         message: 'If this email exists, you will receive a password reset link',
       };
@@ -124,7 +226,7 @@ export class AuthService {
     try {
       await this.emailService.checkPasswordResetRateLimit(user.email);
     } catch (error) {
-      console.error('🚫 Rate limit exceeded for:', email);
+      this.logger.error('Rate limit exceeded for password reset');
       throw new BadRequestException(error.message);
     }
 
@@ -134,9 +236,9 @@ export class AuthService {
         user.email,
         user.firstName,
       );
-      console.log('✅ Password reset email sent to:', email);
+      this.logger.log('Password reset email sent successfully');
     } catch (error) {
-      console.error('❌ Email sending failed:', error.message);
+      this.logger.error(`Password reset email sending failed: ${error.message}`);
       throw error; // Пробрасуємо помилку для інформування користувача
     }
 
@@ -149,22 +251,21 @@ export class AuthService {
    * Скидання паролю
    */
   async resetPassword(token: string, newPassword: string) {
-    console.log('🔐 Resetting password with token');
+    this.logger.log('Password reset attempt');
 
     try {
       const { userId } = await this.emailService.verifyResetToken(token);
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      console.log('💾 New hashed password generated');
 
       await this.emailService.resetPassword(token, hashedPassword);
 
-      console.log('✅ Password reset successful for user:', userId);
+      this.logger.log(`Password reset successful for user: ${userId}`);
 
       return {
         message: 'Password successfully reset. You can now login with your new password.',
       };
     } catch (error) {
-      console.log('❌ Password reset failed:', error.message);
+      this.logger.error(`Password reset failed: ${error.message}`);
       throw new BadRequestException(error.message);
     }
   }
@@ -173,13 +274,13 @@ export class AuthService {
    * Повторна відправка email верифікації
    */
   async resendVerificationEmail(email: string) {
-    console.log('📧 Resending verification email to:', email);
+    this.logger.log('Resend verification email attempt');
 
     const user = await this.usersService.findByEmail(email);
 
     if (!user) {
       // ✅ SECURITY: Don't reveal user existence - return success message
-      console.log('⚠️ User not found, but returning success message');
+      this.logger.warn('Verification email resend requested for non-existent user');
       return {
         message: 'If an account exists with this email, a verification email has been sent.',
       };
@@ -187,7 +288,7 @@ export class AuthService {
 
     if (user.isVerified) {
       // ✅ SECURITY: Don't reveal verification status - return generic message
-      console.log('⚠️ Email already verified, returning generic message');
+      this.logger.warn('Verification email resend for already verified user');
       return {
         message: 'If an account exists with this email, a verification email has been sent.',
       };
@@ -199,9 +300,9 @@ export class AuthService {
         user.email,
         user.firstName,
       );
-      console.log('✅ Verification email resent to:', email);
+      this.logger.log('Verification email resent successfully');
     } catch (error) {
-      console.error('❌ Email sending failed:', error.message);
+      this.logger.error(`Verification email sending failed: ${error.message}`);
       // ✅ SECURITY: Don't expose internal errors
       return {
         message: 'If an account exists with this email, a verification email has been sent.',
