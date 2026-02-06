@@ -64,13 +64,28 @@ export default function Home() {
             </div>
 
             {/* Текст інструкції */}
-            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-6">
               Як здійснити покупку?
             </h2>
 
-            <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
-              Для того щоб здійснити покупку, проскануйте будь ласка <span className="font-semibold text-blue-600">QR-код</span> на корпусі вибраного ортомату і виберіть потрібний товар!
-            </p>
+            <ul className="text-lg md:text-xl text-gray-700 leading-relaxed text-left max-w-2xl mx-auto space-y-3">
+              <li className="flex items-start">
+                <span className="mr-3 text-blue-600">•</span>
+                <span>проскануйте будь ласка <span className="font-semibold text-blue-600">QR-код</span> на корпусі вибраного ортомату</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-3 text-blue-600">•</span>
+                <span>виберіть потрібний товар</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-3 text-blue-600">•</span>
+                <span>оплатіть товар будь яким зручним способом</span>
+              </li>
+              <li className="flex items-start">
+                <span className="mr-3 text-blue-600">•</span>
+                <span>заберіть товар з відкритої комірки</span>
+              </li>
+            </ul>
           </div>
 
           {/* Додаткова інформація (опціонально) */}
