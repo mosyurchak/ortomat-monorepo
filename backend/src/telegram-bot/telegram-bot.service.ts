@@ -147,6 +147,19 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     return null; // Невалідний формат
   }
 
+  /**
+   * Створює постійну клавіатуру з кнопками
+   */
+  private getMainKeyboard() {
+    return {
+      keyboard: [
+        [{ text: '📊 Моя статистика' }]
+      ],
+      resize_keyboard: true,
+      persistent: true,
+    };
+  }
+
   private setupCommands() {
     // Команда /start
     this.bot.onText(/\/start/, async (msg) => {
@@ -164,7 +177,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           `✅ Ваш Telegram вже прив'язано!\n\n` +
           `👤 ${existingUser.firstName} ${existingUser.lastName}\n` +
           `📱 ${existingUser.phone}\n\n` +
-          `Використовуйте /stats для перегляду статистики.`
+          `Використовуйте /stats або кнопку нижче для перегляду статистики.`,
+          {
+            reply_markup: this.getMainKeyboard(),
+          }
         );
         return;
       }
@@ -306,11 +322,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           `📱 Телефон: ${user.phone}\n` +
           `🏪 Ортомат: ${ortomatInfo}\n\n` +
           `Тепер ви будете отримувати сповіщення про продажі.\n` +
-          `Використовуйте /stats щоб переглянути статистику.`,
+          `Використовуйте /stats або кнопку нижче щоб переглянути статистику.`,
           {
-            reply_markup: {
-              remove_keyboard: true,
-            }
+            reply_markup: this.getMainKeyboard(),
           }
         );
 
@@ -329,10 +343,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
     });
 
-    // Команда /stats для перегляду статистики
-    this.bot.onText(/\/stats/, async (msg) => {
-      const chatId = msg.chat.id;
-
+    /**
+     * Обробка запиту статистики (для /stats і кнопки)
+     */
+    const handleStats = async (chatId: number) => {
       try {
         // Знаходимо користувача за chatId
         const user = await this.prisma.user.findUnique({
@@ -350,7 +364,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           await this.bot.sendMessage(
             chatId,
             '❌ Ваш Telegram не прив\'язано до акаунту.\n' +
-            'Використовуйте /link для прив\'язки.',
+            'Використовуйте /start для прив\'язки.',
+            {
+              reply_markup: this.getMainKeyboard(),
+            }
           );
           return;
         }
@@ -363,6 +380,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
             `📊 Статистика для ${user.firstName} ${user.lastName}\n\n` +
             `⚠️ Ортомат не призначено.\n` +
             `Зверніться до адміністратора.`,
+            {
+              reply_markup: this.getMainKeyboard(),
+            }
           );
           return;
         }
@@ -401,11 +421,35 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           statsMessage += `ℹ️ Поки що немає продажів`;
         }
 
-        await this.bot.sendMessage(chatId, statsMessage);
-        this.logger.log(`📊 /stats для ${user.email || user.phone || user.id}`);
+        await this.bot.sendMessage(chatId, statsMessage, {
+          reply_markup: this.getMainKeyboard(),
+        });
+        this.logger.log(`📊 Статистика для ${user.email || user.phone || user.id}`);
       } catch (error) {
         this.logger.error('Помилка отримання статистики:', error);
-        await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
+        await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.', {
+          reply_markup: this.getMainKeyboard(),
+        });
+      }
+    };
+
+    // Команда /stats для перегляду статистики
+    this.bot.onText(/\/stats/, async (msg) => {
+      await handleStats(msg.chat.id);
+    });
+
+    // Обробка текстової кнопки "📊 Моя статистика"
+    this.bot.on('message', async (msg) => {
+      // Ігноруємо команди та інші типи повідомлень
+      if (!msg.text || msg.text.startsWith('/') || msg.contact) {
+        return;
+      }
+
+      const chatId = msg.chat.id;
+      const text = msg.text.trim();
+
+      if (text === '📊 Моя статистика') {
+        await handleStats(chatId);
       }
     });
 
@@ -419,7 +463,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         });
 
         if (!user) {
-          await this.bot.sendMessage(chatId, '❌ Ваш Telegram не прив\'язано до акаунту.');
+          await this.bot.sendMessage(chatId, '❌ Ваш Telegram не прив\'язано до акаунту.', {
+            reply_markup: { remove_keyboard: true },
+          });
           return;
         }
 
@@ -436,18 +482,28 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           chatId,
           `✅ Telegram відв'язано від акаунту ${user.email || user.phone || 'вашого профілю'}.\n` +
           `Ви більше не будете отримувати сповіщення.`,
+          {
+            reply_markup: { remove_keyboard: true },
+          }
         );
 
         this.logger.log(`🔓 Відв'язано Telegram для ${user.email || user.phone || user.id}`);
       } catch (error) {
         this.logger.error('Помилка відв\'язки Telegram:', error);
-        await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.');
+        await this.bot.sendMessage(chatId, '❌ Виникла помилка. Спробуйте пізніше.', {
+          reply_markup: { remove_keyboard: true },
+        });
       }
     });
 
     // Команда /help
     this.bot.onText(/\/help/, async (msg) => {
       const chatId = msg.chat.id;
+
+      // Перевіряємо чи прив'язано акаунт
+      const user = await this.prisma.user.findUnique({
+        where: { telegramChatId: chatId.toString() },
+      });
 
       const helpMessage = `
 📱 Доступні команди:
@@ -457,6 +513,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 /unlink - Відв'язати Telegram від акаунту
 /help - Показати цю довідку
 
+${user ? '🔘 Або використовуйте кнопку "📊 Моя статистика" внизу екрану' : ''}
+
 💡 Як прив'язати акаунт:
 1. Натисніть /start
 2. Натисніть кнопку "📱 Прив'язати через номер телефону"
@@ -464,7 +522,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 4. Підтвердіть - і готово!
       `.trim();
 
-      await this.bot.sendMessage(chatId, helpMessage);
+      await this.bot.sendMessage(chatId, helpMessage, {
+        reply_markup: user ? this.getMainKeyboard() : { remove_keyboard: true },
+      });
     });
 
     this.logger.log('✅ Команди бота налаштовано');
