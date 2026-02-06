@@ -38,6 +38,9 @@ async function bootstrap() {
     },
     noSniff: true, // X-Content-Type-Options: nosniff
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+    frameguard: { action: 'deny' }, // X-Frame-Options: DENY (prevent clickjacking)
+    xssFilter: true, // X-XSS-Protection: 1; mode=block
+    hidePoweredBy: true, // Hide X-Powered-By header
   }));
 
   // ✅ SECURITY: Global validation pipe
