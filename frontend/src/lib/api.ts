@@ -16,18 +16,78 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 class ApiClient {
   private baseURL: string;
+  private isRefreshing: boolean = false;
+  private failedQueue: Array<{
+    resolve: (value?: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
 
   constructor() {
     this.baseURL = API_URL;
   }
 
+  private processQueue(error: Error | null, token: string | null = null) {
+    this.failedQueue.forEach(prom => {
+      if (error) {
+        prom.reject(error);
+      } else {
+        prom.resolve(token);
+      }
+    });
+
+    this.failedQueue = [];
+  }
+
+  /**
+   * ✅ SECURITY: Refresh access token using refresh token
+   */
+  private async refreshAccessToken(): Promise<string | null> {
+    try {
+      const refreshToken = typeof window !== 'undefined'
+        ? localStorage.getItem('refresh_token')
+        : null;
+
+      if (!refreshToken) {
+        throw new Error('No refresh token available');
+      }
+
+      const response = await fetch(`${this.baseURL}/api/auth/refresh`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Token refresh failed');
+      }
+
+      const data = await response.json();
+
+      // Save new access token
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('token', data.access_token);
+      }
+
+      return data.access_token;
+    } catch (error) {
+      // Clear tokens on refresh failure
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+      }
+      throw error;
+    }
+  }
+
   private async request(endpoint: string, options: RequestInit = {}) {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     console.log('API Request:', url);
-    
-    const token = typeof window !== 'undefined' 
-      ? localStorage.getItem('token') 
+
+    const token = typeof window !== 'undefined'
+      ? localStorage.getItem('token')
       : null;
 
     const headers: HeadersInit = {
@@ -44,6 +104,41 @@ class ApiClient {
         ...options,
         headers,
       });
+
+      // ✅ SECURITY: Handle 401 Unauthorized - token expired
+      if (response.status === 401 && !endpoint.includes('/auth/refresh')) {
+        if (this.isRefreshing) {
+          // Wait for the ongoing refresh to complete
+          return new Promise((resolve, reject) => {
+            this.failedQueue.push({ resolve, reject });
+          }).then(() => {
+            // Retry the original request with new token
+            return this.request(endpoint, options);
+          });
+        }
+
+        this.isRefreshing = true;
+
+        try {
+          const newToken = await this.refreshAccessToken();
+
+          this.processQueue(null, newToken);
+          this.isRefreshing = false;
+
+          // Retry the original request with new token
+          return this.request(endpoint, options);
+        } catch (refreshError) {
+          this.processQueue(refreshError as Error, null);
+          this.isRefreshing = false;
+
+          // Redirect to login on refresh failure
+          if (typeof window !== 'undefined') {
+            window.location.href = '/admin/login';
+          }
+
+          throw refreshError;
+        }
+      }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({
@@ -257,6 +352,34 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ token, newPassword }),
     });
+  }
+
+  /**
+   * ✅ SECURITY: Logout - invalidate refresh token on server and clear local tokens
+   */
+  async logout() {
+    try {
+      // Call backend to invalidate refresh token
+      await this.request('/api/auth/logout', {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Logout request failed:', error);
+      // Continue with local cleanup even if request fails
+    } finally {
+      // Clear tokens from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+      }
+    }
+  }
+
+  /**
+   * ✅ SECURITY: Manual refresh token (for use before token expires)
+   */
+  async refreshToken() {
+    return this.refreshAccessToken();
   }
 
   // ==================== USERS ====================
