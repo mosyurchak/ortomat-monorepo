@@ -1,118 +1,84 @@
-import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { api } from '../lib/api';
-import { useTranslation } from '../hooks/useTranslation'; // ← ДОДАНО
-
-// Тип для ортомату
-interface Ortomat {
-  id: string;
-  name: string;
-  address: string;
-  totalCells: number;
-  status: 'active' | 'inactive';
-  createdAt?: string;
-  updatedAt?: string;
-}
+import Head from 'next/head';
 
 export default function Home() {
-  const { t } = useTranslation(); // ← ДОДАНО
-  
-  const { data: ortomats, isLoading } = useQuery<Ortomat[]>({
-    queryKey: ['ortomats'],
-    queryFn: api.getOrtomats.bind(api),
-  });
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">{t('common.loading')}</div> {/* ← ЗМІНЕНО */}
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            {t('home.title')} {/* ← ЗМІНЕНО */}
+    <>
+      <Head>
+        <title>Ortomat - Ортопедичні товари 24/7</title>
+        <meta name="description" content="Система автоматизованого продажу ортопедичних виробів" />
+      </Head>
+
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          {/* Іконка/Логотип */}
+          <div className="mb-8 flex justify-center">
+            <div className="bg-white p-6 rounded-full shadow-lg">
+              <svg
+                className="w-20 h-20 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+                />
+              </svg>
+            </div>
+          </div>
+
+          {/* Головний заголовок */}
+          <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-4">
+            Ortomat
           </h1>
-          <p className="text-xl text-gray-600">
-            {t('home.subtitle')} {/* ← ЗМІНЕНО */}
+
+          {/* Підзаголовок */}
+          <p className="text-2xl md:text-3xl text-gray-700 mb-6">
+            Ортопедичні товари 24/7
           </p>
-        </div>
 
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold mb-6">
-            {t('home.findOrtomat')}: {/* ← ЗМІНЕНО */}
-          </h2>
-          
-          {!ortomats || ortomats.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 text-lg">
-                {t('catalog.noProducts')} {/* ← ЗМІНЕНО */}
-              </p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {ortomats.map((ortomat) => (
-                <Link
-                  key={ortomat.id}
-                  href={`/catalog/${ortomat.id}`}
-                  className="block"
-                >
-                  <div className="bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow p-6 cursor-pointer border-2 border-transparent hover:border-blue-500">
-                    <div className="flex items-start justify-between mb-4">
-                      <h3 className="text-xl font-semibold text-gray-900">
-                        {ortomat.name}
-                      </h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        ortomat.status === 'active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {ortomat.status === 'active' ? t('admin.active') : t('admin.inactive')} {/* ← ЗМІНЕНО */}
-                      </span>
-                    </div>
-                    
-                    <div className="space-y-2 text-gray-600">
-                      <p className="flex items-center">
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        {ortomat.address}
-                      </p>
-                      
-                      <p className="flex items-center">
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        {ortomat.totalCells} {t('admin.cells').toLowerCase()} {/* ← ЗМІНЕНО */}
-                      </p>
-                    </div>
-                    
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <span className="text-blue-600 font-medium hover:text-blue-700">
-                        {t('home.viewCatalog')} {/* ← ЗМІНЕНО */}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </div>
+          {/* Опис */}
+          <p className="text-xl md:text-2xl text-gray-600 mb-12 font-light">
+            Система автоматизованого продажу ортопедичних виробів
+          </p>
 
-        <div className="mt-12 text-center">
-          <Link
-            href="/login"
-            className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            {t('nav.login')} {/* ← ЗМІНЕНО */}
-          </Link>
+          {/* Блок з інструкцією */}
+          <div className="bg-white rounded-2xl shadow-xl p-8 md:p-12 border-2 border-blue-200">
+            {/* Іконка QR */}
+            <div className="mb-6 flex justify-center">
+              <svg
+                className="w-16 h-16 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"
+                />
+              </svg>
+            </div>
+
+            {/* Текст інструкції */}
+            <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 mb-4">
+              Як здійснити покупку?
+            </h2>
+
+            <p className="text-lg md:text-xl text-gray-700 leading-relaxed">
+              Для того щоб здійснити покупку, проскануйте будь ласка <span className="font-semibold text-blue-600">QR-код</span> на корпусі вибраного ортомату і виберіть потрібний товар!
+            </p>
+          </div>
+
+          {/* Додаткова інформація (опціонально) */}
+          <div className="mt-8 text-gray-500 text-sm">
+            <p>Працюємо цілодобово • Безконтактна оплата • Миттєве отримання товару</p>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
