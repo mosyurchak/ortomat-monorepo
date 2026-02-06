@@ -27,7 +27,7 @@ export class OrdersService {
     referralCode?: string;
     customerPhone?: string;
   }) {
-    console.log('📦 Creating order...', data);
+    this.logger.log('Creating order for product and ortomat');
 
     const product = await this.prisma.product.findUnique({
       where: { id: data.productId },
@@ -53,7 +53,7 @@ export class OrdersService {
     let doctorOrtomatId = null; // ✅ ДОДАНО
 
     if (data.referralCode) {
-      console.log('🔍 Looking for referral code:', data.referralCode);
+      this.logger.log('Looking up referral code');
 
       const doctorOrtomat = await this.prisma.doctorOrtomat.findUnique({
         where: { referralCode: data.referralCode },
@@ -64,13 +64,9 @@ export class OrdersService {
         doctorOrtomatId = doctorOrtomat.id; // ✅ ДОДАНО
         pointsEarned = product.referralPoints || 0;
 
-        console.log('✅ Found doctor:', {
-          doctorId,
-          doctorOrtomatId,
-          pointsEarned,
-        });
+        this.logger.log(`Found doctor referral: ${doctorId}, points: ${pointsEarned}`);
       } else {
-        console.log('⚠️ Referral code not found');
+        this.logger.warn('Referral code not found');
       }
     }
 
@@ -103,7 +99,7 @@ export class OrdersService {
       },
     });
 
-    console.log('✅ Order created:', sale.orderNumber);
+    this.logger.log(`Order created: ${sale.orderNumber}`);
 
     // ✅ ДОДАНО: Логування
     await this.logsService.logOrderCreated({
@@ -118,7 +114,7 @@ export class OrdersService {
   }
 
   async processPayment(orderId: string) {
-    console.log('💳 Processing payment for order:', orderId);
+    this.logger.log(`Processing payment for order: ${orderId}`);
 
     const sale = await this.prisma.sale.findUnique({
       where: { id: orderId },
@@ -133,7 +129,7 @@ export class OrdersService {
     }
 
     if (sale.status === 'completed') {
-      console.log('⚠️ Order already completed');
+      this.logger.warn('Order already completed');
       return {
         success: true,
         message: 'Order already completed',
@@ -143,7 +139,7 @@ export class OrdersService {
       };
     }
 
-    console.log('✅ Payment successful (STUB), updating order status...');
+    this.logger.log('Payment successful (STUB), updating order status');
 
     const updatedSale = await this.prisma.sale.update({
       where: { id: orderId },
@@ -169,9 +165,9 @@ export class OrdersService {
         sale.cellNumber,
         null,
       );
-      console.log('✅ Inventory updated - cell emptied');
+      this.logger.log('Inventory updated - cell emptied');
     } catch (error) {
-      console.error('❌ Failed to update inventory:', error);
+      this.logger.error(`Failed to update inventory: ${error.message}`);
     }
 
     return {
@@ -191,7 +187,7 @@ export class OrdersService {
     status: string;
     paymentId: string;
   }) {
-    console.log('📞 Payment callback received:', data);
+    this.logger.log(`Payment callback received with status: ${data.status}`);
 
     const sale = await this.prisma.sale.findUnique({
       where: { id: data.orderId },
