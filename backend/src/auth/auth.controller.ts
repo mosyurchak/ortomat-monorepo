@@ -2,10 +2,12 @@
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './local-auth.guard';
+import { JwtAuthGuard } from './jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { RefreshTokenDto } from './dto/refresh-token.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -30,8 +32,32 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Request() req) {
-    console.log('🔐 Login request:', req.user.email);
     return this.authService.login(req.user);
+  }
+
+  /**
+   * 🔄 Refresh access token
+   * POST /auth/refresh
+   * Body: { refresh_token: "xxx" }
+   * ✅ SECURITY: Rate limited to 10 requests per minute
+   */
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // 10 per minute
+  @Post('refresh')
+  @HttpCode(200)
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshToken(dto.refresh_token);
+  }
+
+  /**
+   * 🚪 Logout (invalidate refresh token)
+   * POST /auth/logout
+   * ✅ SECURITY: Requires valid JWT
+   */
+  @UseGuards(JwtAuthGuard)
+  @Post('logout')
+  @HttpCode(200)
+  async logout(@Request() req) {
+    return this.authService.logout(req.user.id);
   }
 
   /**
