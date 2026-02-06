@@ -13,7 +13,7 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -31,18 +31,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const checkAuth = async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-    console.log('🔍 Checking auth - token:', token ? 'exists' : 'missing');
-
     if (token) {
       try {
         const userData = await api.getProfile();
-        console.log('✅ User loaded from token:', userData);
         setUser(userData);
       } catch (error) {
-        console.error('❌ Auth check failed:', error);
-        // НЕ видаляємо token одразу, даємо шанс
-        // Можливо це тимчасова помилка мережі
-        console.log('⚠️ Keeping token, might be network issue');
+        console.error('Auth check failed:', error);
+        // Don't remove token immediately - might be temporary network issue
+        // Auto-refresh will handle expired tokens
       }
     }
     setIsLoading(false);
@@ -50,58 +46,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      console.log('🔐 Attempting login...', email);
-      
       const response = await api.login(email, password);
-      console.log('📥 Login response:', response);
-      
-      const { access_token, user: userData } = response;
 
-      if (!access_token) {
-        throw new Error('No token received from server');
+      const { access_token, refresh_token, user: userData } = response;
+
+      if (!access_token || !refresh_token) {
+        throw new Error('No tokens received from server');
       }
 
-      // Зберігаємо токен
+      // ✅ SECURITY: Store both tokens
       localStorage.setItem('token', access_token);
-      
-      console.log('✅ Token saved:', access_token.substring(0, 20) + '...');
-      console.log('👤 User data:', userData);
-      console.log('👤 User role:', userData.role, '(type:', typeof userData.role + ')');
-      
+      localStorage.setItem('refresh_token', refresh_token);
+
       setUser(userData);
 
-      // Невелика затримка щоб token встиг зберегтись
+      // Небольшая задержка чтобы token успел сохраниться
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // ✅ Редирект залежно від ролі (case-insensitive)
+      // ✅ Redirect based on user role (case-insensitive)
       const role = userData.role.toUpperCase();
-      
-      console.log('🔄 Redirecting based on role:', role);
-      
+
       if (role === 'ADMIN') {
-        console.log('➡️ Redirecting to /admin');
         router.push('/admin');
       } else if (role === 'DOCTOR') {
-        console.log('➡️ Redirecting to /doctor');
         router.push('/doctor');
       } else if (role === 'COURIER') {
-        console.log('➡️ Redirecting to /courier');
         router.push('/courier');
       } else {
-        console.log('➡️ Redirecting to /dashboard');
         router.push('/dashboard');
       }
     } catch (error: unknown) {
-      console.error('❌ Login error:', error);
+      console.error('Login error:', error);
       throw error;
     }
   };
 
-  const logout = () => {
-    console.log('🚪 Logging out...');
-    localStorage.removeItem('token');
-    setUser(null);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      // ✅ SECURITY: Invalidate refresh token on server
+      await api.logout();
+    } catch (error) {
+      console.error('Logout request failed:', error);
+      // Continue with local cleanup even if request fails
+    } finally {
+      // Clear local state
+      setUser(null);
+      router.push('/login');
+    }
   };
 
   return (
