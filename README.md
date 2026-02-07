@@ -850,6 +850,33 @@ curl https://api.monobank.ua/api/merchant/invoice/webhook \
 
 ---
 
+### Resend Email не надсилає
+
+**Проблема:**
+```
+You can only send testing emails to your own email address (igor.mosyurchak@gmail.com).
+To send emails to other recipients, please verify a domain.
+```
+
+**Причина:** Resend в тестовому режимі дозволяє надсилати листи тільки на email зареєстрований в акаунті.
+
+**Рішення:**
+
+**Для development:**
+- Використовуйте email який зареєстрований в Resend (igor.mosyurchak@gmail.com)
+- Або тестуйте без відправки emails
+
+**Для production:**
+1. Зайти на https://resend.com/domains
+2. Додати домен `ortomat.com.ua`
+3. Налаштувати DNS записи (SPF, DKIM, DMARC)
+4. Змінити `RESEND_FROM` в `.env`:
+```env
+RESEND_FROM="Ortomat <noreply@ortomat.com.ua>"
+```
+
+---
+
 ### Telegram Bot не відповідає
 
 **Рішення:**
