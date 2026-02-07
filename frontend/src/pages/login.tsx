@@ -9,6 +9,7 @@ export default function Login() {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const { login } = useAuth();
@@ -20,7 +21,7 @@ export default function Login() {
     setError('');
 
     try {
-      await login(email, password);
+      await login(email, password, rememberMe);
       // Редирект відбувається автоматично в AuthContext
     } catch (error: unknown) {
       console.error('Login error:', error);
@@ -29,11 +30,6 @@ export default function Login() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const fillCredentials = (userEmail: string, userPassword: string) => {
-    setEmail(userEmail);
-    setPassword(userPassword);
   };
 
   return (
@@ -101,11 +97,24 @@ export default function Login() {
                 </div>
               </div>
 
-              {/* ✅ ДОДАНО: Забули пароль? */}
-              <div className="flex items-center justify-end">
+              {/* Checkbox: Залишатись в системі */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <input
+                    id="remember-me"
+                    name="remember-me"
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer"
+                  />
+                  <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 cursor-pointer">
+                    Залишатись в системі
+                  </label>
+                </div>
                 <div className="text-sm">
                   <Link href="/forgot-password" className="font-medium text-blue-600 hover:text-blue-500">
-                    Забули пароль?
+                    Відновити пароль
                   </Link>
                 </div>
               </div>
@@ -120,46 +129,6 @@ export default function Login() {
                 </button>
               </div>
             </form>
-
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">Тестові акаунти</span>
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => fillCredentials('admin@ortomat.ua', 'password123')}
-                  className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
-                >
-                  <div className="text-sm font-semibold text-gray-900">👨‍💼 Адміністратор</div>
-                  <div className="text-xs text-gray-600 mt-1">admin@ortomat.ua / password123</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fillCredentials('doctor@ortomat.ua', 'password123')}
-                  className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
-                >
-                  <div className="text-sm font-semibold text-gray-900">👨‍⚕️ Лікар</div>
-                  <div className="text-xs text-gray-600 mt-1">doctor@ortomat.ua / password123</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => fillCredentials('courier@ortomat.ua', 'password123')}
-                  className="w-full text-left px-4 py-3 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors"
-                >
-                  <div className="text-sm font-semibold text-gray-900">🚚 Кур'єр</div>
-                  <div className="text-xs text-gray-600 mt-1">courier@ortomat.ua / password123</div>
-                </button>
-              </div>
-            </div>
           </div>
         </div>
       </div>

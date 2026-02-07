@@ -14,6 +14,37 @@ import type {
 // ✅ БЕЗ /api в кінці
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
+/**
+ * Helper functions for token storage (supports both localStorage and sessionStorage)
+ */
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('token') || sessionStorage.getItem('token');
+}
+
+function getRefreshToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('refresh_token') || sessionStorage.getItem('refresh_token');
+}
+
+function setToken(token: string) {
+  if (typeof window === 'undefined') return;
+  // Store in whichever storage currently has tokens (to maintain "remember me" preference)
+  if (localStorage.getItem('token') || localStorage.getItem('refresh_token')) {
+    localStorage.setItem('token', token);
+  } else {
+    sessionStorage.setItem('token', token);
+  }
+}
+
+function clearTokens() {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('token');
+  localStorage.removeItem('refresh_token');
+  sessionStorage.removeItem('token');
+  sessionStorage.removeItem('refresh_token');
+}
+
 class ApiClient {
   private baseURL: string;
   private isRefreshing: boolean = false;
@@ -43,9 +74,7 @@ class ApiClient {
    */
   private async refreshAccessToken(): Promise<string | null> {
     try {
-      const refreshToken = typeof window !== 'undefined'
-        ? localStorage.getItem('refresh_token')
-        : null;
+      const refreshToken = getRefreshToken();
 
       if (!refreshToken) {
         throw new Error('No refresh token available');
@@ -66,17 +95,12 @@ class ApiClient {
       const data = await response.json();
 
       // Save new access token
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('token', data.access_token);
-      }
+      setToken(data.access_token);
 
       return data.access_token;
     } catch (error) {
       // Clear tokens on refresh failure
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-      }
+      clearTokens();
       throw error;
     }
   }
@@ -86,9 +110,7 @@ class ApiClient {
 
     console.log('API Request:', url);
 
-    const token = typeof window !== 'undefined'
-      ? localStorage.getItem('token')
-      : null;
+    const token = getToken();
 
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -367,11 +389,8 @@ class ApiClient {
       console.error('Logout request failed:', error);
       // Continue with local cleanup even if request fails
     } finally {
-      // Clear tokens from localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refresh_token');
-      }
+      // Clear tokens from both localStorage and sessionStorage
+      clearTokens();
     }
   }
 
