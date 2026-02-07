@@ -12,7 +12,7 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
 }
@@ -29,7 +29,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    if (typeof window === 'undefined') {
+      setIsLoading(false);
+      return;
+    }
+
+    // Check both localStorage and sessionStorage for token
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
 
     if (token) {
       try {
@@ -44,7 +50,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, rememberMe: boolean = true) => {
     try {
       const response = await api.login(email, password);
 
@@ -54,9 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('No tokens received from server');
       }
 
-      // ✅ SECURITY: Store both tokens
-      localStorage.setItem('token', access_token);
-      localStorage.setItem('refresh_token', refresh_token);
+      // ✅ SECURITY: Store tokens based on "Remember Me" preference
+      if (rememberMe) {
+        // Persistent storage - tokens survive browser restart
+        localStorage.setItem('token', access_token);
+        localStorage.setItem('refresh_token', refresh_token);
+      } else {
+        // Session storage - tokens cleared when browser/tab closes
+        // Only store access_token (15 min), no refresh_token
+        sessionStorage.setItem('token', access_token);
+        // Don't store refresh_token for security - user will need to login again after 15 min
+      }
 
       setUser(userData);
 
@@ -89,6 +103,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Logout request failed:', error);
       // Continue with local cleanup even if request fails
     } finally {
+      // Clear tokens from both storages
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token');
+        localStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('refresh_token');
+      }
       // Clear local state
       setUser(null);
       router.push('/login');
