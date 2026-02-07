@@ -1,952 +1,880 @@
-# 🏥 Ortomat - Автоматизована система продажу ортопедичних виробів
+# 🏥 Ortomat - Automated Orthopedic Products Vending System
+
+**Ortomat** - це автоматизована система продажу ортопедичних виробів 24/7 через вендінгові автомати з QR-кодами, інтеграцією платежів Monobank та реферальною програмою для лікарів.
 
 ## 📋 Зміст
 
-- [Про проект](#про-проект)
-- [Технології](#технології)
-- [Архітектура](#архітектура)
-- [Структура проекту](#структура-проекту)
-- [Встановлення та запуск](#встановлення-та-запуск)
-- [Конфігурація](#конфігурація)
-- [Основні модулі](#основні-модулі)
-- [API Endpoints](#api-endpoints)
-- [База даних](#база-даних)
-- [Deployment](#deployment)
-- [Користувачі та ролі](#користувачі-та-ролі)
-- [Email система](#email-система)
-- [QR Code система](#qr-code-система)
-- [Troubleshooting](#troubleshooting)
+- [Огляд проекту](#-огляд-проекту)
+- [Технічний стек](#-технічний-стек)
+- [Архітектура системи](#-архітектура-системи)
+- [Структура бази даних](#-структура-бази-даних)
+- [Встановлення та налаштування](#-встановлення-та-налаштування)
+- [API Документація](#-api-документація)
+- [Аутентифікація та безпека](#-аутентифікація-та-безпека)
+- [Реферальна система](#-реферальна-система)
+- [Telegram Bot](#-telegram-bot)
+- [Deployment](#-deployment)
+- [Розробка](#-розробка)
+- [Troubleshooting](#-troubleshooting)
 
 ---
 
-## 🎯 Про проект
+## 🎯 Огляд проекту
 
-**Ortomat** - це повнофункціональна система для управління автоматами з продажу ортопедичних виробів. Система дозволяє:
+### Основний функціонал
 
-- 👨‍⚕️ Лікарям видавати QR-коди пацієнтам для придбання товарів
-- 🚚 Кур'єрам управляти наповненням автоматів
-- 👨‍💼 Адміністраторам контролювати всю систему
-- 💳 Приймати оплату через LiqPay
-- 📧 Відправляти email сповіщення
-- 📊 Переглядати статистику продажів та комісій
+Ortomat - це повноцінна e-commerce платформа для автоматизованої торгівлі ортопедичними товарами:
+
+1. **Вендінгові автомати** - фізичні пристрої з 37 комірками для зберігання товарів
+2. **QR-код покупки** - клієнт сканує QR-код на автоматі та отримує доступ до каталогу
+3. **Реферальна програма** - лікарі отримують бали за продажі через їх унікальний QR-код
+4. **Онлайн оплата** - інтеграція з Monobank (Plata by Mono)
+5. **Telegram бот** - нотифікації лікарів про продажі та статистику балів
+6. **Адмін панель** - управління товарами, ортоматами, користувачами, статистикою
+7. **Панелі для лікарів та кур'єрів** - перегляд статистики та заповнення автоматів
+
+### Workflow покупки
+
+```
+1. Клієнт підходить до ортомату
+2. Сканує QR-код на корпусі (містить referral code лікаря)
+3. Відкривається каталог товарів доступних в цьому ортоматі
+4. Обирає товар, натискає "Купити"
+5. Переходить на сторінку оплати Monobank
+6. Оплачує картою
+7. Після підтвердження оплати - комірка автоматично відкривається
+8. Клієнт забирає товар
+9. Лікар-реферал отримує бали
+10. Telegram бот надсилає нотифікацію лікарю
+```
+
+### Ролі користувачів
+
+- **ADMIN** - повний доступ до системи, управління всіма ресурсами
+- **DOCTOR** - лікар-реферал, отримує бали за продажі через свій QR-код
+- **COURIER** - заповнює ортомати товарами, відслідковує інвентар
 
 ---
 
-## 🛠 Технології
+## 🛠 Технічний стек
 
 ### Backend
-- **NestJS** - Node.js framework
-- **Prisma ORM** - робота з PostgreSQL
-- **PostgreSQL** - база даних
-- **JWT** - аутентифікація
-- **SendGrid** - email сервіс
-- **bcryptjs** - хешування паролів
-- **QRCode** - генерація QR кодів
-- **LiqPay API** - прийом платежів
+
+- **Framework:** NestJS 11.x (Node.js 20+)
+- **Database:** PostgreSQL 15+
+- **ORM:** Prisma 5.x
+- **Authentication:** JWT (access + refresh tokens)
+- **Validation:** class-validator, class-transformer
+- **Security:** Helmet, CORS, Rate Limiting (Throttler)
+- **Payments:** Monobank API (Plata by Mono)
+- **Email:** Resend
+- **Telegram:** node-telegram-bot-api
+- **WebSocket:** @nestjs/websockets (для керування комірками)
+- **QR Codes:** qrcode library
 
 ### Frontend
-- **Next.js 14** - React framework
-- **TypeScript** - типізація
-- **TailwindCSS** - стилізація
-- **React Query** - управління станом та кешування
-- **Recharts** - графіки та діаграми
 
-### DevOps
-- **Railway** - хостинг backend + PostgreSQL
-- **Vercel** - хостинг frontend
-- **GitHub** - CI/CD
+- **Framework:** Next.js 14.x (React 18)
+- **Language:** TypeScript 5.x
+- **Styling:** Tailwind CSS 3.x
+- **State Management:** React Context API
+- **HTTP Client:** Axios + custom wrapper with token refresh
+- **Forms:** react-hook-form
+- **Notifications:** react-hot-toast
+- **Icons:** Lucide React
+- **Data Fetching:** @tanstack/react-query
 
----
+### Infrastructure
 
-## 🏗 Архітектура
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        FRONTEND (Vercel)                     │
-│  Next.js + TypeScript + TailwindCSS                          │
-│  https://ortomat.com.ua                                      │
-└────────────────────┬────────────────────────────────────────┘
-                     │ HTTPS/REST API
-┌────────────────────┴────────────────────────────────────────┐
-│                     BACKEND (Railway)                        │
-│  NestJS + Prisma + PostgreSQL                                │
-│  https://ortomat-monorepo-production.up.railway.app          │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-         ┌───────────┴───────────┐
-         │                       │
-    PostgreSQL              SendGrid
-    (Railway)              (Email Service)
-```
+- **Backend Hosting:** Railway (PostgreSQL + Node.js)
+- **Frontend Hosting:** Vercel
+- **Version Control:** Git + GitHub
+- **CI/CD:** Automatic deploy on push to main
 
 ---
 
-## 📁 Структура проекту
+## 🏗 Архітектура системи
+
+### Діаграма високого рівня
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                          USERS                                   │
+│  Клієнти  │  Лікарі (Telegram)  │  Адміни  │  Кур'єри          │
+└────┬──────────────┬──────────────────┬───────────────┬──────────┘
+     │              │                  │               │
+     ▼              ▼                  ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   FRONTEND (Next.js - Vercel)                    │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ Homepage │  │  Catalog │  │  Admin   │  │ Doctor/  │        │
+│  │ (landing)│  │  (QR)    │  │  Panel   │  │ Courier  │        │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ HTTPS/REST API
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                  BACKEND (NestJS - Railway)                      │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │   Auth   │  │ Ortomats │  │ Products │  │  Sales   │        │
+│  │ (JWT)    │  │ Service  │  │ Service  │  │ Service  │        │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐        │
+│  │ Payments │  │ Telegram │  │  Email   │  │ WebSocket│        │
+│  │(Monobank)│  │   Bot    │  │ (Resend) │  │ Gateway  │        │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘        │
+└────────────────────────┬────────────────────────────────────────┘
+                         │ Prisma ORM
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              DATABASE (PostgreSQL - Railway)                     │
+│  Users │ Ortomats │ Products │ Sales │ Payments │ etc.          │
+└─────────────────────────────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   EXTERNAL SERVICES                              │
+│  Monobank API  │  Telegram API  │  Resend Email  │ Ortomats HW  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Структура проекту
 
 ```
 ortomat-monorepo/
-├── backend/                        # NestJS Backend
+├── backend/                      # NestJS Backend API
+│   ├── src/
+│   │   ├── main.ts              # Entry point, security config
+│   │   ├── admin/               # Admin endpoints (backup/restore)
+│   │   ├── auth/                # Authentication (JWT, refresh)
+│   │   ├── cells/               # Cell management
+│   │   ├── email/               # Email service (Resend)
+│   │   ├── events/              # WebSocket gateway
+│   │   ├── logs/                # Activity & email logs
+│   │   ├── ortomats/            # Ortomat CRUD
+│   │   ├── orders/              # Order creation & payment
+│   │   ├── products/            # Product CRUD
+│   │   ├── referrals/           # Referral QR codes
+│   │   ├── sales/               # Sales statistics
+│   │   ├── settings/            # Global settings
+│   │   ├── telegram-bot/        # Telegram bot service
+│   │   ├── users/               # User management (doctors, couriers)
+│   │   └── prisma/              # Prisma service
 │   ├── prisma/
-│   │   ├── schema.prisma          # Database schema
-│   │   └── migrations/            # Database migrations
-│   ├── src/
-│   │   ├── auth/                  # Authentication module
-│   │   │   ├── auth.service.ts
-│   │   │   ├── auth.controller.ts
-│   │   │   ├── jwt.strategy.ts
-│   │   │   └── dto/
-│   │   ├── users/                 # Users module
-│   │   │   ├── users.service.ts
-│   │   │   └── users.controller.ts
-│   │   ├── courier/               # Courier management
-│   │   │   ├── courier.service.ts
-│   │   │   ├── courier.controller.ts
-│   │   │   └── courier.module.ts
-│   │   ├── ortomats/              # Ortomats management
-│   │   │   ├── ortomats.service.ts
-│   │   │   └── ortomats.controller.ts
-│   │   ├── cells/                 # Cells management
-│   │   │   ├── cells.service.ts
-│   │   │   └── cells.controller.ts
-│   │   ├── products/              # Products management
-│   │   │   ├── products.service.ts
-│   │   │   └── products.controller.ts
-│   │   ├── sales/                 # Sales tracking
-│   │   │   ├── sales.service.ts
-│   │   │   └── sales.controller.ts
-│   │   ├── email/                 # Email service
-│   │   │   ├── email.service.ts
-│   │   │   └── templates/         # Handlebars templates
-│   │   ├── qr-code/               # QR code generation
-│   │   │   ├── qr-code.service.ts
-│   │   │   └── qr-code.controller.ts
-│   │   ├── invite/                # Ortomat invites
-│   │   │   ├── invite.service.ts
-│   │   │   └── invite.controller.ts
-│   │   ├── prisma/                # Prisma service
-│   │   │   └── prisma.service.ts
-│   │   ├── app.module.ts
-│   │   └── main.ts
-│   ├── .env                       # Environment variables
-│   └── package.json
+│   │   ├── schema.prisma        # Database schema
+│   │   ├── migrations/          # Database migrations
+│   │   └── seed.ts              # Seed data
+│   ├── package.json
+│   └── .env.example             # Environment variables template
 │
-├── frontend/                      # Next.js Frontend
-│   ├── public/
-│   │   └── images/
+├── frontend/                     # Next.js Frontend
 │   ├── src/
-│   │   ├── components/            # Reusable components
-│   │   │   ├── Layout.tsx
-│   │   │   └── ProtectedRoute.tsx
-│   │   ├── contexts/              # React contexts
-│   │   │   └── AuthContext.tsx
-│   │   ├── lib/                   # Utilities
-│   │   │   ├── api.ts            # API client
-│   │   │   └── liqpay.ts         # LiqPay helpers
-│   │   ├── pages/                 # Next.js pages
-│   │   │   ├── index.tsx         # Landing page
-│   │   │   ├── login.tsx         # Login
-│   │   │   ├── register.tsx      # Registration (doctors only)
-│   │   │   ├── forgot-password.tsx
-│   │   │   ├── reset-password.tsx
-│   │   │   ├── verify-email.tsx
-│   │   │   ├── admin/            # Admin dashboard
-│   │   │   │   ├── index.tsx
-│   │   │   │   ├── users/
-│   │   │   │   │   └── index.tsx # Users management
-│   │   │   │   ├── ortomats/
-│   │   │   │   │   ├── index.tsx
-│   │   │   │   │   └── [id].tsx  # Ortomat details
-│   │   │   │   ├── products/
-│   │   │   │   └── sales/
-│   │   │   ├── doctor/           # Doctor dashboard
-│   │   │   │   └── index.tsx
-│   │   │   └── courier/          # Courier dashboard
-│   │   │       └── index.tsx
-│   │   └── styles/
-│   │       └── globals.css
-│   ├── .env.local                # Environment variables
-│   └── package.json
+│   │   ├── pages/
+│   │   │   ├── index.tsx        # Landing page
+│   │   │   ├── login.tsx        # Login page (Remember Me)
+│   │   │   ├── admin/           # Admin dashboard
+│   │   │   ├── doctor/          # Doctor dashboard
+│   │   │   ├── courier/         # Courier dashboard
+│   │   │   └── catalog/         # Public catalog (QR scan)
+│   │   ├── components/          # React components
+│   │   ├── contexts/
+│   │   │   └── AuthContext.tsx  # Auth state management
+│   │   ├── lib/
+│   │   │   └── api.ts           # API client with token refresh
+│   │   ├── hooks/               # Custom React hooks
+│   │   ├── types/               # TypeScript types
+│   │   └── styles/              # Global styles
+│   ├── public/                  # Static files
+│   ├── package.json
+│   └── .env.local               # Frontend env variables
 │
-└── README.md                      # This file
+├── .gitignore
+├── package.json                  # Root package.json
+├── Dockerfile                    # Production Docker image
+├── docker-compose.yml            # Local development
+├── railway.json                  # Railway deployment config
+└── README.md                     # This file
 ```
 
 ---
 
-## 🚀 Встановлення та запуск
+## 🗄 Структура бази даних
 
-### Prerequisites
-- Node.js 18+
-- PostgreSQL 14+
-- Git
+### Основні моделі
+
+#### **User** (Користувачі)
+```prisma
+model User {
+  id          String     @id @default(uuid())
+  email       String?    @unique        // NULL для лікарів
+  password    String?                   // NULL для лікарів (тільки Telegram)
+  role        UserRole                  // ADMIN | DOCTOR | COURIER
+  firstName   String
+  lastName    String
+  phone       String     @unique        // Головний ідентифікатор
+
+  // JWT Refresh Tokens
+  refreshToken       String?   @unique
+  refreshTokenExpiry DateTime?
+
+  // Telegram Integration
+  telegramChatId     String?   @unique
+  telegramUsername   String?
+  telegramNotifications Boolean @default(true)
+}
+```
+
+#### **Ortomat** (Автомати)
+```prisma
+model Ortomat {
+  id         String   @id @default(uuid())
+  name       String                    // "Ортомат Хмельницький №1"
+  address    String
+  city       String?
+  totalCells Int      @default(37)    // Кількість комірок
+  status     String   @default("active")
+}
+```
+
+#### **Product** (Товари)
+```prisma
+model Product {
+  id              String   @id @default(uuid())
+  name            String
+  sku             String   @unique
+  price           Float
+  description     String?
+  size            String   @default("Uni")
+  mainImage       String?
+  images          String[] @default([])
+
+  // Referral System
+  referralPoints  Int      @default(0)  // Бали за продаж
+
+  // Additional fields
+  color           String?
+  material        String?
+  manufacturer    String?
+  country         String?
+  type            String?
+  sizeChartUrl    String?
+}
+```
+
+#### **DoctorOrtomat** (Прив'язка лікаря до ортомату)
+```prisma
+model DoctorOrtomat {
+  id           String   @id @default(uuid())
+  doctorId     String
+  ortomatId    String
+  referralCode String   @unique      // Унікальний код (в QR)
+  qrCode       String?               // Base64 QR code image
+  totalPoints  Int      @default(0)  // Загальні бали
+  totalSales   Int      @default(0)  // Кількість продажів
+}
+```
+
+#### **Sale** (Продажі)
+```prisma
+model Sale {
+  id              String    @id @default(uuid())
+  productId       String?
+  ortomatId       String?
+  amount          Float
+  pointsEarned    Int?                 // Бали за цей продаж
+  referralCode    String?
+  status          String    @default("pending")
+  orderNumber     String?   @unique
+  customerPhone   String?
+  completedAt     DateTime?
+  doctorOrtomatId String?
+}
+```
+
+#### **Payment** (Платежі)
+```prisma
+model Payment {
+  id              String   @id @default(uuid())
+  orderId         String   @unique
+  amount          Float
+  status          String
+  paymentProvider String   @default("mono")
+  invoiceId       String?  @unique    // Monobank invoice ID
+  pageUrl         String?             // Payment page URL
+  monoStatus      String?
+  monoData        Json?
+}
+```
+
+#### **Cell** (Комірки)
+```prisma
+model Cell {
+  id             String    @id @default(uuid())
+  number         Int                    // 1-37
+  ortomatId      String
+  productId      String?
+  isAvailable    Boolean   @default(true)
+  lastRefillDate DateTime?
+}
+```
+
+### Зв'язки між таблицями
+
+```
+User (DOCTOR) ──< DoctorOrtomat >── Ortomat
+                      │
+                      └──< Sale >── Product
+                            │
+                            └── Payment
+
+User (COURIER) ──< CourierOrtomat >── Ortomat
+
+Ortomat ──< Cell >── Product
+
+Sale ──< PointsTransaction >── User (DOCTOR)
+```
+
+---
+
+## 🚀 Встановлення та налаштування
+
+### Передумови
+
+- **Node.js** >= 20.0.0
+- **npm** >= 10.0.0
+- **PostgreSQL** >= 15.0
+- **Git**
 
 ### 1. Клонування репозиторію
 
 ```bash
-git clone https://github.com/your-username/ortomat-monorepo.git
+git clone https://github.com/mosyurchak/ortomat-monorepo.git
 cd ortomat-monorepo
 ```
 
-### 2. Backend Setup
+### 2. Встановлення залежностей
 
 ```bash
+# Backend dependencies
 cd backend
 npm install
 
-# Створити .env файл
-cp .env.example .env
-
-# Редагувати .env (див. секцію Конфігурація)
-code .env
-
-# Запустити міграції
-npx prisma migrate dev
-
-# Seed database (опційно)
-npx prisma db seed
-
-# Запустити сервер
-npm run start:dev
+# Frontend dependencies
+cd ../frontend
+npm install
 ```
 
-Backend буде доступний на `http://localhost:3001`
+### 3. Налаштування Backend
 
-### 3. Frontend Setup
+#### 3.1. Створити файл `.env` в `backend/`
 
 ```bash
-cd frontend
-npm install
-
-# Створити .env.local файл
-cp .env.local.example .env.local
-
-# Редагувати .env.local
-code .env.local
-
-# Запустити dev server
-npm run dev
+cd backend
+cp .env.example .env
 ```
 
-Frontend буде доступний на `http://localhost:3000`
-
----
-
-## ⚙️ Конфігурація
-
-### Backend Environment Variables (.env)
+#### 3.2. Відредагувати `.env`
 
 ```env
-# Database
-DATABASE_URL="postgresql://username:password@localhost:5432/ortomat?schema=public"
+# Database (local PostgreSQL)
+DATABASE_URL="postgresql://postgres:password@localhost:5432/ortomat?schema=public"
 
-# JWT
-JWT_SECRET="your-super-secret-jwt-key-change-in-production"
+# JWT Secret (generate new one!)
+JWT_SECRET="your-super-secret-jwt-key-min-32-characters"
+JWT_EXPIRES_IN="15m"           # Access token lifetime
+JWT_REFRESH_EXPIRES_IN="7d"    # Refresh token lifetime
 
-# Frontend URL
+# URLs
 FRONTEND_URL="http://localhost:3000"
+BACKEND_URL="http://localhost:3001"
 
-# SendGrid Email
-SENDGRID_API_KEY="SG.your-sendgrid-api-key"
-SMTP_FROM="noreply@ortomat.com.ua"
+# Email (Resend - https://resend.com)
+RESEND_API_KEY="re_..."
+RESEND_FROM="Ortomat <noreply@yourdomain.com>"
 
-# LiqPay (Payment)
-LIQPAY_PUBLIC_KEY="your_liqpay_public_key"
-LIQPAY_PRIVATE_KEY="your_liqpay_private_key"
+# Monobank Payment (https://api.monobank.ua/)
+MONO_TOKEN="your_monobank_token"
+
+# Telegram Bot (@BotFather)
+TELEGRAM_BOT_TOKEN="123456789:ABC..."
 
 # Server
 PORT=3001
 ```
 
-### Frontend Environment Variables (.env.local)
+**⚠️ ВАЖЛИВО:** Згенеруйте власний `JWT_SECRET`:
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+#### 3.3. Запустити базу даних (Docker)
+
+```bash
+# З кореневої папки проекту
+docker-compose up -d postgres
+```
+
+Або встановити PostgreSQL локально.
+
+#### 3.4. Створити структуру БД
+
+```bash
+cd backend
+
+# Generate Prisma Client
+npx prisma generate
+
+# Run migrations
+npx prisma migrate deploy
+
+# Seed initial data (admin user, demo products)
+npm run prisma:seed
+```
+
+**Тестові облікові записи (після seed):**
+- Admin: `admin@ortomat.ua` / `Admin123!`
+- Doctor: `doctor@ortomat.ua` / `Doctor123!`
+- Courier: `courier@ortomat.ua` / `Courier123!`
+
+### 4. Налаштування Frontend
+
+#### 4.1. Створити файл `.env.local` в `frontend/`
+
+```bash
+cd frontend
+touch .env.local
+```
+
+#### 4.2. Додати змінні
 
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
-NEXT_PUBLIC_FRONTEND_URL=http://localhost:3000
 ```
 
----
+### 5. Запуск проекту (Development)
 
-## 📦 Основні модулі
-
-### 1. Authentication Module
-
-**Файли:** `backend/src/auth/*`
-
-**Функціонал:**
-- Реєстрація лікарів (тільки лікарі можуть реєструватись публічно)
-- Логін з JWT токенами
-- Email верифікація
-- Відновлення паролю
-- Роль-базована авторизація (RBAC)
-
-**Endpoints:**
-- `POST /api/auth/register` - Реєстрація лікаря
-- `POST /api/auth/login` - Логін
-- `GET /api/auth/profile` - Отримати профіль
-- `GET /api/auth/verify-email?token=xxx` - Верифікація email
-- `POST /api/auth/forgot-password` - Запит на відновлення паролю
-- `POST /api/auth/reset-password` - Скидання паролю
-
-### 2. Courier Module
-
-**Файли:** `backend/src/courier/*`
-
-**Функціонал:**
-- Створення кур'єрів (тільки Admin)
-- Призначення ортоматів кур'єрам
-- Один ортомат = один кур'єр
-- Один кур'єр = багато ортоматів
-- Редагування та видалення кур'єрів
-
-**Endpoints:**
-- `POST /api/courier` - Створити кур'єра (Admin)
-- `GET /api/courier` - Всі кур'єри (Admin)
-- `GET /api/courier/:id` - Один кур'єр (Admin)
-- `PATCH /api/courier/:id` - Оновити кур'єра (Admin)
-- `DELETE /api/courier/:id` - Видалити кур'єра (Admin)
-- `GET /api/courier/available/ortomats` - Вільні ортомати (Admin)
-
-### 3. Ortomats Module
-
-**Файли:** `backend/src/ortomats/*`
-
-**Функціонал:**
-- CRUD операції з ортоматами
-- Управління комірками (37 комірок на ортомат)
-- Призначення продуктів в комірки
-- Статус ортоматів (online/offline)
-
-**Endpoints:**
-- `GET /api/ortomats` - Всі ортомати
-- `GET /api/ortomats/:id` - Один ортомат
-- `POST /api/ortomats` - Створити ортомат (Admin)
-- `PATCH /api/ortomats/:id` - Оновити ортомат (Admin)
-- `DELETE /api/ortomats/:id` - Видалити ортомат (Admin)
-
-### 4. QR Code Module
-
-**Файли:** `backend/src/qr-code/*`
-
-**Функціонал:**
-- Генерація унікальних QR кодів для кожного лікаря
-- QR коди містять реферальний код лікаря
-- Автоматичне відстеження комісій
-
-**Endpoints:**
-- `GET /api/qr-code/doctor/:doctorId` - QR код лікаря
-- `GET /api/qr-code/download/:doctorId` - Завантажити QR
-
-### 5. Sales Module
-
-**Файли:** `backend/src/sales/*`
-
-**Функціонал:**
-- Відстеження всіх продажів
-- Розрахунок комісій лікарів
-- Статистика по ортоматах
-- Інтеграція з LiqPay
-
-**Endpoints:**
-- `GET /api/sales` - Всі продажі (Admin)
-- `GET /api/sales/doctor/:doctorId` - Продажі лікаря
-- `GET /api/sales/admin/stats` - Загальна статистика (Admin)
-
-### 6. Email Module
-
-**Файли:** `backend/src/email/*`
-
-**Функціонал:**
-- Відправка email через SendGrid
-- Handlebars templates
-- Email верифікація
-- Відновлення паролю
-- Welcome email
-
-**Templates:**
-- `verify-email.hbs` - Email верифікація
-- `welcome.hbs` - Вітальний email
-- `reset-password.hbs` - Скидання паролю
-
-### 7. Invite Module
-
-**Файли:** `backend/src/invite/*`
-
-**Функціонал:**
-- Генерація invite посилань для ортоматів
-- Лікарі можуть приєднатись до ортомату через invite
-- Токени діють 30 днів
-
-**Endpoints:**
-- `POST /api/invite/create/:ortomatId` - Створити invite (Admin)
-- `GET /api/invite/validate?token=xxx` - Перевірити invite
-- `GET /api/invite/ortomat/:ortomatId` - Всі invites ортомату
-- `POST /api/invite/deactivate/:token` - Деактивувати invite
-
----
-
-## 🌐 API Endpoints
-
-### Public Endpoints (без авторизації)
-
-```
-POST   /api/auth/register           - Реєстрація лікаря
-POST   /api/auth/login              - Логін
-GET    /api/auth/verify-email       - Верифікація email
-POST   /api/auth/forgot-password    - Запит на відновлення паролю
-POST   /api/auth/reset-password     - Скидання паролю
-```
-
-### Protected Endpoints (потребують JWT токен)
-
-#### Admin Only
-```
-POST   /api/courier                 - Створити кур'єра
-GET    /api/courier                 - Всі кур'єри
-PATCH  /api/courier/:id             - Оновити кур'єра
-DELETE /api/courier/:id             - Видалити кур'єра
-POST   /api/ortomats                - Створити ортомат
-PATCH  /api/ortomats/:id            - Оновити ортомат
-DELETE /api/ortomats/:id            - Видалити ортомат
-GET    /api/sales                   - Всі продажі
-GET    /api/users                   - Всі користувачі
-POST   /api/invite/create/:id       - Створити invite
-```
-
-#### Doctor Endpoints
-```
-GET    /api/auth/profile            - Профіль лікаря
-GET    /api/qr-code/doctor/:id      - QR код лікаря
-GET    /api/sales/doctor/:id        - Продажі лікаря
-```
-
-#### Courier Endpoints
-```
-GET    /api/ortomats                - Призначені ортомати
-PATCH  /api/cells/:id               - Оновити комірку
-```
-
----
-
-## 🗄 База даних
-
-### Prisma Schema
-
-**Основні моделі:**
-
-1. **User** - Користувачі (Admin, Doctor, Courier)
-2. **Ortomat** - Автомати
-3. **Cell** - Комірки в автоматі (37 на кожен ортомат)
-4. **Product** - Продукти
-5. **DoctorOrtomat** - Зв'язок лікаря з ортоматом + реферальний код
-6. **CourierOrtomat** - Зв'язок кур'єра з ортоматом
-7. **Sale** - Продажі
-8. **ActivityLog** - Логи системи
-9. **EmailLog** - Email логи
-10. **OrtomatInvite** - Invite посилання
-
-### Міграції
-
+#### Terminal 1 - Backend
 ```bash
-# Створити нову міграцію
-npx prisma migrate dev --name migration_name
+cd backend
+npm run start:dev
+```
+Доступно на: http://localhost:3001
 
-# Застосувати міграції в продакшн
-npx prisma migrate deploy
+#### Terminal 2 - Frontend
+```bash
+cd frontend
+npm run dev
+```
+Доступно на: http://localhost:3000
 
-# Синхронізувати schema з БД (pull)
-npx prisma db pull
+### 6. Перевірка роботи
 
-# Відкрити Prisma Studio (GUI для БД)
-npx prisma studio
+1. Відкрити http://localhost:3000 - landing page
+2. Перейти на http://localhost:3000/login
+3. Увійти як admin: `admin@ortomat.ua` / `Admin123!`
+4. Перевірити admin dashboard
+
+---
+
+## 📡 API Документація
+
+### Base URL
+
+```
+Development: http://localhost:3001
+Production:  https://ortomat-production.up.railway.app
+```
+
+### Authentication
+
+Всі захищені endpoints потребують JWT токену в заголовку:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Основні Endpoints
+
+#### 🔐 Authentication (`/api/auth`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/auth/login` | Login (отримати access + refresh tokens) | ❌ |
+| POST | `/api/auth/register` | Register new user | ❌ |
+| POST | `/api/auth/refresh` | Refresh access token | ❌ |
+| POST | `/api/auth/logout` | Logout (invalidate refresh token) | ✅ |
+| GET | `/api/auth/profile` | Get current user profile | ✅ |
+
+**Login Request:**
+```json
+POST /api/auth/login
+{
+  "email": "admin@ortomat.ua",
+  "password": "Admin123!"
+}
+```
+
+**Login Response:**
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refresh_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "user": {
+    "id": "uuid",
+    "email": "admin@ortomat.ua",
+    "role": "ADMIN",
+    "firstName": "Admin",
+    "lastName": "User"
+  }
+}
+```
+
+#### 🏪 Ortomats (`/api/ortomats`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/ortomats` | Get all ortomats | ✅ |
+| GET | `/api/ortomats/:id` | Get ortomat by ID | ✅ |
+| GET | `/api/ortomats/:id/catalog` | Get public catalog (for QR) | ❌ |
+| GET | `/api/ortomats/:id/catalog?ref=CODE` | Catalog with referral code | ❌ |
+| POST | `/api/ortomats` | Create new ortomat | ✅ ADMIN |
+| PATCH | `/api/ortomats/:id` | Update ortomat | ✅ ADMIN |
+| DELETE | `/api/ortomats/:id` | Delete ortomat | ✅ ADMIN |
+
+#### 📦 Products (`/api/products`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/products` | Get all products | ✅ |
+| GET | `/api/products/:id` | Get product by ID | ✅ |
+| POST | `/api/products` | Create new product | ✅ ADMIN |
+| PATCH | `/api/products/:id` | Update product | ✅ ADMIN |
+| DELETE | `/api/products/:id` | Delete product | ✅ ADMIN |
+
+#### 🛒 Orders (`/api/orders`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| POST | `/api/orders/create` | Create new order | ❌ |
+| POST | `/api/orders/:id/create-mono-payment` | Create Monobank payment | ❌ |
+| POST | `/api/orders/:id/check-payment-status` | Check payment status | ❌ |
+| POST | `/api/orders/:id/open-cell` | Open cell (after payment) | ❌ |
+| POST | `/api/orders/mono-callback` | Monobank webhook | ❌ |
+
+#### 👥 Users (`/api/users`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/users` | Get all users | ✅ ADMIN |
+| GET | `/api/users/doctors` | Get all doctors | ✅ ADMIN |
+| POST | `/api/users/doctors` | Create doctor | ✅ ADMIN |
+| PATCH | `/api/users/doctors/:id` | Update doctor | ✅ ADMIN |
+| DELETE | `/api/users/doctors/:id` | Delete doctor | ✅ ADMIN |
+
+#### 📊 Sales (`/api/sales`)
+
+| Method | Endpoint | Description | Auth |
+|--------|----------|-------------|------|
+| GET | `/api/sales` | Get all sales | ✅ |
+| GET | `/api/sales/stats` | Get sales statistics | ✅ |
+| GET | `/api/sales/my-stats` | Get doctor's stats | ✅ DOCTOR |
+
+### Rate Limiting
+
+Критичні endpoints мають обмеження запитів:
+
+| Endpoint | Limit |
+|----------|-------|
+| `/api/auth/login` | 5 req/min |
+| `/api/orders/:id/open-cell` | 3 req/min |
+| `/api/orders/create` | 10 req/min |
+| `/api/admin/backup` | 2 req/hour |
+| `/api/admin/restore` | 1 req/hour |
+
+---
+
+## 🔐 Аутентифікація та безпека
+
+### JWT Authentication
+
+Система використовує **два типи токенів**:
+
+#### Access Token
+- **Lifetime:** 15 хвилин
+- **Storage:** `localStorage` (Remember Me) або `sessionStorage` (без Remember Me)
+- **Usage:** Передається в кожному запиті в заголовку `Authorization: Bearer <token>`
+
+#### Refresh Token
+- **Lifetime:** 7 днів
+- **Storage:** `localStorage` (тільки якщо Remember Me = true)
+- **Usage:** Автоматичне оновлення access token
+- **Security:** Хешується в БД (bcrypt), invalidується при logout
+
+### "Remember Me" Функціонал
+
+При логіні користувач може обрати "Залишатись в системі":
+
+**Remember Me = true:**
+- `access_token` → `localStorage` (15 хв)
+- `refresh_token` → `localStorage` (7 днів)
+- Користувач залишається в системі після закриття браузера
+
+**Remember Me = false:**
+- `access_token` → `sessionStorage` (15 хв)
+- `refresh_token` → НЕ зберігається
+- Сесія діє максимум 15 хвилин
+
+### Security Headers
+
+- **Helmet** - захист від XSS, clickjacking
+- **CORS** - whitelist allowed origins
+- **CSP** - Content Security Policy
+- **HSTS** - Force HTTPS
+- **Rate Limiting** - захист від brute force
+
+### Password Requirements
+
+- Мінімум 8 символів
+- Велика літера (A-Z)
+- Маленька літера (a-z)
+- Цифра (0-9)
+- Спеціальний символ (@$!%*?&)
+
+---
+
+## 🎁 Реферальна система
+
+### Як працює
+
+1. **Створення лікаря-рефералa:**
+   - Адмін створює користувача з роллю `DOCTOR`
+   - Адмін прив'язує лікаря до ортомату
+   - Автоматично генерується унікальний `referralCode`
+   - Генерується QR-код з посиланням: `https://ortomat.com.ua/catalog/{ortomatId}?ref=DOC123`
+
+2. **Покупка через реферал:**
+   - Клієнт сканує QR-код → відкривається каталог
+   - При створенні замовлення передається `referralCode`
+   - З Product береться `referralPoints` (наприклад, 50 балів)
+   - При успішній оплаті:
+     - Створюється `Sale` з `pointsEarned: 50`
+     - Оновлюється `DoctorOrtomat.totalPoints += 50`
+     - Telegram бот надсилає нотифікацію лікарю
+
+3. **Перегляд статистики:**
+   - Лікар заходить в `/doctor` dashboard
+   - Або використовує Telegram бот: `/stats`
+
+---
+
+## 🤖 Telegram Bot
+
+### Налаштування
+
+1. Створити бота через [@BotFather](https://t.me/BotFather)
+2. Отримати `TELEGRAM_BOT_TOKEN`
+3. Додати в `backend/.env`
+4. Запустити backend - бот автоматично стартує
+
+### Доступні команди
+
+| Команда | Опис |
+|---------|------|
+| `/start` | Прив'язати Telegram до акаунту лікаря |
+| `/stats` | Переглянути статистику балів та продажів |
+| `📊 Моя статистика` | Кнопка (те саме що /stats) |
+| `/help` | Показати довідку |
+| `/unlink` | Відв'язати Telegram від акаунту |
+
+### Процес прив'язки
+
+1. Лікар: `/start`
+2. Бот: "Надішліть номер телефону" (кнопка)
+3. Лікар підтверджує
+4. Бот знаходить User з таким phone та role=DOCTOR
+5. Зберігає telegramChatId
+6. Показує постійну кнопку "📊 Моя статистика"
+
+### Нотифікації про продажі
+
+При кожному продажі лікар отримує:
+
+```
+🎉 Новий продаж!
+
+📦 Товар: Ортопедичні устілки Comfort+
+💰 Отримано балів: +50
+📊 Всього балів: 350
+💵 Сума продажу: 450 грн
+
+Вітаємо! 🎊
 ```
 
 ---
 
 ## 🚀 Deployment
 
-### Backend (Railway)
+### Production Stack
 
-1. Створіть новий проект на [Railway.app](https://railway.app)
-2. Підключіть GitHub репозиторій
-3. Додайте PostgreSQL service
-4. Налаштуйте змінні середовища
-5. Root Directory: `/backend`
-6. Build Command: `npm run build`
-7. Start Command: `npm run start:prod`
+- **Backend:** Railway (PostgreSQL + Node.js)
+- **Frontend:** Vercel
+- **Domain:** ortomat.com.ua
+- **SSL:** Automatic
 
-**Environment Variables на Railway:**
-```
-DATABASE_URL (автоматично з PostgreSQL)
-JWT_SECRET (генеруйте сильний секрет - див. інструкції нижче)
-FRONTEND_URL
-RESEND_API_KEY
-RESEND_FROM
-MONO_TOKEN
+### Backend Deployment (Railway)
+
+#### Environment Variables
+
+```env
+DATABASE_URL=postgresql://...
+JWT_SECRET=<generated-secret>
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+FRONTEND_URL=https://ortomat.com.ua
+BACKEND_URL=https://ortomat-production.up.railway.app
+RESEND_API_KEY=re_...
+MONO_TOKEN=<monobank-token>
+TELEGRAM_BOT_TOKEN=<telegram-token>
 PORT=3001
+NODE_ENV=production
 ```
 
-**⚠️ ВАЖЛИВО: JWT_SECRET Security**
+#### Deploy Commands
 
-JWT_SECRET повинен бути криптографічно сильним випадковим рядком.
-
-**Згенерувати сильний JWT_SECRET:**
 ```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+# Build
+npm run build
+
+# Start
+npm run start:prod
 ```
 
-**Оновити JWT_SECRET на Railway:**
-1. Відкрийте Railway Dashboard → ваш проект → Variables
-2. Додайте/оновіть змінну `JWT_SECRET` зі згенерованим значенням
-3. Збережіть зміни - Railway автоматично перезапустить сервіс
-4. ⚠️ НІКОЛИ не використовуйте приклади з `.env.example` в production!
+### Frontend Deployment (Vercel)
 
-**Примітка:** Зміна JWT_SECRET призведе до інвалідації всіх існуючих JWT токенів, тому користувачі мають перелогінитись.
+#### Environment Variables
 
-### Frontend (Vercel)
-
-1. Створіть новий проект на [Vercel.com](https://vercel.com)
-2. Підключіть GitHub репозиторій
-3. Root Directory: `/frontend`
-4. Framework Preset: Next.js
-5. Налаштуйте змінні середовища
-
-**Environment Variables на Vercel:**
-```
-NEXT_PUBLIC_API_URL=https://ortomat-monorepo-production.up.railway.app
-NEXT_PUBLIC_FRONTEND_URL=https://ortomat.com.ua
+```env
+NEXT_PUBLIC_API_URL=https://ortomat-production.up.railway.app
 ```
 
-### Custom Domain
+#### Auto-deploy
 
-1. В Vercel: Settings → Domains → Add `ortomat.com.ua`
-2. Налаштуйте DNS записи у вашого domain provider:
-   ```
-   A     @     76.76.21.21
-   CNAME www   cname.vercel-dns.com
-   ```
+Vercel автоматично деплоїть при push в `main`.
 
 ---
 
-## 👥 Користувачі та ролі
+## 💻 Розробка
 
-### Типи користувачів
+### Database Migrations
 
-#### 1. Admin 👨‍💼
-**Доступ:** Повний контроль системи
+```bash
+cd backend
 
-**Можливості:**
-- Створювати/редагувати/видаляти кур'єрів
-- Управляти ортоматами
-- Управляти продуктами
-- Призначати ортомати кур'єрам
-- Переглядати всі продажі та статистику
-- Створювати invite посилання для лікарів
-- Переглядати всіх користувачів
+# Create migration
+npx prisma migrate dev --name add_new_field
 
-**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
-```
-Email: admin@ortomat.ua
-Password: password123
+# Generate Prisma Client
+npx prisma generate
+
+# Apply migrations (production)
+npx prisma migrate deploy
+
+# View database
+npx prisma studio
 ```
 
-⚠️ **ВАЖЛИВО:** Ці акаунти створюються лише через `npx prisma db seed` і НЕ повинні використовуватись в production!
+### Git Workflow
 
-#### 2. Doctor 👨‍⚕️
-**Доступ:** Особистий кабінет
-
-**Можливості:**
-- Переглядати свій QR код
-- Завантажувати QR код для друку
-- Переглядати свої продажі
-- Переглядати статистику комісій
-- Приєднуватись до ортоматів через invite
-
-**Реєстрація:** Публічна через `/register`
-
-**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
-```
-Email: doctor@ortomat.ua
-Password: password123
+```bash
+git checkout -b feature/new-feature
+git add .
+git commit -m "feat: add new feature"
+git push origin feature/new-feature
 ```
 
-#### 3. Courier 🚚
-**Доступ:** Управління призначеними ортоматами
+### Commit Convention
 
-**Можливості:**
-- Переглядати призначені ортомати
-- Оновлювати стан комірок
-- Додавати/видаляти продукти з комірок
-- Позначати комірки як наповнені
-
-**Реєстрація:** Тільки через Admin панель
-
-**Тестовий акаунт (ТІЛЬКИ для локальної розробки):**
-```
-Email: courier@ortomat.ua
-Password: password123
-```
-
-### Створення тестових користувачів
-
-```sql
--- Admin
-INSERT INTO users (id, email, password, role, "firstName", "lastName", phone, "isVerified")
-VALUES (
-  gen_random_uuid(),
-  'admin@ortomat.ua',
-  '$2a$10$hashed_password_here', -- password123
-  'ADMIN',
-  'Адмін',
-  'Система',
-  '+380501234567',
-  true
-);
-
--- Doctor
-INSERT INTO users (id, email, password, role, "firstName", "lastName", phone, "isVerified")
-VALUES (
-  gen_random_uuid(),
-  'doctor@ortomat.ua',
-  '$2a$10$hashed_password_here',
-  'DOCTOR',
-  'Іван',
-  'Петров',
-  '+380501234568',
-  true
-);
-
--- Courier
-INSERT INTO users (id, email, password, role, "firstName", "lastName", phone, "isVerified")
-VALUES (
-  gen_random_uuid(),
-  'courier@ortomat.ua',
-  '$2a$10$hashed_password_here',
-  'COURIER',
-  'Петро',
-  'Іванов',
-  '+380501234569',
-  true
-);
-```
-
----
-
-## 📧 Email система
-
-### SendGrid Setup
-
-1. Створіть акаунт на [SendGrid.com](https://sendgrid.com)
-2. Verify domain `ortomat.com.ua`
-3. Створіть API Key
-4. Додайте в `.env`:
-   ```
-   SENDGRID_API_KEY=SG.your_api_key
-   SMTP_FROM=noreply@ortomat.com.ua
-   ```
-
-### Email Templates
-
-Розташування: `backend/src/email/templates/*.hbs`
-
-**Доступні templates:**
-1. `verify-email.hbs` - Верифікація email
-2. `welcome.hbs` - Вітальний лист
-3. `reset-password.hbs` - Скидання паролю
-
-**Приклад створення нового template:**
-
-```handlebars
-<!-- backend/src/email/templates/new-template.hbs -->
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>{{subject}}</title>
-</head>
-<body>
-  <h1>Hello {{firstName}}!</h1>
-  <p>Your custom content here.</p>
-  <footer>
-    <p>© {{year}} Ortomat</p>
-  </footer>
-</body>
-</html>
-```
-
----
-
-## 📱 QR Code система
-
-### Як працює
-
-1. Кожен лікар отримує унікальний реферальний код
-2. QR код генерується з URL: `https://ortomat.com.ua/buy?ref=XXXX`
-3. Коли пацієнт сканує QR:
-   - Відкривається сторінка вибору ортомату
-   - Реферальний код зберігається
-   - Після покупки лікар отримує комісію (10%)
-
-### Генерація QR кодів
-
-```typescript
-// backend/src/qr-code/qr-code.service.ts
-import * as QRCode from 'qrcode';
-
-async generateQRCode(doctorId: string) {
-  const doctorOrtomat = await this.findDoctorOrtomat(doctorId);
-  const url = `${process.env.FRONTEND_URL}/buy?ref=${doctorOrtomat.referralCode}`;
-  
-  const qrCode = await QRCode.toDataURL(url, {
-    width: 300,
-    margin: 2,
-  });
-  
-  return qrCode; // base64 image
-}
-```
+- `feat:` - new feature
+- `fix:` - bug fix
+- `docs:` - documentation
+- `refactor:` - code restructure
+- `chore:` - maintenance
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Проблема: Backend не запускається
+### Backend не стартує
 
+**Проблема:** `Can't reach database server`
+
+**Рішення:**
 ```bash
-# Перевірте .env файл
-cat backend/.env
+# Перевірити PostgreSQL
+docker ps
 
-# Перевірте чи доступна БД
-npx prisma db push
+# Перезапустити
+docker-compose restart postgres
 
-# Перегляньте логи
-npm run start:dev
-```
-
-### Проблема: Frontend не може з'єднатись з Backend
-
-1. Перевірте `NEXT_PUBLIC_API_URL` в `.env.local`
-2. Переконайтесь що backend запущений
-3. Перевірте CORS налаштування в `backend/src/main.ts`
-
-### Проблема: Email не відправляються
-
-1. Перевірте `SENDGRID_API_KEY` в `.env`
-2. Перевірте SendGrid logs на їх сайті
-3. Перевірте чи domain verified
-4. Перегляньте `email_logs` таблицю в БД
-
-### Проблема: JWT токен invalid
-
-```bash
-# Перегенеруйте сильний JWT_SECRET (64 bytes в base64)
-node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
-
-# Оновіть в .env (локально)
-JWT_SECRET=wX8F2VpSNEGuFP2990cI6aIqhZicRX3ugaxtNFm96hsp6ZOH9IsBKD9WxaY06T1Wn6DsM5nM0oJUfR5zz9+5KQ==
-
-# Оновіть в Railway (production)
-# Railway Dashboard → Variables → JWT_SECRET → Save
-```
-
-### Проблема: Prisma migration failed
-
-```bash
-# Reset database (УВАГА: видалить всі дані!)
-npx prisma migrate reset
-
-# Або виправте міграцію вручну
-npx prisma migrate dev --create-only
-# Відредагуйте SQL файл
-npx prisma migrate dev
-```
-
-### Проблема: Module not found errors
-
-```bash
-# Backend
-cd backend
-rm -rf node_modules package-lock.json
-npm install
-
-# Frontend
-cd frontend
-rm -rf node_modules package-lock.json .next
-npm install
+# Перевірити DATABASE_URL
+echo $DATABASE_URL
 ```
 
 ---
 
-## 📝 Корисні команди
+### 401 Unauthorized
 
-### Backend
+**Проблема:** Отримуєте 401 з валідним токеном
 
+**Рішення:**
 ```bash
-# Development
-npm run start:dev
+# Перевірити JWT_SECRET
+echo $JWT_SECRET
 
-# Production build
-npm run build
-npm run start:prod
+# Очистити localStorage
+# DevTools → Application → Local Storage → Clear
 
-# Prisma
-npx prisma studio              # Open GUI
-npx prisma migrate dev         # Create migration
-npx prisma migrate deploy      # Apply migrations
-npx prisma generate           # Generate client
-npx prisma db seed            # Seed database
-
-# Testing
-npm run test
-npm run test:e2e
-```
-
-### Frontend
-
-```bash
-# Development
-npm run dev
-
-# Production build
-npm run build
-npm run start
-
-# Linting
-npm run lint
-npm run lint:fix
-
-# Type checking
-npm run type-check
+# Залогінитися знову
 ```
 
 ---
 
-## 🔐 Безпека
+### Monobank Payment не працює
 
-### Важливо
-
-1. **Ніколи не комітьте `.env` файли**
-2. **Змініть всі паролі та секрети в продакшн**
-3. **Використовуйте HTTPS для продакшн**
-4. **Регулярно оновлюйте залежності**
-
-### Рекомендації
-
-- ✅ Використовуйте strong JWT secrets (64+ bytes, base64 encoded)
-  ```bash
-  node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
-  ```
-- ⚠️ Налаштуйте rate limiting для auth endpoints
-- ✅ Включіть CORS тільки для trusted domains
-- 🔒 Backend HTML sanitization для product descriptions (XSS protection)
-- 🔐 Role-based access control (RBAC) на всіх admin endpoints
-- 💾 Регулярно робіть backup БД
-- 📊 Моніторьте логи на підозрілу активність
-- 🔄 Validation pipe на всіх DTOs
+**Рішення:**
+```bash
+# Перевірити webhook
+curl https://api.monobank.ua/api/merchant/invoice/webhook \
+  -H "X-Token: <MONO_TOKEN>"
+```
 
 ---
 
-## 📊 Моніторинг та логування
+### Telegram Bot не відповідає
 
-### Activity Logs
-
-Всі важливі події зберігаються в таблиці `activity_logs`:
-
-```typescript
-enum LogType {
-  CELL_OPENED
-  CELL_FILLED
-  ORDER_CREATED
-  PAYMENT_SUCCESS
-  LOGIN_SUCCESS
-  COURIER_CHECKIN
-  // та інші...
-}
-```
-
-### Email Logs
-
-Всі email зберігаються в `email_logs` з статусами:
-- `PENDING` - в черзі
-- `SENT` - відправлено
-- `FAILED` - помилка
-- `BOUNCED` - повернувся
-
-### Перегляд логів
-
+**Рішення:**
 ```bash
-# Railway logs
+# Перевірити токен
+curl https://api.telegram.org/bot<TOKEN>/getMe
+
+# Перевірити logs
 railway logs
-
-# Local development
-npm run start:dev  # консоль покаже всі логи
 ```
 
----
-
-## 🤝 Contributing
-
-### Workflow
-
-1. Створіть нову гілку: `git checkout -b feature/your-feature`
-2. Зробіть зміни
-3. Commit: `git commit -m "feat: add new feature"`
-4. Push: `git push origin feature/your-feature`
-5. Створіть Pull Request
-
-### Commit Convention
-
-Використовуємо [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: нова функція
-fix: виправлення бага
-docs: зміни в документації
-style: форматування коду
-refactor: рефакторинг
-test: додавання тестів
-chore: оновлення залежностей
-```
+Якщо 409 Conflict - два backend використовують той самий токен.
 
 ---
 
-## 📞 Контакти
+## 📞 Support
 
-- **GitHub:** [ortomat-monorepo](https://github.com/your-username/ortomat-monorepo)
-- **Website:** https://ortomat.com.ua
-- **Backend API:** https://ortomat-monorepo-production.up.railway.app
+**GitHub:** https://github.com/mosyurchak/ortomat-monorepo
 
 ---
 
-## 📄 Ліцензія
+## 📄 License
 
-MIT License - використовуйте код як завгодно!
-
----
-
-## 🎯 Roadmap
-
-### В розробці
-- [ ] Mobile app (React Native)
-- [ ] Payment integration (LiqPay)
-- [ ] WebSocket real-time updates
-- [ ] Advanced analytics dashboard
-- [ ] Multi-language support
-- [ ] SMS notifications
-- [ ] Inventory management system
-
-### Завершено
-- [x] User authentication
-- [x] QR code system
-- [x] Email notifications
-- [x] Admin panel
-- [x] Doctor dashboard
-- [x] Courier management
-- [x] Password recovery
-- [x] Ortomat invites system
+Proprietary - Всі права захищені
 
 ---
 
-**Останнє оновлення:** Жовтень 2024
-
-**Версія:** 1.0.0
-
-**Автор:** Ortomat Team
+**🎉 Готово! Тепер у вас є повна документація для роботи з Ortomat.**
